@@ -1,0 +1,29 @@
+# --- Monorepo / Sub-folders ---
+# This catches node_modules in root, mobile, web, and shared
+**/node_modules/
+**/build/
+**/dist/
+
+# --- Expo / React Native ---
+.expo/
+**/web-build/
+**/ios/build/
+**/android/build/
+
+# --- Firebase & Secrets (Based on your previous leaks) ---
+# Catching service keys in root or any subfolder
+serviceAccountKey.json
+**/serviceAccountKey.json
+.env
+**/.env
+**/.env.local
+
+# --- System & Logs ---
+*.log
+.DS_Store
+Thumbs.db
+
+# --- Folder Specifics ---
+# If you use Firebase hosting
+.firebase/
+.firebaserc

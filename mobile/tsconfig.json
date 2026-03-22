@@ -1,0 +1,29 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "moduleResolution": "bundler",
+    
+    "paths": {
+      "@/*": [
+        "./*",
+        
+      ]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "nativewind-env.d.ts",
+    "../shared/**/*.ts",
+    "../shared/**/*.tsx",
+    "src/utils/logAdminAction.ts.bak",
+    "app/index.tsx.bak",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+, "src/lib/font.ts.bak"  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

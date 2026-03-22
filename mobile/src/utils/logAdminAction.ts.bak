@@ -1,0 +1,69 @@
+// src/utils/logAdminAction.ts
+import { db } from "../../app/firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+
+/* --------------------------------------------------
+   TYPES
+-------------------------------------------------- */
+export type AdminLogAction =
+  | "CREATE_CLASS"
+  | "EDIT_CLASS"
+  | "DELETE_CLASS"
+  | "ASSIGN_STUDENT_TO_CLASS"
+  | "REMOVE_STUDENT_FROM_CLASS"
+  | "ASSIGN_WARD"
+  | "REMOVE_WARD"
+  | "CREATE_STUDENT"
+  | "EDIT_STUDENT"
+  | "CHECK_IN"
+  | "CHECK_OUT"
+  | "ROLE_CHANGE"
+  | "SYSTEM_UPDATE";
+
+export type AdminLogTarget =
+  | "class"
+  | "student"
+  | "parent"
+  | "staff"
+  | "user"
+  | "attendance"
+  | "system";
+
+/* --------------------------------------------------
+   LOGGER
+-------------------------------------------------- */
+export async function logAdminAction({
+  actorUid,
+  actorName,
+  actorRole,
+  action,
+  targetType,
+  targetId,
+  description,
+  metadata,
+}: {
+  actorUid: string;
+  actorName?: string;
+  actorRole: string;
+  action: AdminLogAction;
+  targetType: AdminLogTarget;
+  targetId?: string;
+  description: string;
+  metadata?: Record<string, any>;
+}) {
+  try {
+    await addDoc(collection(db, "adminLogs"), {
+      actorUid,
+      actorName: actorName ?? null,
+      actorRole,
+      action,
+      targetType,
+      targetId: targetId ?? null,
+      description,
+      metadata: metadata ?? {},
+      createdAt: serverTimestamp(),
+    });
+  } catch (err) {
+    console.error("Failed to log admin action:", err);
+  }
+}

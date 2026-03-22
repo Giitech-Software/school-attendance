@@ -1,0 +1,14 @@
+import { PixelRatio } from 'react-native';
+
+export const font = (size: number) => {
+  const scale = PixelRatio.getFontScale();
+  return Math.min(size * scale, size * 1.3); // prevent layout break
+};
+export const text = {
+  xs: font(12),
+  sm: font(14),
+  base: font(16),
+  lg: font(18),
+  xl: font(20),
+  '2xl': font(24),
+};

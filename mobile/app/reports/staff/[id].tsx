@@ -17,6 +17,7 @@ import {
 } from "../../../src/services/staffAttendanceSummary";
 
 import { exportStaffAttendancePdf } from "../../../src/services/exports/exportStaffAttendancePdf";
+import { useRequireAdmin } from "../../../src/hooks/useRouteAuthorization";
 
 /* ------------------------------------------------------------------ */
 /* UTIL: Last 5 Work Days */
@@ -40,6 +41,7 @@ function getLast5WorkDays() {
 /* COMPONENT */
 /* ------------------------------------------------------------------ */
 export default function StaffDetail() {
+  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
   const params = useLocalSearchParams();
   const router = useRouter();
 
@@ -123,7 +125,7 @@ export default function StaffDetail() {
   /* ------------------------------------------------------------------ */
   /* LOADING STATE */
   /* ------------------------------------------------------------------ */
-  if (loading) {
+  if (adminLoading || !adminReady || loading) {
     return (
       <View className="flex-1 items-center justify-center bg-slate-50">
         <ActivityIndicator />
@@ -149,7 +151,7 @@ export default function StaffDetail() {
   /* UI */
   /* ------------------------------------------------------------------ */
   return (
-    <View className="flex-1 p-4 bg-slate-50">
+    <View className="flex-1 p-3 bg-slate-50">
       {/* ---------- HEADER ---------- */}
       <View className="flex-row items-center mb-2">
         <Pressable
@@ -159,12 +161,12 @@ export default function StaffDetail() {
         >
           <MaterialIcons
             name="arrow-back"
-            size={26}
+            size={24}
             color="#0f172a"
           />
         </Pressable>
 
-        <Text className="text-2xl font-bold mb-1">
+        <Text className="text-xl font-bold mb-1">
           {titleParam ?? "Staff Report"}
         </Text>
       </View>
@@ -184,7 +186,7 @@ export default function StaffDetail() {
             title: titleParam ?? "Staff Attendance Report",
           })
         }
-        className="bg-indigo-600 py-2 px-4 rounded-lg mb-4"
+        className="bg-indigo-600 py-2 px-3 rounded-lg mb-4"
       >
         <Text className="text-white font-semibold text-center">
           Export PDF
@@ -192,7 +194,7 @@ export default function StaffDetail() {
       </Pressable>
 
       {/* ---------- SUMMARY ---------- */}
-      <View className="bg-white p-4 rounded-xl mb-4 shadow">
+      <View className="bg-white p-3 rounded-lg mb-3 shadow">
         <Text className="font-semibold">Summary</Text>
 
         <View className="flex-row justify-between mt-2">
@@ -247,7 +249,7 @@ export default function StaffDetail() {
           data={daily}
           keyExtractor={(d) => d.id}
           renderItem={({ item }) => (
-            <View className="bg-white p-3 rounded-lg mb-2 flex-row justify-between">
+            <View className="bg-white px-3 py-2 rounded-md mb-2 flex-row justify-between">
               <View>
                 <Text className="text-slate-700">
                   {new Date(item.date).toLocaleDateString()}
@@ -303,3 +305,4 @@ export default function StaffDetail() {
     </View>
   );
 }
+

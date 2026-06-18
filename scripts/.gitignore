@@ -25,5 +25,5 @@ Thumbs.db
 
 # --- Folder Specifics ---
 # If you use Firebase hosting
-.firebase/
+.firebase
 .firebaserc

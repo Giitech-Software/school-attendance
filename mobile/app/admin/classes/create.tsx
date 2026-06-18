@@ -1,17 +1,49 @@
 // mobile/app/classes/create.tsx
 import React, { useState } from "react";
-import { View, Text, TextInput, Pressable, Alert } from "react-native";
+import { View, Text, TextInput, Pressable, Alert, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { createClass } from "../../../src/services/classes"; // ensure createClass exists 
+import { listStaff } from "../../../src/services/staff";
+import type { Staff } from "../../../src/services/types";
 import { MaterialIcons } from "@expo/vector-icons";
 import AppInput from "@/components/AppInput";
 import AppPicker from "@/components/AppPicker";
+import { useRequireAdmin } from "../../../src/hooks/useRouteAuthorization";
 
 export default function ClassCreate() {
   const router = useRouter();
+  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [assignedStaffUids, setAssignedStaffUids] = useState<string[]>([]);
+  const [staffOptions, setStaffOptions] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        const staff = await listStaff();
+        if (mounted) setStaffOptions(staff.filter((s) => Boolean(s.userUid)));
+      } catch (error) {
+        console.warn("Failed to load staff options", error);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  function toggleAssignedStaff(uid?: string) {
+    if (!uid) return;
+    setAssignedStaffUids((current) =>
+      current.includes(uid)
+        ? current.filter((item) => item !== uid)
+        : [...current, uid]
+    );
+  }
 
   async function handleSave() {
     if (!name.trim()) {
@@ -29,7 +61,12 @@ export default function ClassCreate() {
           .substring(0, 30) || `class-${Date.now()}`;
 
       // include description when creating
-      await createClass({ name: trimmed, classId, description: description.trim() || undefined });
+      await createClass({
+        name: trimmed,
+        classId,
+        assignedStaffUids,
+        description: description.trim() || undefined,
+      });
       Alert.alert("Created");
       router.back();
     } catch (err: any) {
@@ -38,6 +75,14 @@ export default function ClassCreate() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (adminLoading || !adminReady) {
+    return (
+      <View className="flex-1 items-center justify-center bg-slate-50">
+        <ActivityIndicator />
+      </View>
+    );
   }
 
   return (
@@ -76,6 +121,30 @@ export default function ClassCreate() {
   placeholder="Short description"
   multiline
 />
+
+<Text className="text-sm text-neutral mb-1">Staff assigned to take attendance</Text>
+<View className="flex-row flex-wrap gap-2 mb-4">
+  {staffOptions.length === 0 ? (
+    <Text className="text-neutral">No linked staff profiles found.</Text>
+  ) : (
+    staffOptions.map((staff) => {
+      const selected = Boolean(staff.userUid && assignedStaffUids.includes(staff.userUid));
+      return (
+        <Pressable
+          key={staff.id ?? staff.userUid}
+          onPress={() => toggleAssignedStaff(staff.userUid)}
+          className={`px-3 py-2 rounded-xl border ${
+            selected ? "bg-primary border-primary" : "bg-white border-slate-200"
+          }`}
+        >
+          <Text className={selected ? "text-white" : "text-dark"}>
+            {staff.name}
+          </Text>
+        </Pressable>
+      );
+    })
+  )}
+</View>
 
       <Pressable onPress={handleSave} className="bg-primary py-3 rounded" disabled={loading}>
         <Text className="text-white text-center">{loading ? "Saving…" : "Create class"}</Text>

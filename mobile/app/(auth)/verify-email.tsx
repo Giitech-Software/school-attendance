@@ -3,10 +3,10 @@ import React, { useState, useEffect } from "react";
 import { View, Text, Pressable, Alert, ActivityIndicator } from "react-native";
 import { useRouter, Link } from "expo-router";
 import { getCurrentUser, reloadCurrentUser, sendEmailVerificationToCurrentUser, signOutUser } from "../../src/services/auth";
+import { getFriendlyAuthErrorMessage } from "@/src/utils/friendlyError";
 
 export default function VerifyEmailScreen() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [checking, setChecking] = useState(false);
 
@@ -42,7 +42,13 @@ useEffect(() => {
       await sendEmailVerificationToCurrentUser();
       Alert.alert("Verification email sent", "Please check your email (and spam folder).");
     } catch (err: any) {
-      Alert.alert("Failed to send email", err?.message ?? String(err));
+      Alert.alert(
+        "Failed to send email",
+        getFriendlyAuthErrorMessage(
+          err,
+          "Unable to send the verification email. Please try again."
+        )
+      );
     } finally {
       setResendLoading(false);
     }
@@ -69,7 +75,13 @@ useEffect(() => {
 
     }
   } catch (err: any) {
-    Alert.alert("Error", err?.message ?? String(err));
+    Alert.alert(
+      "Could not check verification",
+      getFriendlyAuthErrorMessage(
+        err,
+        "Unable to check your verification status. Please try again."
+      )
+    );
   } finally {
     setChecking(false);
   }
@@ -81,7 +93,10 @@ useEffect(() => {
 goToLoginUnverified(router);
 
     } catch (err: any) {
-      Alert.alert("Sign out failed", err?.message ?? String(err));
+      Alert.alert(
+        "Sign out failed",
+        getFriendlyAuthErrorMessage(err, "Unable to sign out. Please try again.")
+      );
     }
   }
 

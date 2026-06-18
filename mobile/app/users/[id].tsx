@@ -7,6 +7,7 @@ import { auth } from "../../app/firebase";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import AppPicker from "@/components/AppPicker";
+import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
 
 const USER_ROLES = [
   "parent",
@@ -19,6 +20,7 @@ const USER_ROLES = [
 export default function UserDetail() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -75,6 +77,16 @@ export default function UserDetail() {
     }
   }
 
+  function isStaffAccount() {
+    return (
+      user?.role === "teacher" ||
+      user?.role === "non_teaching_staff" ||
+      user?.role === "staff" ||
+      user?.role === "general_staff" ||
+      user?.role === "admin"
+    );
+  }
+
  async function handlePromoteToAdmin() {
   if (!user?.id) return;
   Alert.alert(
@@ -113,7 +125,7 @@ export default function UserDetail() {
 }
 
 
-  if (loading) return (<View className="flex-1 items-center justify-center bg-slate-50"><ActivityIndicator/></View>);
+  if (adminLoading || !adminReady || loading) return (<View className="flex-1 items-center justify-center bg-slate-50"><ActivityIndicator/></View>);
 
   if (!user) return (<View className="flex-1 items-center justify-center bg-slate-50 p-4"><Text className="text-neutral">User not found.</Text></View>);
 
@@ -179,6 +191,69 @@ export default function UserDetail() {
         </Text>
       </Pressable>
     </View>
+
+    <Text className="text-ml text-neutral-600 mb-1 mt-2">Attendance Permissions</Text>
+    <View className="mb-4 gap-2">
+      <Pressable
+        onPress={() =>
+          setUser((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  canTakeStudentAttendance: !prev.canTakeStudentAttendance,
+                }
+              : prev
+          )
+        }
+        className={`px-4 py-2 rounded ${
+          user.canTakeStudentAttendance ? "bg-green-600" : "bg-slate-500"
+        }`}
+      >
+        <Text className="text-white">
+          {user.canTakeStudentAttendance
+            ? "Can take student attendance"
+            : "Cannot take student attendance"}
+        </Text>
+      </Pressable>
+
+      <Pressable
+        onPress={() =>
+          setUser((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  canTakeStaffAttendance: !prev.canTakeStaffAttendance,
+                }
+              : prev
+          )
+        }
+        className={`px-4 py-2 rounded ${
+          user.canTakeStaffAttendance ? "bg-green-600" : "bg-slate-500"
+        }`}
+      >
+        <Text className="text-white">
+          {user.canTakeStaffAttendance
+            ? "Can take staff attendance"
+            : "Cannot take staff attendance"}
+        </Text>
+      </Pressable>
+    </View>
+
+    {isStaffAccount() && user.id ? (
+      <Pressable
+        onPress={() =>
+          router.push({
+            pathname: "/staff/register-from-user",
+            params: { uid: user.id },
+          } as any)
+        }
+        className="bg-blue-600 py-3 rounded mb-3"
+      >
+        <Text className="text-white text-center font-semibold">
+          Create / Link Staff Profile
+        </Text>
+      </Pressable>
+    ) : null}
 
     {/* Promote to Admin */}
     {user.role !== "admin" && (

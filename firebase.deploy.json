@@ -1,0 +1,17 @@
+{
+  "hosting": {
+    "public": "web/deploy-dist",
+    "ignore": [
+      "firebase.json",
+      "firebase.deploy.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

@@ -5,7 +5,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 // adjust path if your services live elsewhere
 import { listClasses, deleteClass } from "../../../src/services/classes";
-import useCurrentUser from "../../../src/hooks/useCurrentUser";
+import { useRequireAdmin } from "../../../src/hooks/useRouteAuthorization";
 
 export default function ClassesList() {
   const router = useRouter();
@@ -14,9 +14,7 @@ export default function ClassesList() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  // current user doc (authoritative for role)
-  const { userDoc, loading: userDocLoading } = useCurrentUser();
-  const isAdmin = Boolean(userDoc?.role === "admin");
+  const { loading: userDocLoading, ready: isAdmin } = useRequireAdmin();
 
   // helper for navigation to dynamic class route (string + cast to avoid router typing issues)
 
@@ -128,6 +126,9 @@ function goToEdit(id?: string) {
           <View className="bg-white rounded-2xl p-4 mb-3 flex-row items-center justify-between">
             <View>
               <Text className="font-semibold text-dark">{item.name}</Text>
+              <Text className="text-xs text-neutral mt-1">
+                Assigned staff: {item.assignedStaffUids?.length ?? 0}
+              </Text>
               <Text className="text-sm text-neutral mt-1">{item.description ?? "—"}</Text>
             </View>
 

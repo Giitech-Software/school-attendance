@@ -13,9 +13,11 @@ import { listTerms } from "../../src/services/terms";
 import { getStaffGlobalSummary } from "../../src/services/staffAttendanceSummary";
 import { exportTermStaffAttendancePdf } from "../../src/services/exports/exportTermStaffAttendancePdf";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
 
 export default function StaffTermlyReport() {
   const router = useRouter();
+  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
 
   const [loading, setLoading] = useState(true);
   const [terms, setTerms] = useState<any[]>([]);
@@ -65,7 +67,7 @@ export default function StaffTermlyReport() {
     })();
   }, [selectedTerm]);
 
-  if (loading) {
+  if (adminLoading || !adminReady || loading) {
     return (
       <View className="flex-1 items-center justify-center bg-slate-50">
         <ActivityIndicator />
@@ -74,12 +76,12 @@ export default function StaffTermlyReport() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-slate-300 p-4">
+    <ScrollView className="flex-1 bg-slate-300 p-3">
       <View className="flex-row items-center mb-2">
         <Pressable onPress={() => router.back()} className="p-1 mr-2">
-          <MaterialIcons name="arrow-back" size={26} color="#0f172a" />
+          <MaterialIcons name="arrow-back" size={24} color="#0f172a" />
         </Pressable>
-        <Text className="text-2xl font-extrabold text-slate-900">
+        <Text className="text-xl font-extrabold text-slate-900">
           Termly Staff Reports
         </Text>
       </View>
@@ -92,7 +94,7 @@ export default function StaffTermlyReport() {
           <Pressable
             key={t.id}
             onPress={() => setSelectedTerm(t)}
-            className={`p-4 mr-3 rounded-xl border ${
+            className={`px-3 py-2 mr-2 rounded-lg border ${
               selectedTerm?.id === t.id
                 ? "bg-blue-600 border-blue-600"
                 : "bg-white"
@@ -121,7 +123,7 @@ export default function StaffTermlyReport() {
       </ScrollView>
 
       {/* EXPORT PDF */}
-      <View className="mt-4">
+      <View className="mt-3">
         <Pressable
           disabled={!selectedTerm || exportingPdf}
           onPress={async () => {
@@ -136,7 +138,7 @@ export default function StaffTermlyReport() {
               setExportingPdf(false);
             }
           }}
-          className={`rounded-xl p-3 items-center justify-center ${
+          className={`rounded-lg px-3 py-2.5 items-center justify-center ${
             selectedTerm && !exportingPdf
               ? "bg-blue-600"
               : "bg-slate-400"
@@ -153,7 +155,7 @@ export default function StaffTermlyReport() {
       </View>
 
       {/* STAFF LIST */}
-      <Text className="text-lg font-semibold mt-6 mb-2">
+      <Text className="text-lg font-semibold mt-3 mb-1.5">
         Staff ({rows.length})
       </Text>
 
@@ -180,14 +182,14 @@ export default function StaffTermlyReport() {
                 },
               })
             }
-            className="bg-white p-4 rounded-xl mb-3 shadow"
+            className="bg-white px-3 py-2 rounded-md mb-2 shadow"
           >
             <Text className="font-semibold">
               {item.staffName}
               {item.displayId ? ` (${item.displayId})` : ""}
             </Text>
 
-            <View className="flex-row justify-between mt-2">
+            <View className="flex-row justify-between mt-1.5">
               <Text className="text-emerald-600">
                 P: {item.presentCount}
               </Text>
@@ -210,3 +212,5 @@ export default function StaffTermlyReport() {
     </ScrollView>
   );
 }
+
+

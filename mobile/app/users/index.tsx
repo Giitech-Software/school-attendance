@@ -13,9 +13,11 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { listUsers, deleteUser, AppUser } from "../../src/services/users";
 import { MaterialIcons } from "@expo/vector-icons";
 import AppInput from "../../components/AppInput";
+import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
 
 export default function UsersList() {
   const router = useRouter();
+  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
   const [users, setUsers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -91,7 +93,7 @@ export default function UsersList() {
     );
   }
 
-  if (loading)
+  if (adminLoading || !adminReady || loading)
     return (
       <View className="flex-1 items-center justify-center bg-slate-50">
         <ActivityIndicator />

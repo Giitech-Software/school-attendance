@@ -10,9 +10,11 @@ import {
 import { useRouter, useFocusEffect } from "expo-router";
 import { listTerms, deleteTerm } from "../../src/services/terms";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
 
 export default function TermsList() {
   const router = useRouter();
+  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -67,7 +69,7 @@ export default function TermsList() {
     }
   }
 
-  if (loading) {
+  if (adminLoading || !adminReady || loading) {
     return (
       <View className="flex-1 items-center justify-center bg-slate-50">
         <ActivityIndicator />

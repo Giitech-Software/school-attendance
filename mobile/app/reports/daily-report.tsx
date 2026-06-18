@@ -13,6 +13,7 @@ import { listClasses } from "../../src/services/classes";
 import { getAttendanceSummary } from "../../src/services/attendanceSummary";
 import { exportDailyAttendancePdf } from "../../src/services/exports/exportDailyAttendancePdf";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
 /* ------------------------------------------------------------------ */
 /* HELPERS */
 /* ------------------------------------------------------------------ */
@@ -39,6 +40,7 @@ function getLastNSchoolDays(n: number) {
 
 export default function DailyReport() {
   const router = useRouter();
+  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
 
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState<string[]>([]);
@@ -108,7 +110,7 @@ export default function DailyReport() {
   /* ------------------------------------------------------------------ */
   /* LOADING */
   /* ------------------------------------------------------------------ */
-  if (loading) {
+  if (adminLoading || !adminReady || loading) {
     return (
       <View className="flex-1 items-center justify-center bg-slate-50">
         <ActivityIndicator />
@@ -120,7 +122,7 @@ export default function DailyReport() {
   /* UI */
   /* ------------------------------------------------------------------ */
   return (
-    <ScrollView className="flex-1 bg-slate-300 p-4">
+    <ScrollView className="flex-1 bg-slate-300 p-3">
     <View className="flex-row items-center mb-2">
   <Pressable
     onPress={() => router.back()}
@@ -129,12 +131,12 @@ export default function DailyReport() {
   >
     <MaterialIcons
       name="arrow-back"
-      size={26}
+      size={24}
       color="#0f172a"
     />
   </Pressable>
 
-  <Text className="text-2xl font-extrabold text-slate-900">
+  <Text className="text-xl font-extrabold text-slate-900">
   Daily Attendance
   </Text>
 </View>
@@ -150,7 +152,7 @@ export default function DailyReport() {
           <Pressable
             key={d}
             onPress={() => setSelectedDay(d)}
-            className={`p-4 mr-3 rounded-xl border ${
+            className={`px-3 py-2 mr-2 rounded-lg border ${
               selectedDay === d
                 ? "bg-blue-600 border-blue-600"
                 : "bg-white"
@@ -179,14 +181,14 @@ export default function DailyReport() {
       </ScrollView>
 
       {/* -------------------- CLASS FILTER -------------------- */}
-      <Text className="text-sm text-slate-600 mt-5 mb-2">
+      <Text className="text-sm text-slate-600 mt-3 mb-1.5">
         Filter by class
       </Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <Pressable
           onPress={() => setSelectedClassKey(null)}
-          className={`px-4 py-2 mr-2 rounded-full ${
+          className={`px-3 py-1.5 mr-2 rounded-full ${
             selectedClassKey === null
               ? "bg-blue-600"
               : "bg-white border"
@@ -209,7 +211,7 @@ export default function DailyReport() {
             <Pressable
               key={key}
               onPress={() => setSelectedClassKey(key)}
-              className={`px-4 py-2 mr-2 rounded-full ${
+              className={`px-3 py-1.5 mr-2 rounded-full ${
                 selectedClassKey === key
                   ? "bg-blue-600"
                   : "bg-white border"
@@ -230,7 +232,7 @@ export default function DailyReport() {
       </ScrollView>
 
       {/* -------- DAILY EXPORT (PDF ONLY) -------- */}
-      <View className="mt-4 mb-4">
+      <View className="mt-3 mb-2">
         <Pressable
           disabled={!selectedDay || exportingPdf}
           onPress={async () => {
@@ -246,7 +248,7 @@ export default function DailyReport() {
               setExportingPdf(false);
             }
           }}
-          className={`px-4 py-3 rounded-xl items-center justify-center ${
+          className={`px-3 py-2.5 rounded-lg items-center justify-center ${
             selectedDay && !exportingPdf
               ? "bg-blue-600"
               : "bg-slate-400"
@@ -263,7 +265,7 @@ export default function DailyReport() {
       </View>
 
       {/* -------------------- STUDENTS -------------------- */}
-      <Text className="text-lg font-semibold mt-6 mb-2">
+      <Text className="text-lg font-semibold mt-3 mb-1.5">
         Students ({studentRows.length})
       </Text>
 
@@ -289,7 +291,7 @@ export default function DailyReport() {
                 },
               })
             }
-            className="bg-white p-4 rounded-xl mb-3 shadow"
+            className="bg-white px-3 py-2 rounded-md mb-2 shadow"
           >
            <Text className="font-semibold">
   {item.studentName}
@@ -297,7 +299,7 @@ export default function DailyReport() {
 </Text>
 
 
-           <View className="flex-row justify-between mt-2">
+           <View className="flex-row justify-between mt-1.5">
   <Text className="text-emerald-600">
     P: {item.presentCount}
   </Text>
@@ -322,3 +324,5 @@ export default function DailyReport() {
     </ScrollView>
   );
 }
+
+

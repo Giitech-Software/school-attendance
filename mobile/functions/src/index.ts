@@ -45,6 +45,7 @@ function getAwsConfig() {
 ============================ */
 export const indexStaffFace = onRequest(
 {
+  cors: true,
   secrets: [
     AWS_ACCESS_KEY_ID,
     AWS_SECRET_ACCESS_KEY,
@@ -54,7 +55,8 @@ export const indexStaffFace = onRequest(
 },
 async (req, res): Promise<void> => {
   try {
-    const { base64Image, staffId } = req.body;
+    const { base64Image, staffId: staffIdFromBody, subjectId } = req.body;
+    const staffId = staffIdFromBody ?? subjectId;
 
     if (!base64Image || !staffId) {
       res.status(400).json({ error: "Missing data" });
@@ -135,6 +137,7 @@ async (req, res): Promise<void> => {
 ============================ */
 export const searchStaffFace = onRequest(
   {
+    cors: true,
     secrets: [
       AWS_ACCESS_KEY_ID,
       AWS_SECRET_ACCESS_KEY,
@@ -179,16 +182,21 @@ export const searchStaffFace = onRequest(
       const staffId = match.Face?.ExternalImageId;
       const similarity = match.Similarity;
 
-      await admin.firestore().collection("staffAttendance").add({
-        staffId,
-        similarity,
-        method: "biometric",
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      if (!staffId) {
+        res.json({ matched: false });
+        return;
+      }
+
+      const staffDoc = await admin.firestore().collection("staff").doc(staffId).get();
+      if (!staffDoc.exists) {
+        res.json({ matched: false });
+        return;
+      }
 
       res.json({
         matched: true,
         staffId,
+        subjectId: staffId,
         similarity,
       });
       return;
@@ -208,6 +216,7 @@ export const searchStaffFace = onRequest(
 ============================ */
 export const deleteStaffFace = onRequest(
   {
+    cors: true,
     secrets: [
       AWS_ACCESS_KEY_ID,
       AWS_SECRET_ACCESS_KEY,
@@ -251,6 +260,7 @@ export const deleteStaffFace = onRequest(
 ============================ */
 export const indexStudentFace = onRequest(
   {
+    cors: true,
     secrets: [
       AWS_ACCESS_KEY_ID,
       AWS_SECRET_ACCESS_KEY,
@@ -260,7 +270,8 @@ export const indexStudentFace = onRequest(
   },
   async (req, res): Promise<void> => {
     try {
-      const { base64Image, studentId } = req.body;
+      const { base64Image, studentId: studentIdFromBody, subjectId } = req.body;
+      const studentId = studentIdFromBody ?? subjectId;
 
       if (!base64Image || !studentId) {
         res.status(400).json({ error: "Missing data" });
@@ -333,6 +344,7 @@ export const indexStudentFace = onRequest(
 ============================ */
 export const searchStudentFace = onRequest(
   {
+    cors: true,
     secrets: [
       AWS_ACCESS_KEY_ID,
       AWS_SECRET_ACCESS_KEY,
@@ -377,21 +389,21 @@ export const searchStudentFace = onRequest(
       const studentId = match.Face?.ExternalImageId;
       const similarity = match.Similarity;
 
-      if (studentId) {
-        await admin.firestore().collection("attendance").add({
-  subjectType: "student",
-  subjectId: studentId,
-  method: "face",
-  biometric: true,
-  similarity,
-  mode: "in",
-  timestamp: admin.firestore.FieldValue.serverTimestamp(),
-});
+      if (!studentId) {
+        res.json({ matched: false });
+        return;
+      }
+
+      const studentDoc = await admin.firestore().collection("students").doc(studentId).get();
+      if (!studentDoc.exists) {
+        res.json({ matched: false });
+        return;
       }
 
       res.json({
         matched: true,
         studentId,
+        subjectId: studentId,
         similarity,
       });
       return;

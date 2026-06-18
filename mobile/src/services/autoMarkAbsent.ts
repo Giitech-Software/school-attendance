@@ -164,6 +164,7 @@ export async function autoMarkAbsentAllClasses({
         classId: studentDoc.data().classId ?? "",
         date: dateIso,
         type: "in",
+        method: "manual",
         checkInTime: null,
         checkOutTime: null,
         biometric: false,

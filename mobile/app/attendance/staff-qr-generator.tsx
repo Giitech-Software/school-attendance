@@ -21,6 +21,7 @@ import { db } from "../../app/firebase";
 
 import { generateQrPayload } from "../../src/services/qr";
 import AppInput from "@/components/AppInput";
+import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
 
 /* Helpers */
 const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
@@ -34,6 +35,7 @@ function toDataURLPromise(ref: any): Promise<string> {
 
 export default function StaffQrGenerator() {
   const router = useRouter();
+  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
   const [loading, setLoading] = useState(true);
   const [staffList, setStaffList] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -121,6 +123,14 @@ export default function StaffQrGenerator() {
       setExporting(false);
       setHiddenStaff(null);
     }
+  }
+
+  if (adminLoading || !adminReady || loading) {
+    return (
+      <SafeAreaView className="flex-1 bg-slate-50 items-center justify-center">
+        <ActivityIndicator />
+      </SafeAreaView>
+    );
   }
 
   return (

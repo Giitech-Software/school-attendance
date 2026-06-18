@@ -18,6 +18,7 @@ import { signOutUser } from "../src/services/auth";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons, Entypo } from "@expo/vector-icons";
 import useCurrentUser from "../src/hooks/useCurrentUser";  
+import { useAssignedStudentClasses } from "../src/hooks/useAssignedStudentClasses";
 import { getAttendanceSettings } from "../src/services/attendanceSettings";
 //import { autoMarkAbsentsForToday } from "../src/services/attendance"; // adjust path if needed
 import { autoMarkAbsentsForToday } from "../src/services/autoMarkAbsent";
@@ -47,6 +48,12 @@ export default function Home(): JSX.Element {
   const [user, setUser] = useState<User | null | undefined>(undefined);
   const [signingOut, setSigningOut] = useState(false);
   const { userDoc, loading: userDocLoading } = useCurrentUser();
+  const { hasAssignedClasses: hasAssignedStudentClasses } =
+    useAssignedStudentClasses(
+      userDoc?.approved === true || userDoc?.role === "admin"
+        ? userDoc?.uid ?? userDoc?.id
+        : null
+    );
   const [showWelcome, setShowWelcome] = useState(true);
 
   
@@ -138,6 +145,21 @@ useFocusEffect(
   }
 
   const isAdmin = Boolean(userDoc?.role === "admin");
+  const isApproved = isAdmin || userDoc?.approved === true;
+  const canTakeStudentAttendance =
+    isAdmin ||
+    (isApproved && userDoc?.canTakeStudentAttendance === true) ||
+    (isApproved && hasAssignedStudentClasses);
+  const canTakeStaffAttendance =
+    isAdmin || (isApproved && userDoc?.canTakeStaffAttendance === true);
+  const canTakeSelectedAttendance =
+    actor === "staff" ? canTakeStaffAttendance : canTakeStudentAttendance;
+  const isStaffUser =
+    userDoc?.role === "teacher" ||
+    userDoc?.role === "staff" ||
+    userDoc?.role === "non_teaching_staff" ||
+    userDoc?.role === "general_staff";
+  const canUseStaffSelfService = isStaffUser || isAdmin;
 
   return (
    <SafeAreaView
@@ -163,37 +185,52 @@ useFocusEffect(
  
   {/* Action row */}
 <View className="mt-4 flex-row items-center justify-between">
-  <View className="flex-row items-center space-x-3">
+  <View className="flex-row items-center" style={{ gap: 5 }}>
 
     {/* QR */}
-    <View className="bg-white/15 rounded-full px-3 py-2 flex-row items-center">
-      <MaterialIcons name="qr-code-scanner" size={16} color="#FFFFFF" />
-      <Text className="text-white ml-2 text-m">QR</Text>
+    <View className="bg-white/15 rounded-full px-2.5 py-2 flex-row items-center">
+      <MaterialIcons name="qr-code-scanner" size={15} color="#FFFFFF" />
+      <Text className="text-white ml-1 text-sm">QR</Text>
     </View>
 
     {/* Biometric */}
-    <View className="bg-white/15 rounded-full px-3 py-2 flex-row items-center">
-      <Entypo name="fingerprint" size={16} color="#FFFFFF" />
-      <Text className="text-white ml-2 text-m">Biometric</Text>
+    <View className="bg-white/15 rounded-full px-2.5 py-2 flex-row items-center">
+      <Entypo name="fingerprint" size={15} color="#FFFFFF" />
+      <Text className="text-white ml-1 text-sm">Biometric</Text>
     </View>
 
     {/* ✅ Facial */}
-    <View className="bg-white/15 rounded-full px-3 py-2 flex-row items-center">
+    <View className="bg-white/15 rounded-full px-2.5 py-2 flex-row items-center">
       <MaterialIcons
         name="face-retouching-natural"
-        size={16}
+        size={15}
         color="#FFFFFF"
       />
-      <Text className="text-white ml-2 text-m">Facial</Text>
+      <Text className="text-white ml-1 text-sm">Facial</Text>
+    </View>
+
+    {/* ID */}
+    <View className="bg-white/15 rounded-full px-2.5 py-2 flex-row items-center">
+      <MaterialIcons name="badge" size={15} color="#FFFFFF" />
+      <Text className="text-white ml-1 text-sm">ID</Text>
     </View>
 
   </View>
 
  <Pressable
-  onPress={() => setShowStartOptions(true)}
-  className="bg-yellow-400 px-4 py-2 rounded-full"
+  onPress={() => {
+    if (!canTakeStudentAttendance && !canTakeStaffAttendance) {
+      Alert.alert(
+        "Access denied",
+        "You are approved, but you have not been authorized to take attendance."
+      );
+      return;
+    }
+    setShowStartOptions(true);
+  }}
+  className="bg-yellow-400 px-3 py-2 rounded-full"
 >
-  <Text className="text-blue-900 font-bold">
+  <Text className="text-blue-900 font-bold text-sm">
     Start
   </Text>
 </Pressable>
@@ -219,10 +256,10 @@ useFocusEffect(
         colors={["#1E3A8A", "#2563EB", "#0EA5E9"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        className="rounded-2xl p-4"
+        className="rounded-2xl p-4 pb-6"
       >
         <Text className="text-xl font-extrabold text-yellow-300 text-center">
-          Welcome to ASTEM
+          Welcome to M'Salem
         </Text>
 
         <Text className="text-sm text-white mt-2 text-center leading-5">
@@ -237,7 +274,7 @@ useFocusEffect(
 
         <Pressable
           onPress={() => setShowWelcome(false)}
-          className="mt-5 bg-white rounded-full py-3"
+          className="mt-5 mb-1 bg-white rounded-full py-3"
         >
           <Text className="text-primary font-semibold text-center">
             Continue
@@ -255,6 +292,7 @@ useFocusEffect(
         Select Attendance Type
       </Text>
 
+      {canTakeStudentAttendance ? (
       <Pressable
         onPress={() => {
           setShowStartOptions(false);
@@ -269,7 +307,9 @@ useFocusEffect(
           Student Attendance
         </Text>
       </Pressable>
+      ) : null}
 
+      {canTakeStaffAttendance ? (
       <Pressable
         onPress={() => {
           setShowStartOptions(false);
@@ -284,6 +324,7 @@ useFocusEffect(
           Staff Attendance
         </Text>
       </Pressable>
+      ) : null}
 
       <Pressable
         onPress={() => setShowStartOptions(false)}
@@ -299,6 +340,41 @@ useFocusEffect(
       <ScrollView contentContainerStyle={{ padding: 16 }} className="flex-1">
         {/* Quick cards */}
         <View className="grid grid-cols-2 gap-4">
+          {canUseStaffSelfService ? (
+            <Pressable
+              onPress={() => router.push("/staff/my-attendance" as any)}
+              className="bg-white rounded-2xl p-4 shadow flex-row items-center"
+            >
+              <View className="p-3 rounded-lg bg-emerald-500/10 mr-3">
+                <MaterialIcons name="how-to-reg" size={22} color="#059669" />
+              </View>
+              <View>
+                <Text className="font-semibold text-dark">My Attendance</Text>
+                <Text className="text-sm text-neutral mt-1">
+                  Check in/out
+                </Text>
+              </View>
+            </Pressable>
+          ) : null}
+
+          {canUseStaffSelfService ? (
+            <Pressable
+              onPress={() => router.push("/staff/my-report" as any)}
+              className="bg-white rounded-2xl p-4 shadow flex-row items-center"
+            >
+              <View className="p-3 rounded-lg bg-indigo-500/10 mr-3">
+                <MaterialIcons name="insights" size={22} color="#4F46E5" />
+              </View>
+              <View>
+                <Text className="font-semibold text-dark">My Report</Text>
+                <Text className="text-sm text-neutral mt-1">
+                  Own attendance
+                </Text>
+              </View>
+            </Pressable>
+          ) : null}
+
+          {canTakeStudentAttendance ? (
           <Link href="/attendance/checkin" asChild>
             <Pressable className="bg-white rounded-2xl p-4 shadow flex-row items-center">
               <View className="p-3 rounded-lg bg-primary/10 mr-3">
@@ -312,6 +388,8 @@ useFocusEffect(
               </View>
             </Pressable>
           </Link>
+          ) : null}
+{canTakeStaffAttendance ? (
 <Link
   href={{
     pathname: "/attendance/checkin",
@@ -333,6 +411,7 @@ useFocusEffect(
     </View>
   </Pressable>
 </Link>
+        ) : null}
 
         
         {isAdmin && (
@@ -381,6 +460,7 @@ useFocusEffect(
             <View />
           )}
 
+          {isAdmin ? (
           <Pressable
             onPress={() => router.push("/students")}
             className="bg-white rounded-2xl p-4 shadow flex-row items-center"
@@ -393,8 +473,9 @@ useFocusEffect(
               <Text className="text-sm text-neutral mt-1">
                 Enroll new student
               </Text>
-            </View>
-          </Pressable>
+              </View>
+            </Pressable>
+          ) : null}
         </View><View className="mt-6 bg-white rounded-2xl p-4 shadow">
   {/* Card title */}
   <Text className="font-semibold text-dark mb-3 text-lg">
@@ -442,6 +523,7 @@ useFocusEffect(
           </View>
 
           <View className="space-y-3">
+            {canTakeSelectedAttendance ? (
             <Pressable
               onPress={() =>
   router.push({
@@ -462,9 +544,16 @@ useFocusEffect(
 </Text>
 
             </Pressable>
+            ) : null}
 
+            {canTakeSelectedAttendance ? (
             <Pressable
-              onPress={() => router.push("/attendance/checkin")}
+              onPress={() =>
+                router.push({
+                  pathname: "/attendance/checkin",
+                  params: { actor },
+                })
+              }
               className="p-3 rounded-lg bg-red/5 flex-row items-center justify-between"
             >
               <View className="flex-row items-center">
@@ -478,6 +567,7 @@ useFocusEffect(
 
 </Text> 
     </Pressable>
+            ) : null}
 
 {isAdmin && (
   <Pressable
@@ -523,9 +613,9 @@ useFocusEffect(
             Developer • Solomon K. Aggrey
           </Text>
           <Text className="text-xs text-neutral">
-            ASTEM Attendance • Mobile app
+            M'Salem Attendance • Mobile app
           </Text>
-          <Text className="text-xs text-neutral">Version 1.0</Text>
+          <Text className="text-xs text-neutral">Version 2.0</Text>
         </View>
 
         <View style={{ height: Platform.OS === "ios" ? 40 : 24 }} />

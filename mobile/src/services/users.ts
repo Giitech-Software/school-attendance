@@ -6,12 +6,14 @@ import {
   setDoc,
   deleteDoc,
   query,
+  where,
   orderBy,
   serverTimestamp,
   updateDoc
 } from "firebase/firestore";
 import { db } from "../../app/firebase";
 import { type UserRole } from "./constants/roles";
+import { logAdminAction } from "./adminLogs";
 
 /* ---------------- Types ---------------- */
  
@@ -23,6 +25,13 @@ export async function updateUserApproval(
   const ref = doc(db, "users", uid);
   await updateDoc(ref, {
     approved,
+  });
+  await logAdminAction({
+    action: "UPDATE_USER_APPROVAL",
+    targetType: "user",
+    targetId: uid,
+    description: `${approved ? "Approved" : "Unapproved"} user account`,
+    metadata: { approved },
   });
 }
 
@@ -109,6 +118,37 @@ export async function getUserById(id: string): Promise<AppUser | null> {
     throw err;
   }
 }
+
+export async function getUserByEmail(email: string): Promise<AppUser | null> {
+  try {
+    const q = query(
+      collection(db, USERS_COLLECTION),
+      where("email", "==", email),
+    );
+
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+
+    const userDoc = snap.docs[0];
+    const data = userDoc.data() as any;
+
+    return {
+      id: userDoc.id,
+      uid: data.uid ?? userDoc.id,
+      displayName: data.displayName ?? null,
+      role: data.role ?? null,
+      email: data.email ?? null,
+      createdAt: data.createdAt ?? Date.now(),
+      wards: Array.isArray(data.wards) ? data.wards : [],
+      approved: Boolean(data.approved),
+      canTakeStaffAttendance: Boolean(data.canTakeStaffAttendance),
+      canTakeStudentAttendance: Boolean(data.canTakeStudentAttendance),
+    } as AppUser;
+  } catch (err) {
+    console.error("getUserByEmail error:", err);
+    throw err;
+  }
+}
  
 
 /* ---------------- Upsert user ---------------- */
@@ -162,6 +202,21 @@ export async function upsertUser(user: AppUser): Promise<string> {
   },
   { merge: true }
 );
+    await logAdminAction({
+      action: "UPSERT_USER",
+      targetType: "user",
+      targetId: user.id,
+      description: `Updated user ${user.displayName ?? user.email ?? user.id}`,
+      metadata: {
+        displayName: user.displayName,
+        email: user.email,
+        role: user.role,
+        approved: user.approved,
+        canTakeStaffAttendance: user.canTakeStaffAttendance,
+        canTakeStudentAttendance: user.canTakeStudentAttendance,
+        wardsCount: user.wards?.length,
+      },
+    });
 
 
     return user.id;
@@ -176,6 +231,12 @@ export async function upsertUser(user: AppUser): Promise<string> {
 export async function deleteUser(id: string): Promise<void> {
   try {
     await deleteDoc(doc(db, USERS_COLLECTION, id));
+    await logAdminAction({
+      action: "DELETE_USER",
+      targetType: "user",
+      targetId: id,
+      description: "Deleted user account",
+    });
   } catch (err) {
     console.error("deleteUser error:", err);
     throw err;

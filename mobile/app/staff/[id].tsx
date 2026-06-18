@@ -6,10 +6,12 @@ import KeyboardAwareScreen from "@/components/KeyboardAwareScreen";
 import { getStaffById, upsertStaff } from "../../src/services/staff";
 import type { Staff } from "../../src/services/types";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
 
 export default function StaffDetail() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
   const [staff, setStaff] = useState<Staff | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -45,7 +47,7 @@ export default function StaffDetail() {
     }
   }
 
-  if (loading) {
+  if (adminLoading || !adminReady || loading) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator />

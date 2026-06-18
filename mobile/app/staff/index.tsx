@@ -6,9 +6,11 @@ import { listStaff, deleteStaff } from "../../src/services/staff";
 import type { Staff } from "../../src/services/types";
 import { MaterialIcons } from "@expo/vector-icons";
 import AppInput from "@/components/AppInput";
+import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
 
 export default function StaffList() {
   const router = useRouter();
+  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -66,7 +68,7 @@ const [search, setSearch] = useState("");
     );
   }
 
-  if (loading) {
+  if (adminLoading || !adminReady || loading) {
     return (
       <View className="flex-1 justify-center items-center bg-white">
         <ActivityIndicator />
@@ -95,12 +97,20 @@ const filteredStaff = staffList.filter((s) => {
 </Text>
         </View>
 
-        <Pressable
-          onPress={() => router.push("/staff/create")}
-          className="bg-primary py-2 px-3 rounded-xl"
-        >
-          <Text className="text-white font-medium">Add</Text>
-        </Pressable>
+        <View className="flex-row gap-2">
+          <Pressable
+            onPress={() => router.push("/staff/bulk-import" as any)}
+            className="bg-slate-700 py-2 px-3 rounded-xl"
+          >
+            <Text className="text-white font-medium">Import</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push("/staff/create")}
+            className="bg-primary py-2 px-3 rounded-xl"
+          >
+            <Text className="text-white font-medium">Add</Text>
+          </Pressable>
+        </View>
       </View>
 <AppInput
   value={search}

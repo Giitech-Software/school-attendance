@@ -1,25 +1,26 @@
 // src/services/admin.ts
-import { doc, updateDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import { db } from "../../app/firebase";
+import { logAdminAction } from "./adminLogs";
 
 export async function updateUserRole(
   userId: string,
   newRole: string,
-  adminUid?: string // optional: the UID of the admin making the change
+  adminUid?: string
 ) {
   if (!adminUid) throw new Error("Admin UID required to update roles");
 
   const userRef = doc(db, "users", userId);
-
-  // 1️⃣ Update the user's role
   await updateDoc(userRef, { role: newRole });
 
-  // 2️⃣ Log the action in /logs/adminActions
-  const logRef = collection(db, "logs", "adminActions", "actions"); // subcollection
-  await addDoc(logRef, {
-    userId,
-    newRole,
-    changedBy: adminUid,
-    timestamp: serverTimestamp(),
+  await logAdminAction({
+    action: "ROLE_CHANGE",
+    targetType: "user",
+    targetId: userId,
+    description: `Changed user role to ${newRole}`,
+    metadata: {
+      adminUid,
+      newRole,
+    },
   });
 }

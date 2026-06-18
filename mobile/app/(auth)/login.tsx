@@ -5,7 +5,6 @@ import AppInput from "@/components/AppInput";
 import {
   View,
   Text,
-  TextInput,
   Pressable,
   Alert,
   KeyboardAvoidingView,
@@ -15,6 +14,7 @@ import {
 import { useRouter, Link } from "expo-router";
 import { signIn, signOutUser } from "@/src/services/auth";
 import { getUserById} from "@/src/services/users";
+import { getFriendlyAuthErrorMessage } from "@/src/utils/friendlyError";
 
 export default function Login() {
   const router = useRouter();
@@ -76,26 +76,10 @@ if (user.role === "parent" || (user.wards?.length ?? 0) > 0) {
 }
 
  } catch (err: any) {
-  const code = err?.code ?? "";
-
-  let message = "Unable to sign in.";
-
-  if (
-    code === "auth/user-not-found" ||
-    code === "auth/invalid-credential"
-  ) {
-    message =
-      "You are not registered or your login details are incorrect. Please create an account.";
-  } else if (code === "auth/wrong-password") {
-    message = "Incorrect password. Please try again.";
-  } else if (code === "auth/too-many-requests") {
-    message =
-      "Too many failed attempts. Please wait a moment or reset your password.";
-  } else if (code === "auth/invalid-email") {
-    message = "Invalid email address.";
-  }
-
-  Alert.alert("Login failed", message);
+  Alert.alert(
+    "Login failed",
+    getFriendlyAuthErrorMessage(err, "Unable to sign in. Please try again.")
+  );
 }
  finally {
     setLoading(false);

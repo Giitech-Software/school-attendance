@@ -19,6 +19,7 @@ import {
 import { listStudents } from "../../src/services/students";
 import { exportWeeklyAttendancePdf } from "../../src/services/exports/exportWeeklyAttendancePdf";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
 import { listTerms } from "../../src/services/terms";
 
 
@@ -31,6 +32,7 @@ import { listTerms } from "../../src/services/terms";
 
 export default function WeeklyReport() {
   const router = useRouter();
+  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
 
   const [loading, setLoading] = useState(true);
   const [weeks, setWeeks] = useState<any[]>([]);
@@ -155,7 +157,7 @@ setSelectedWeek(null);
   /* ------------------------------------------------------------------ */
   /* LOADING STATE */
   /* ------------------------------------------------------------------ */
-  if (loading && !selectedWeek) {
+  if (adminLoading || !adminReady || (loading && !selectedWeek)) {
     return (
       <View className="flex-1 items-center justify-center bg-slate-50">
         <ActivityIndicator />
@@ -167,7 +169,7 @@ setSelectedWeek(null);
   /* UI */
   /* ------------------------------------------------------------------ */
   return (
-    <ScrollView className="flex-1 bg-slate-300 p-4">
+    <ScrollView className="flex-1 bg-slate-300 p-3">
       <View className="flex-row items-center mb-2">
   <Pressable
     onPress={() => router.back()}
@@ -176,12 +178,12 @@ setSelectedWeek(null);
   >
     <MaterialIcons
       name="arrow-back"
-      size={26}
+      size={24}
       color="#0f172a"
     />
   </Pressable>
 
-  <Text className="text-2xl font-extrabold text-slate-900">
+  <Text className="text-xl font-extrabold text-slate-900">
   Weekly Reports
   </Text>
 </View>
@@ -195,7 +197,7 @@ setSelectedWeek(null);
           <Pressable
             key={w.id}
             onPress={() => setSelectedWeek(w)}
-            className={`p-4 mr-3 rounded-xl border ${
+            className={`px-3 py-2 mr-2 rounded-lg border ${
               selectedWeek?.id === w.id
                 ? "bg-blue-600 border-blue-600"
                 : "bg-white"
@@ -224,14 +226,14 @@ setSelectedWeek(null);
       </ScrollView>
 
       {/* CLASS FILTER */}
-      <Text className="text-sm text-slate-600 mt-5 mb-2">
+      <Text className="text-sm text-slate-600 mt-3 mb-1.5">
         Filter by class
       </Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={true}>
         <Pressable
           onPress={() => setSelectedClassKey(null)}
-          className={`px-4 py-2 mr-2 rounded-full ${
+          className={`px-3 py-1.5 mr-2 rounded-full ${
             selectedClassKey === null
               ? "bg-blue-600"
               : "bg-white border"
@@ -254,7 +256,7 @@ setSelectedWeek(null);
             <Pressable
               key={key}
               onPress={() => setSelectedClassKey(key)}
-              className={`px-4 py-2 mr-2 rounded-full ${
+              className={`px-3 py-1.5 mr-2 rounded-full ${
                 selectedClassKey === key
                   ? "bg-blue-600"
                   : "bg-white border"
@@ -275,7 +277,7 @@ setSelectedWeek(null);
       </ScrollView>
 
       {/* -------- WEEKLY EXPORT (PDF ONLY) -------- */}
-      <View className="mt-4">
+      <View className="mt-3">
         <Pressable
           disabled={!selectedWeek || exportingWeeklyPdf}
           onPress={async () => {
@@ -291,7 +293,7 @@ setSelectedWeek(null);
               setExportingWeeklyPdf(false);
             }
           }}
-          className={`rounded-xl p-3 items-center justify-center ${
+          className={`rounded-lg px-3 py-2.5 items-center justify-center ${
             selectedWeek && !exportingWeeklyPdf
               ? "bg-blue-600"
               : "bg-slate-400"
@@ -306,7 +308,7 @@ setSelectedWeek(null);
       </View>
 
       {/* STUDENTS */}
-      <Text className="text-lg font-semibold mt-6 mb-2">
+      <Text className="text-lg font-semibold mt-3 mb-1.5">
         Students ({studentRows.length})
       </Text>
 
@@ -332,7 +334,7 @@ setSelectedWeek(null);
                 },
               })
             }
-            className="bg-white p-4 rounded-xl mb-3 shadow"
+            className="bg-white px-3 py-2 rounded-md mb-2 shadow"
           >
          <Text className="font-semibold">
   {item.studentName}
@@ -340,7 +342,7 @@ setSelectedWeek(null);
 </Text>
 
 
-          <View className="flex-row justify-between mt-2">
+          <View className="flex-row justify-between mt-1.5">
   <Text className="text-emerald-600">
     P: {item.presentCount}
   </Text>
@@ -369,3 +371,5 @@ setSelectedWeek(null);
     </ScrollView>
   );
 }
+
+

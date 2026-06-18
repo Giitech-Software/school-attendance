@@ -27,6 +27,7 @@ export type AttendanceRecord = {
 
   studentId: string;
   classId?: string;
+  classDocId?: string;
 
   date: string;               // YYYY-MM-DD
   type: "in" | "out";         // check-in or check-out
@@ -40,6 +41,29 @@ export type AttendanceRecord = {
   method?: "qr" | "fingerprint" | "face" | "manual";
 
   biometric?: boolean;
+
+  location?: {
+    verificationMethod?: "gps" | "campus_network" | "wifi_bssid" | "geofence_bypass";
+    campusNetworkVerified?: boolean;
+    campusServerName?: string | null;
+    campusInstitutionId?: string | null;
+    campusTokenExpiresAt?: string | null;
+    wifiBssidVerified?: boolean;
+    wifiBssid?: string | null;
+    wifiSsid?: string | null;
+    wifiLabel?: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    accuracyMeters: number | null;
+    distanceMeters: number | null;
+    allowedDistanceMeters: number | null;
+    radiusMeters: number | null;
+    geofencingBypassed?: boolean;
+    bypassReason?: string | null;
+    bypassedBy?: string | null;
+    bypassExpiresAt?: string | null;
+    checkedAt: string;
+  };
 
   createdAt?: {
     seconds: number;
@@ -80,6 +104,7 @@ export interface Staff {
   name: string;
   email: string;
   role?: string;        // teacher, admin, non-teaching, etc
+  roleType?: string;
   fingerprintId?: string;
     faceImageUrl?: string;
     faceId?: string;   // ✅ ADD THIS

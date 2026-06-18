@@ -6,9 +6,11 @@ import { getStudentById } from "../../../src/services/students";
 import UserQrCode from "../../../components/UserQrCode";
 import { generateQrPayload } from "../../../src/services/qr";
 import { getStudentLabel } from "../../../src/utils/studentLabel";
+import { useRequireAdmin } from "../../../src/hooks/useRouteAuthorization";
 
 export default function StudentQrScreen() {
   const { id } = useLocalSearchParams();
+  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
   const studentId = Array.isArray(id) ? id[0] : id;
 
   const [student, setStudent] = useState<any>(null);
@@ -33,7 +35,7 @@ export default function StudentQrScreen() {
     })();
   }, [studentId]);
 
-  if (!student || !payload) {
+  if (adminLoading || !adminReady || !student || !payload) {
     return (
       <View className="flex-1 items-center justify-center">
         <ActivityIndicator size="large" />

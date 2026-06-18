@@ -25,6 +25,7 @@ import { useRouter } from "expo-router";
 import AppInput from "@/components/AppInput";
 import { getStudentLabel } from "../../src/utils/studentLabel";
 import { captureRef } from "react-native-view-shot";
+import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
 
 /* ---------- small helpers ---------- */
 function escapeHtml(str: string) {
@@ -72,6 +73,7 @@ function toDataURLPromise(ref: any, timeoutMs = 10000): Promise<string> {
 const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
 export default function StudentQrGenerator() {
+  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<Student[]>([]);
   const [query, setQuery] = useState("");
@@ -390,6 +392,14 @@ return (
           );
         })}
       </View>
+    );
+  }
+
+  if (adminLoading || !adminReady || loading) {
+    return (
+      <SafeAreaView className="flex-1 bg-slate-50 items-center justify-center">
+        <ActivityIndicator />
+      </SafeAreaView>
     );
   }
 

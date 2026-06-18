@@ -7,10 +7,13 @@ import * as LocalAuthentication from "expo-local-authentication";
 
 import { getStaffById, upsertStaff } from "../../src/services/staff";
 import KeyboardAwareScreen from "@/components/KeyboardAwareScreen";
+import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
+import { MaterialIcons } from "@expo/vector-icons";
 
 export default function EnrollBiometric() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>(); 
+  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
 
   const [staff, setStaff] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -94,7 +97,7 @@ if (!staff?.faceId || staff.faceId.trim() === "") {
     }
   };
 
-  if (loading) {
+  if (adminLoading || !adminReady || loading) {
     return (
       <View className="flex-1 justify-center items-center bg-white">
         <ActivityIndicator />
@@ -107,6 +110,20 @@ if (!staff?.faceId || staff.faceId.trim() === "") {
   return (
     <KeyboardAwareScreen>
       <View className="flex-1 bg-slate-300 p-4">
+        <View className="flex-row items-center mb-4">
+          <Pressable
+            onPress={() => router.back()}
+            className="p-1 mr-2"
+            hitSlop={8}
+          >
+            <MaterialIcons name="arrow-back" size={26} color="#0f172a" />
+          </Pressable>
+
+          <Text className="text-2xl font-extrabold text-slate-900">
+            Enroll Biometric
+          </Text>
+        </View>
+
         <Text className="text-2xl font-bold mb-4">{staff.name}</Text>
         <Text className="mb-6">Staff ID: {staff.staffId}</Text>
 

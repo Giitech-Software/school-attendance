@@ -13,6 +13,7 @@ import KeyboardAwareScreen from "@/components/KeyboardAwareScreen";
 import { getStudentById, upsertStudent } from "../../src/services/students";
 import type { Student } from "../../src/services/types";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
 
 
 
@@ -20,6 +21,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 export default function StudentDetail() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
   const [student, setStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -55,7 +57,7 @@ export default function StudentDetail() {
     }
   }
 
-  if (loading) {
+  if (adminLoading || !adminReady || loading) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
         <ActivityIndicator />

@@ -2,34 +2,22 @@
 
 import {
   collection,
-  addDoc,
   query,
   where,
   getDocs,
   setDoc,
   serverTimestamp,
   orderBy,
-  updateDoc,
   doc,
 } from "firebase/firestore";
 import { db } from "../../app/firebase";
 import type { AttendanceRecord } from "./types";
-import { getAttendanceSettings } from "./attendanceSettings";
+import {
+  assertAttendanceCheckInOpen,
+  getAttendanceSettings,
+  hasReachedAttendanceCloseTime,
+} from "./attendanceSettings";
 import { recordAttendanceCore } from "./attendanceCore";
-
-
-
-// At the top of the file (below imports)
-function hasPassedClosingTime(closeAfter?: string) {
-  if (!closeAfter) return false;
-
-  const [h, m] = closeAfter.split(":").map(Number);
-  const now = new Date();
-  const closeTime = new Date();
-  closeTime.setHours(h, m, 0, 0);
-
-  return now >= closeTime;
-}
 
 const attendanceCollection = collection(db, "attendance");
 
@@ -76,6 +64,7 @@ export async function recordAttendance(
   record: Partial<AttendanceRecord> & {
     studentId: string;
     classId: string;
+    classDocId?: string;
     type: "in" | "out";
     date: string;
     biometric?: boolean;
@@ -88,6 +77,10 @@ export async function recordAttendance(
      UPDATE EXISTING RECORD
   =============================== */
   if (record.id) {
+    if (record.type === "in") {
+      await assertAttendanceCheckInOpen();
+    }
+
     return normalizeAttendance(
       await recordAttendanceCore({
         record: {
@@ -107,6 +100,9 @@ export async function recordAttendance(
      CREATE NEW CHECK-IN
   =============================== */
   const settings = await getAttendanceSettings();
+  if (hasReachedAttendanceCloseTime(settings)) {
+    throw new Error("Attendance check-in is closed for today.");
+  }
 
   const status = isLate(now, settings.lateAfter)
     ? "late"
@@ -131,14 +127,22 @@ export async function recordAttendance(
 export async function findAttendance(
   studentId: string,
   classId: string,
-  date: string
+  date: string,
+  classDocId?: string,
+  enforceClassAssignment = false
 ): Promise<AttendanceRecord | null> {
-  const q = query(
-    attendanceCollection,
+  const filters: any[] = [
     where("studentId", "==", studentId),
     where("classId", "==", classId),
-    where("date", "==", date)
-  );
+    where("date", "==", date),
+  ];
+
+  if (classDocId && enforceClassAssignment) {
+    filters.unshift(where("subjectType", "==", "student"));
+    filters.push(where("classDocId", "==", classDocId));
+  }
+
+  const q = query(attendanceCollection, ...filters);
 
   const snap = await getDocs(q);
   if (snap.empty) return null;
@@ -155,37 +159,50 @@ export async function findAttendance(
 export async function registerAttendanceUnified({
   studentId,
   classId,
+  classDocId,
   mode,
   biometric,
   method = "qr",
+  enforceClassAssignment = false,
 }: {
   studentId: string;
   classId: string;
+  classDocId?: string;
   mode: "in" | "out";
   biometric?: boolean;
   method?: "qr" | "fingerprint" | "face" | "manual";
+  enforceClassAssignment?: boolean;
 }): Promise<AttendanceRecord | void> {
   const date = todayISO();
 
+  if (mode === "in") {
+    await assertAttendanceCheckInOpen();
+  }
+
   // 🔒 GLOBAL DAILY GUARD
-  const anyToday = await findAnyAttendanceForStudentOnDate(studentId, date);
+  const anyToday = await findAnyAttendanceForStudentOnDate(
+    studentId,
+    date,
+    classDocId,
+    enforceClassAssignment
+  );
   if (mode === "in" && anyToday) {
     throw new Error("Student already checked-in today. Please check-out first.");
   }
 
-  const existing = await findAttendance(studentId, classId, date);
+  const existing = await findAttendance(
+    studentId,
+    classId,
+    date,
+    classDocId,
+    enforceClassAssignment
+  );
 if (!existing) {
   if (mode === "in") {
-
-    const settings = await getAttendanceSettings();
-
-    if (hasPassedClosingTime(settings?.closeAfter)) {
-      throw new Error("Attendance closed for today.");
-    }
-
     return await recordAttendance({
       studentId,
       classId,
+      classDocId,
       type: "in",
       date,
       biometric: biometric === true,
@@ -211,6 +228,7 @@ if (!existing) {
       id: rec.id,
       studentId,
       classId,
+      classDocId,
       date,
       type: "out",
       checkInTime: rec.checkInTime,
@@ -227,13 +245,21 @@ if (!existing) {
  */
 async function findAnyAttendanceForStudentOnDate(
   studentId: string,
-  date: string
+  date: string,
+  classDocId?: string,
+  enforceClassAssignment = false
 ): Promise<AttendanceRecord | null> {
-  const q = query(
-    attendanceCollection,
+  const filters: any[] = [
     where("studentId", "==", studentId),
-    where("date", "==", date)
-  );
+    where("date", "==", date),
+  ];
+
+  if (classDocId && enforceClassAssignment) {
+    filters.unshift(where("subjectType", "==", "student"));
+    filters.push(where("classDocId", "==", classDocId));
+  }
+
+  const q = query(attendanceCollection, ...filters);
 
   const snap = await getDocs(q);
   if (snap.empty) return null;
@@ -293,8 +319,7 @@ export async function getAttendanceForDate(
 export async function autoMarkAbsentsForToday() {
   try {
     const settings = await getAttendanceSettings();
-    if (!settings || !settings.closeAfter) return;
-    if (!hasPassedClosingTime(settings.closeAfter)) return;
+    if (!hasReachedAttendanceCloseTime(settings)) return;
 
     const today = todayISO();
 

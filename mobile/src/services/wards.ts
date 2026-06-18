@@ -9,6 +9,7 @@ import {
   setDoc,
 } from "firebase/firestore";
 import { db } from "@/app/firebase";
+import { logAdminAction } from "./adminLogs";
 
 export type Ward = {
   id: string;
@@ -50,6 +51,17 @@ export async function assignWard(
     studentId,
     createdAt: serverTimestamp(),
   });
+  await logAdminAction({
+    action: "ASSIGN_WARD",
+    targetType: "parent",
+    targetId: parentUid,
+    description: "Assigned student ward to parent",
+    metadata: {
+      wardId,
+      parentUid,
+      studentId,
+    },
+  });
 
   return ref;
 }
@@ -59,4 +71,11 @@ export async function assignWard(
 --------------------------- */
 export async function removeWard(wardId: string) {
   await deleteDoc(doc(db, "wards", wardId));
+  await logAdminAction({
+    action: "REMOVE_WARD",
+    targetType: "parent",
+    targetId: wardId.split("_")[0] ?? null,
+    description: "Removed student ward from parent",
+    metadata: { wardId },
+  });
 }

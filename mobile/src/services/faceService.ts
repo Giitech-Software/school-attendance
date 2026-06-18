@@ -42,12 +42,13 @@ export async function indexFace(
   subjectType: "staff" | "student" = "staff"
 ) {
   const url = subjectType === "staff" ? INDEX_STAFF_URL : INDEX_STUDENT_URL;
+  const idField = subjectType === "staff" ? "staffId" : "studentId";
 
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      subjectId,
+      [idField]: subjectId,
       base64Image,
     }),
   });
@@ -81,7 +82,15 @@ export async function searchFace(
     throw new Error(await readError(response, "Search failed"));
   }
 
-  return await response.json(); // expected: { matched: true/false, similarity, subjectId }
+  const data = await response.json();
+  const matchedSubjectId =
+    data?.subjectId ??
+    (subjectType === "staff" ? data?.staffId : data?.studentId);
+
+  return {
+    ...data,
+    subjectId: matchedSubjectId,
+  }; // expected: { matched: true/false, similarity, subjectId }
 }
 
 /* =========================================================

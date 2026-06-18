@@ -10,7 +10,10 @@ import { db } from "../../app/firebase";
 import { recordAttendanceCore } from "./attendanceCore";
 import type { AttendanceRecord } from "./types";
 import { todayISO } from "./attendance";
-import { getAttendanceSettings } from "./attendanceSettings";
+import {
+  assertAttendanceCheckInOpen,
+  getAttendanceSettings,
+} from "./attendanceSettings";
 
 
 function isLate(checkInIso: string, lateAfter: string): boolean {
@@ -69,6 +72,8 @@ export async function registerStaffAttendance({
   if (existing?.checkInTime) {
     throw new Error("Staff already checked-in today.");
   }
+
+  await assertAttendanceCheckInOpen();
 
   const settings = await getAttendanceSettings();
   const now = new Date().toISOString();

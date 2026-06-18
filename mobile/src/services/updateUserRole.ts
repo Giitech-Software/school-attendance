@@ -1,7 +1,7 @@
 // src/services/updateUserRole.ts
 import { db } from '../../app/firebase';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
-import { logAdminAction } from '../utils/logAdminAction.ts.bak';
+import { logAdminAction } from './adminLogs';
 
 /**
  * Updates the role of a user and logs the action.
@@ -23,11 +23,15 @@ export async function updateUserRole(adminUid: string, targetUid: string, newRol
 
     // Log the action
     await logAdminAction({
-      performedBy: adminUid,
-      action: 'UPDATE_ROLE',
-      targetUser: targetUid,
-      previousRole,
-      newRole,
+      action: 'ROLE_CHANGE',
+      targetType: 'user',
+      targetId: targetUid,
+      description: `Changed user role from ${previousRole ?? "unset"} to ${newRole}`,
+      metadata: {
+        adminUid,
+        previousRole,
+        newRole,
+      },
     });
 
     console.log(`User role updated successfully: ${previousRole} → ${newRole}`);

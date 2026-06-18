@@ -1,20 +1,30 @@
 // mobile/app/staff/create.tsx
 
 import React, { useState } from "react";
-import { View, Text, Pressable, Alert } from "react-native";
+import { View, Text, Pressable, Alert, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import KeyboardAwareScreen from "@/components/KeyboardAwareScreen";
-import { createStaff } from "../../src/services/staff";
+import {
+  createStaff,
+  STAFF_ROLE_OPTIONS,
+  type StaffRoleType,
+} from "../../src/services/staff";
+import { getUserByEmail, upsertUser } from "../../src/services/users";
 import { MaterialIcons } from "@expo/vector-icons";
 import AppInput from "@/components/AppInput";
+import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
+
+type StaffIdMode = "auto" | "manual";
 
 export default function StaffCreate() {
   const router = useRouter();
+  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
 
   const [name, setName] = useState("");
   const [staffId, setStaffId] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("");
+  const [roleType, setRoleType] = useState<StaffRoleType>("teacher");
+  const [staffIdMode, setStaffIdMode] = useState<StaffIdMode>("auto");
   const [loading, setLoading] = useState(false);
 
   async function handleCreate() {
@@ -23,17 +33,42 @@ export default function StaffCreate() {
       return;
     }
 
+    if (staffIdMode === "manual" && !staffId.trim()) {
+      Alert.alert("Validation", "Enter a Staff ID or choose auto-generate.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await createStaff({
+      const normalizedEmail = email.trim().toLowerCase();
+      const linkedUser = await getUserByEmail(normalizedEmail);
+      const requestedStaffId =
+        staffIdMode === "manual" ? staffId.trim() : undefined;
+
+      const staff = await createStaff({
         name: name.trim(),
-        staffId: staffId.trim() || undefined,
-        email: email.trim(),
-        role: role.trim() || undefined,
+        staffId: requestedStaffId,
+        email: normalizedEmail,
+        role: roleType,
+        roleType,
+        userUid: linkedUser?.id,
       });
 
-      Alert.alert("Staff created");
+      if (linkedUser?.id) {
+        await upsertUser({
+          id: linkedUser.id,
+          approved: true,
+          ...(linkedUser.role === "admin" ? {} : { role: roleType as any }),
+        });
+      }
+
+      Alert.alert(
+        "Staff created",
+        linkedUser
+          ? `This staff profile has been linked to the matching user account. Staff ID: ${staff.staffId}`
+          : `No matching user account was found for this email, so the staff profile was created without an app login link. Staff ID: ${staff.staffId}`
+      );
       router.back();
     } catch (err: any) {
       console.error("createStaff error:", err);
@@ -41,6 +76,14 @@ export default function StaffCreate() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (adminLoading || !adminReady) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator />
+      </View>
+    );
   }
 
   return (
@@ -71,15 +114,6 @@ export default function StaffCreate() {
           className="border p-3 rounded-xl mb-3 bg-white"
         />
 
-        {/* Staff ID */}
-        <Text className="text-sm text-neutral">Staff ID</Text>
-        <AppInput
-          value={staffId}
-          onChangeText={setStaffId}
-          placeholder="e.g. ST-001"
-          className="border p-3 rounded-xl mb-3 bg-white"
-        />
-
         {/* Email */}
         <Text className="text-sm text-neutral">Email</Text>
         <AppInput
@@ -92,13 +126,77 @@ export default function StaffCreate() {
         />
 
         {/* Role */}
-        <Text className="text-sm text-neutral">Role</Text>
-        <AppInput
-          value={role}
-          onChangeText={setRole}
-          placeholder="e.g. Teacher"
-          className="border p-3 rounded-xl mb-4 bg-white"
-        />
+        <Text className="text-sm text-neutral mb-1">Staff Role</Text>
+        <View className="flex-row flex-wrap gap-3 mb-4">
+          {STAFF_ROLE_OPTIONS.map((option) => (
+            <Pressable
+              key={option.value}
+              onPress={() => setRoleType(option.value)}
+              className={`px-4 py-2 rounded-xl ${
+                roleType === option.value ? "bg-primary" : "bg-white border"
+              }`}
+            >
+              <Text
+                className={`${
+                  roleType === option.value ? "text-white" : "text-dark"
+                }`}
+              >
+                {option.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {/* Staff ID */}
+        <Text className="text-sm text-neutral mb-1">Staff ID</Text>
+        <View className="flex-row gap-3 mb-3">
+          <Pressable
+            onPress={() => setStaffIdMode("auto")}
+            className={`flex-1 px-4 py-3 rounded-xl ${
+              staffIdMode === "auto" ? "bg-primary" : "bg-white border"
+            }`}
+          >
+            <Text
+              className={`text-center ${
+                staffIdMode === "auto" ? "text-white" : "text-dark"
+              }`}
+            >
+              Auto-create
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setStaffIdMode("manual")}
+            className={`flex-1 px-4 py-3 rounded-xl ${
+              staffIdMode === "manual" ? "bg-primary" : "bg-white border"
+            }`}
+          >
+            <Text
+              className={`text-center ${
+                staffIdMode === "manual" ? "text-white" : "text-dark"
+              }`}
+            >
+              Add staff ID
+            </Text>
+          </Pressable>
+        </View>
+
+        {staffIdMode === "manual" ? (
+          <AppInput
+            value={staffId}
+            onChangeText={setStaffId}
+            placeholder={
+              roleType === "teacher" ? "e.g. TCH-0001" : "e.g. NST-0001"
+            }
+            autoCapitalize="characters"
+            className="border p-3 rounded-xl mb-4 bg-white"
+          />
+        ) : (
+          <View className="bg-white rounded-xl p-3 mb-4 border border-slate-200">
+            <Text className="text-dark">
+              Leave empty. A Staff ID will be created automatically.
+            </Text>
+          </View>
+        )}
 
         {/* Submit */}
         <Pressable
@@ -108,7 +206,7 @@ export default function StaffCreate() {
           style={loading ? { opacity: 0.7 } : undefined}
         >
           <Text className="text-white text-center">
-            {loading ? "Creating…" : "Create Staff"}
+            {loading ? "Creating..." : "Create Staff"}
           </Text>
         </Pressable>
 

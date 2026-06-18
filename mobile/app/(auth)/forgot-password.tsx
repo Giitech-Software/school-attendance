@@ -3,7 +3,6 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  TextInput,
   Pressable,
   Alert,
   ActivityIndicator,
@@ -15,6 +14,7 @@ import { useRouter, Link } from "expo-router";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "@/app/firebase";
 import AppInput from "@/components/AppInput";
+import { getFriendlyAuthErrorMessage } from "@/src/utils/friendlyError";
 
 function isValidEmail(email: string) {
   return /\S+@\S+\.\S+/.test(email);
@@ -54,14 +54,13 @@ export default function ForgotPassword() {
     } catch (err: any) {
       console.error("Password reset error:", err);
 
-      let message = err?.message ?? "Unable to send reset email.";
-      if (err?.code === "auth/user-not-found") {
-        message = "No account found with this email address.";
-      } else if (err?.code === "auth/invalid-email") {
-        message = "Invalid email address.";
-      }
-
-      Alert.alert("Reset failed", message);
+      Alert.alert(
+        "Reset failed",
+        getFriendlyAuthErrorMessage(
+          err,
+          "Unable to send reset email. Please try again."
+        )
+      );
     } finally {
       setLoading(false);
     }

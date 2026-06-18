@@ -1,15 +1,17 @@
 // mobile/app/terms/create.tsx
 import React, { useState } from "react";
-import { View, Text, TextInput, Pressable, Alert } from "react-native";
+import { View, Text, TextInput, Pressable, Alert, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { createTerm } from "../../src/services/terms";
 import type { Term } from "../../src/services/types";
 import { autoGenerateWeeksForTerm } from "../../src/services/weeks";
 import { MaterialIcons } from "@expo/vector-icons";
 import AppInput from "@/components/AppInput";
+import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
 
 export default function TermCreate() {
   const router = useRouter();
+  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
 
   const [name, setName] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -65,6 +67,14 @@ setSaving(true);
     setSaving(false);
   }
 }
+
+  if (adminLoading || !adminReady) {
+    return (
+      <View className="flex-1 items-center justify-center bg-slate-50">
+        <ActivityIndicator />
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-slate-50 p-4">

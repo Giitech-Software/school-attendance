@@ -15,9 +15,11 @@ import { createStudent } from "../../src/services/students";
 import { listClasses, type ClassRecord } from "../../src/services/classes";
 import { MaterialIcons } from "@expo/vector-icons";
 import AppInput from "@/components/AppInput";
+import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
 
 export default function StudentCreate() {
   const router = useRouter();
+  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
   const [name, setName] = useState("");
   const [classId, setClassId] = useState("");
   const [rollNo, setRollNo] = useState("");
@@ -89,6 +91,14 @@ const [studentId, setStudentId] = useState("");
           {item.name} {item.classId ? `(${item.classId})` : ""}
         </Text>
       </Pressable>
+    );
+  }
+
+  if (adminLoading || !adminReady) {
+    return (
+      <View className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator />
+      </View>
     );
   }
 

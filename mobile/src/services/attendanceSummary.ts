@@ -281,12 +281,26 @@ export async function getAttendanceSummary(
     /* -------------------------------------------- */
     /* STEP 1: Load students (with optional classId) */
     /* -------------------------------------------- */
-    const studentSnap = await getDocs(studentsCollection);
+    let students: any[] = [];
 
-    let students = studentSnap.docs.map((docx) => ({
-      id: docx.id,
-      ...(docx.data() as any),
-    }));
+    if (opts.studentId) {
+      const studentSnap = await getDoc(doc(db, "students", opts.studentId));
+      if (!studentSnap.exists()) return [];
+
+      students = [
+        {
+          id: studentSnap.id,
+          ...(studentSnap.data() as any),
+        },
+      ];
+    } else {
+      const studentSnap = await getDocs(studentsCollection);
+
+      students = studentSnap.docs.map((docx) => ({
+        id: docx.id,
+        ...(docx.data() as any),
+      }));
+    }
 
     // If a classId filter is provided, support:
     // - classId stored on student doc (short class id)

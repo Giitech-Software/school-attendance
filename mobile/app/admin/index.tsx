@@ -15,6 +15,10 @@ import { listTerms } from "../../src/services/terms";
 import { listWeeks } from "../../src/services/weeks";
 import { listClasses } from "../../src/services/classes";
 import { listStudents } from "../../src/services/students";
+import {
+  getSchoolLocationReadiness,
+  type SchoolLocationReadiness,
+} from "../../src/services/locationGuard";
 
 import { Animated, Dimensions } from "react-native";
 import { listStaff } from "../../src/services/staff"; // ✅ Add this import
@@ -41,6 +45,8 @@ const [classesExpanded, setClassesExpanded] = React.useState(false);
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
   const [staffCount, setStaffCount] = React.useState<number | null>(null); // ✅ Add this
+  const [locationReadiness, setLocationReadiness] =
+    React.useState<SchoolLocationReadiness | null>(null);
 const marqueeItems = [
   { text: "Manage Terms", color: "#EF4444" },        // red
   { text: "Manage Students", color: "#3B82F6" },     // blue
@@ -144,6 +150,7 @@ function InfiniteMarquee() {
     const clsList = await listClasses().catch(() => []);
     const students = await listStudents().catch(() => []);
       const staffList = await listStaff().catch(() => []); // ✅ Fetch staff
+      const readiness = await getSchoolLocationReadiness().catch(() => null);
 
     if (!mounted) return;
 
@@ -153,6 +160,7 @@ function InfiniteMarquee() {
     setStudentsCount(students.length);
     setStaffCount(staffList.length); // ✅ Set staff count
     setClasses(clsList as Class[]);
+    setLocationReadiness(readiness);
   } catch (err) {
     console.error("loadCounts error:", err);
   } finally {
@@ -170,6 +178,10 @@ function InfiniteMarquee() {
       mounted = false;
     };
   }, []);
+
+  const attendanceReady =
+    Boolean(locationReadiness?.configured) ||
+    Boolean(locationReadiness?.emergencyBypassActive);
 
   /* =========================
      QUICK SETUP CONFIG
@@ -261,26 +273,101 @@ return (
   <View className="p-4 space-y-4">
     {/* ================= INFINITE MOTION TEXT ================= */}
     <InfiniteMarquee />
-{/* ✅ NEW: Set School Location */}
 <Pressable
-  onPress={() => router.push("/admin/setup-school-location")}
-  className="rounded-2xl p-4 shadow flex-row items-center justify-between bg-yellow-200"
+  onPress={() => router.push("/admin/user-manual" as any)}
+  className="rounded-2xl p-4 shadow flex-row items-center justify-between bg-white"
 >
   <View className="flex-row items-center space-x-3">
-    <View className="p-2 rounded-full bg-white/60">
-      <MaterialIcons name="location-on" size={20} color="#1E293B" />
+    <View className="p-2 rounded-full bg-blue-100">
+      <MaterialIcons name="menu-book" size={20} color="#1E3A8A" />
     </View>
     <View>
-      <Text className="font-semibold text-yellow-800">
-        Set School/Work Location
+      <Text className="font-semibold text-blue-900">
+        User Manual
       </Text>
       <Text className="text-sm text-neutral mt-1">
-        Define the geofence for attendance (GPS)
+        Open concise guide for all app pages
       </Text>
     </View>
   </View>
   <MaterialIcons name="chevron-right" size={20} color="#64748B" />
 </Pressable>
+<Pressable
+  onPress={() => router.push("/admin/activity-logs" as any)}
+  className="rounded-2xl p-4 shadow flex-row items-center justify-between bg-slate-100"
+>
+  <View className="flex-row items-center space-x-3">
+    <View className="p-2 rounded-full bg-white/80">
+      <MaterialIcons name="history" size={20} color="#0F172A" />
+    </View>
+    <View>
+      <Text className="font-semibold text-slate-900">
+        Activity Logs
+      </Text>
+      <Text className="text-sm text-neutral mt-1">
+        Review user and admin actions
+      </Text>
+    </View>
+  </View>
+  <MaterialIcons name="chevron-right" size={20} color="#64748B" />
+</Pressable>
+{/* ✅ NEW: Set School Location */}
+<Pressable
+  onPress={() => router.push("/admin/setup-school-location")}
+  className={`rounded-2xl p-4 shadow flex-row items-center justify-between ${
+    attendanceReady ? "bg-emerald-100" : "bg-red-100"
+  }`}
+>
+  <View className="flex-row items-center flex-1">
+    <View className="p-2 rounded-full bg-white/60 mr-3">
+      <MaterialIcons name="location-on" size={20} color="#1E293B" />
+    </View>
+    <View className="flex-1" style={{ minWidth: 0 }}>
+      <Text className={`font-semibold ${attendanceReady ? "text-emerald-800" : "text-red-800"}`}>
+        Attendance Readiness
+      </Text>
+      <Text className="text-sm text-neutral mt-1">
+        {attendanceReady
+          ? locationReadiness?.emergencyBypassActive
+            ? "Emergency mode active: GPS checks bypassed for the approved period"
+            : "School geofence configured and ready"
+          : "Blocked: school location is not configured"}
+      </Text>
+    </View>
+  </View>
+  <MaterialIcons name="chevron-right" size={20} color="#64748B" style={{ marginLeft: 8 }} />
+</Pressable>
+{!attendanceReady ? (
+  <View className="rounded-2xl p-4 shadow bg-white">
+    <View className="flex-row items-start">
+      <MaterialIcons name="warning" size={22} color="#B91C1C" />
+      <View className="ml-3 flex-1">
+        <Text className="font-bold text-red-700">
+          Attendance is blocked
+        </Text>
+        <Text className="text-slate-600 text-sm mt-1">
+          Set the school location now, or choose a controlled geofence bypass period.
+        </Text>
+      </View>
+    </View>
+
+    <View className="flex-row mt-4">
+      <Pressable
+        onPress={() => router.push("/admin/setup-school-location")}
+        className="flex-1 bg-blue-700 rounded-xl p-3 items-center mr-2"
+      >
+        <Text className="text-white font-semibold">Set Location</Text>
+      </Pressable>
+
+      <Pressable
+        onPress={() => router.push("/admin/setup-school-location")}
+        className="flex-1 bg-red-600 rounded-xl p-3 items-center ml-2"
+      >
+        <Text className="text-white font-semibold">Bypass Options</Text>
+      </Pressable>
+    </View>
+  </View>
+) : null}
     {/* ================= QUICK SETUP ================= */}
     <Text className="text-lg font-semibold">Quick setup</Text>
 
@@ -353,6 +440,26 @@ return (
           </View>
         </Pressable>
   {/* ✅ NEW: Manage Staff Button */}
+        <Pressable
+          onPress={() => router.push("/admin/promote-students" as any)}
+          className="rounded-2xl p-4 shadow flex-row items-center justify-between bg-cyan-100"
+        >
+          <View className="flex-row items-center space-x-3">
+            <View className="p-2 rounded-full bg-white/60">
+              <MaterialIcons name="upgrade" size={20} color="#155E75" />
+            </View>
+            <View>
+              <Text className="font-semibold text-cyan-800">
+                Promote Students
+              </Text>
+              <Text className="text-sm text-neutral mt-1">
+                Move selected students from one class to another
+              </Text>
+            </View>
+          </View>
+          <MaterialIcons name="chevron-right" size={20} color="#64748B" />
+        </Pressable>
+
           <Pressable
             onPress={() => router.push("/staff")}
             className={`rounded-2xl p-4 shadow flex-row items-center justify-between ${quickSetupColors.manageStaff}`}

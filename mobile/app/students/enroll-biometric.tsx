@@ -15,6 +15,7 @@ import { getStudentById, upsertStudent } from "../../src/services/students";
 import { biometricKeyForStudent } from "../../src/services/secureKeys";
 import { MaterialIcons } from "@expo/vector-icons";
 import { getStudentLabel } from "../../src/utils/studentLabel";
+import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
 
 
 
@@ -37,6 +38,7 @@ function secureKeyForStudent(studentId: string) {
 export default function EnrollBiometric() {
   const params = useLocalSearchParams();
   const router = useRouter();
+  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
   const idParam = Array.isArray(params.id) ? params.id[0] : (params.id as string | undefined);
   const studentId = idParam ?? null;
 
@@ -146,7 +148,7 @@ if (!indexList.includes(studentId)) {
     }
   }
 
-  if (loading) {
+  if (adminLoading || !adminReady || loading) {
     return (
       <View className="flex-1 items-center justify-center bg-slate-50">
         <ActivityIndicator size="large" />

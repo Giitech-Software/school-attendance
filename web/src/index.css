@@ -2,3 +2,260 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #eef3f8;
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    background: #eef3f8;
+    color: #0f172a;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+}
+
+@layer components {
+  .enterprise-panel {
+    @apply rounded-lg border border-slate-200 bg-white shadow-sm;
+  }
+
+  .enterprise-muted-panel {
+    @apply rounded-lg border border-slate-200 bg-slate-50;
+  }
+
+  .enterprise-button-primary {
+    @apply inline-flex items-center justify-center rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .enterprise-button-secondary {
+    @apply inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .enterprise-button-danger {
+    @apply inline-flex items-center justify-center rounded-lg bg-red px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red/90 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .enterprise-input {
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-primary focus:ring-2 focus:ring-blue-900/10;
+  }
+
+  .form-page {
+    @apply mx-auto max-w-5xl space-y-3;
+  }
+
+  .form-panel {
+    @apply rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5;
+  }
+
+  .form-grid {
+    @apply grid gap-3 md:grid-cols-2;
+  }
+
+  .form-section-title {
+    @apply text-sm font-extrabold uppercase tracking-wide text-slate-500;
+  }
+
+  .auth-shell {
+    @apply flex min-h-screen items-center justify-center bg-slate-100 px-4 py-6;
+    background: linear-gradient(180deg, #1e3a8a 0%, #0ea5e9 8rem, #eef3f8 8rem, #eef3f8 100%);
+  }
+
+  .auth-card {
+    @apply w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-xl;
+  }
+
+  .auth-form-pane {
+    @apply bg-white;
+  }
+
+  .auth-media-pane {
+    @apply hidden;
+  }
+
+  .auth-label {
+    @apply text-sm font-medium text-slate-700;
+  }
+
+  .auth-link {
+    @apply text-sm font-bold text-primary transition hover:text-primary-dark;
+  }
+
+  .status-success {
+    @apply rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700;
+  }
+
+  .status-error {
+    @apply rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700;
+  }
+
+  .report-page {
+    @apply space-y-4;
+  }
+
+  .report-hero {
+    @apply overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm;
+  }
+
+  .report-hero-bar {
+    @apply flex flex-col gap-2 border-b border-slate-200 bg-slate-950 px-3 py-3 text-white sm:flex-row sm:items-center sm:justify-between;
+  }
+
+  .report-title {
+    @apply text-xl font-extrabold text-white sm:text-2xl;
+  }
+
+  .report-subtitle {
+    @apply mt-1 max-w-3xl text-sm leading-5 text-white/70;
+  }
+
+  .report-toolbar {
+    @apply grid gap-2 bg-white p-3;
+  }
+
+  .report-control-label {
+    @apply mb-2 block text-sm font-semibold text-slate-600;
+  }
+
+  .report-chip-rail {
+    @apply w-full min-w-0 overflow-x-auto pb-2;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .report-chip-row {
+    @apply flex w-max max-w-none gap-2;
+  }
+
+  .report-chip-row > * {
+    @apply shrink-0;
+  }
+
+  .report-choice-card {
+    @apply min-w-32 shrink-0 rounded-md border border-slate-200 bg-white px-3 py-2 text-left text-slate-800 shadow-sm transition hover:border-blue-200 hover:bg-slate-50;
+  }
+
+  .report-choice-card-active {
+    @apply border-primary bg-primary text-white shadow-md hover:border-primary hover:bg-primary;
+  }
+
+  .report-filter-chip {
+    @apply shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:bg-slate-50;
+  }
+
+  .report-filter-chip-active {
+    @apply border-primary bg-primary text-white hover:border-primary hover:bg-primary;
+  }
+
+  .report-results {
+    @apply rounded-lg border border-slate-200 bg-white p-3 shadow-sm;
+  }
+
+  .report-stat-pill {
+    @apply inline-flex min-w-10 items-center justify-center rounded-full px-2 py-0.5 text-xs font-extrabold;
+  }
+
+  .report-empty {
+    @apply mt-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500;
+  }
+
+  .report-mobile-row {
+    @apply rounded-md border border-slate-200 bg-white px-2.5 py-1.5 shadow-sm;
+  }
+
+  .report-table {
+    @apply w-full min-w-[760px] table-auto border-collapse text-sm;
+  }
+
+  .report-table thead tr {
+    @apply border-b text-left text-xs font-bold uppercase text-slate-500;
+  }
+
+  .report-table th {
+    @apply px-2 py-1;
+  }
+
+  .report-table td {
+    @apply px-2 py-0.5 align-middle leading-tight;
+  }
+
+  .report-table tbody tr {
+    @apply border-b last:border-0 hover:bg-slate-50;
+  }
+
+  .admin-hero {
+    @apply rounded-lg border border-slate-200 bg-white shadow-sm;
+  }
+
+  .admin-hero-inner {
+    @apply border-b border-slate-200 bg-white p-4 text-slate-950;
+  }
+
+  .admin-eyebrow {
+    @apply text-[11px] font-bold uppercase tracking-[0.18em] text-primary;
+  }
+
+  .admin-title {
+    @apply mt-1 text-xl font-extrabold tracking-tight sm:text-2xl;
+  }
+
+  .admin-subtitle {
+    @apply mt-1 max-w-3xl text-sm leading-5 text-slate-600;
+  }
+
+  .admin-card {
+    @apply rounded-lg border border-slate-200 bg-white p-3.5 shadow-sm transition hover:border-blue-200 hover:shadow-md;
+  }
+
+  .admin-field-card {
+    @apply rounded-lg border border-slate-200 bg-slate-50 p-3.5;
+  }
+  .motion-marquee {
+    display: flex;
+    width: max-content;
+    gap: 0.75rem;
+    animation: motion-marquee 24s linear infinite;
+    will-change: transform;
+  }
+
+  .motion-marquee:hover {
+    animation-play-state: paused;
+  }
+
+  .motion-marquee-item {
+    @apply shrink-0 rounded-lg bg-white/10 px-3 py-1.5 text-sm font-semibold ring-1;
+  }
+}
+
+
+
+
+@keyframes motion-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-marquee {
+    animation: none;
+  }
+}
+
+
+
+
+

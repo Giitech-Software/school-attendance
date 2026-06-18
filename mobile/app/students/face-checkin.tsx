@@ -3,17 +3,41 @@
 import React, { useRef, useState } from "react";
 import { View, Text, Pressable, Alert, ActivityIndicator } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import { useRouter } from "expo-router";
 import { searchFace } from "../../src/services/faceService";
 import { registerAttendanceUnified } from "../../src/services/attendance";
+import { useRequireAttendanceAccess } from "../../src/hooks/useRouteAuthorization";
+import { MaterialIcons } from "@expo/vector-icons";
 
 export default function StudentFaceCheckin({ classId }: { classId: string }) {
+  const router = useRouter();
+  const {
+    loading: authorizationLoading,
+    ready: authorizationReady,
+  } = useRequireAttendanceAccess("student");
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [loading, setLoading] = useState(false);
 
+  if (authorizationLoading || !authorizationReady) {
+    return (
+      <View className="flex-1 items-center justify-center">
+        <ActivityIndicator />
+        <Text className="mt-3">Checking access...</Text>
+      </View>
+    );
+  }
+
   if (!permission?.granted) {
     return (
       <View className="flex-1 items-center justify-center">
+        <Pressable
+          onPress={() => router.back()}
+          className="absolute top-12 left-4 bg-black/60 rounded-full p-3"
+          hitSlop={8}
+        >
+          <MaterialIcons name="arrow-back" size={24} color="#fff" />
+        </Pressable>
         <Pressable onPress={requestPermission}>
           <Text>Grant Camera Permission</Text>
         </Pressable>
@@ -67,6 +91,13 @@ export default function StudentFaceCheckin({ classId }: { classId: string }) {
   return (
     <View className="flex-1">
       <CameraView ref={cameraRef} style={{ flex: 1 }} facing="front" />
+      <Pressable
+        onPress={() => router.back()}
+        className="absolute top-12 left-4 bg-black/60 rounded-full p-3"
+        hitSlop={8}
+      >
+        <MaterialIcons name="arrow-back" size={24} color="#fff" />
+      </Pressable>
       <View className="absolute bottom-10 w-full items-center">
         <Pressable
           onPress={handleFaceCheckin}

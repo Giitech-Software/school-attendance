@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
+  ScrollView,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as LocalAuthentication from "expo-local-authentication";
@@ -15,10 +16,14 @@ import { listClasses, type ClassRecord } from "../../src/services/classes";
 import type { Student as StudentRecord } from "../../src/services/types";
 import { registerAttendanceUnified } from "../../src/services/attendance";
 import { getStudentById } from "../../src/services/students";
+import { getStaffByStaffId } from "../../src/services/staff";
+import { registerStaffAttendance } from "../../src/services/staffAttendance";
 import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../../app/firebase";
-import { handleStaffBiometricCheck, StaffBiometricMethod } from "../../src/services/staffBiometricHandler";
+import { handleStaffBiometricCheck } from "../../src/services/staffBiometricHandler";
+import { useRequireAttendanceAccess } from "../../src/hooks/useRouteAuthorization";
+import AppInput from "@/components/AppInput";
 
 /* ------------------------- Attendance Restrictions ------------------------- */
 function isAttendanceAllowed(): { allowed: boolean; reason?: string } {
@@ -71,87 +76,112 @@ function StudentRow({ student, onCheckIn, onCheckOut }: { student: StudentRecord
   );
 }
 
-
-/* ------------------------- Staff Row ------------------------- */
 function StaffRow({ staff, onCheckIn, onCheckOut }: { staff: any; onCheckIn: () => void; onCheckOut: () => void; }) {
   const hasBiometric = !!staff.fingerprintId;
 
   return (
     <View className={`px-4 py-3 rounded-xl mb-3 ${hasBiometric ? "bg-blue-50" : "bg-gray-100"}`}>
       <Text className={`${hasBiometric ? "text-blue-800" : "text-gray-700"} mb-2 font-medium`}>
-        {`${staff.name} (${staff.staffId ?? 'No ID'})${hasBiometric ? " (Enrolled)" : " (No biometric)"}`}
+        {`${staff.name} (${staff.staffId ?? "No ID"})${hasBiometric ? " (Enrolled)" : " (No biometric)"}`}
       </Text>
       <View className="flex-row">
-  <Pressable
-    onPress={onCheckIn}
-    disabled={!hasBiometric}
-    className={`${hasBiometric ? "bg-blue-600" : "bg-gray-400"} px-4 py-2 rounded-lg mr-3 shadow-sm`}
-  >
-    <Text className="text-white font-semibold">Check-In</Text>
-  </Pressable>
+        <Pressable
+          onPress={onCheckIn}
+          disabled={!hasBiometric}
+          className={`${hasBiometric ? "bg-blue-600" : "bg-gray-400"} px-4 py-2 rounded-lg mr-3 shadow-sm`}
+        >
+          <Text className="text-white font-semibold">Check-In</Text>
+        </Pressable>
 
-  <Pressable
-    onPress={onCheckOut}
-    disabled={!hasBiometric}
-    className={`${hasBiometric ? "bg-yellow-600" : "bg-gray-400"} px-4 py-2 rounded-lg shadow-sm`}
-  >
-    <Text className="text-white font-semibold">Check-Out</Text>
-  </Pressable>
-</View>
-
+        <Pressable
+          onPress={onCheckOut}
+          disabled={!hasBiometric}
+          className={`${hasBiometric ? "bg-yellow-600" : "bg-gray-400"} px-4 py-2 rounded-lg shadow-sm`}
+        >
+          <Text className="text-white font-semibold">Check-Out</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
+
 /* ------------------------- Main Screen ------------------------- */
 export default function CheckinScreen() {
   const router = useRouter();
   const { actor = "student" } = useLocalSearchParams<{ actor?: "student" | "staff" }>();
+  const attendanceKind = actor === "staff" ? "staff" : "student";
+  const {
+    userDoc,
+    assignedStudentClasses,
+    loading: authorizationLoading,
+    ready: authorizationReady,
+    hasCapability,
+  } = useRequireAttendanceAccess(attendanceKind);
   const [confirmation, setConfirmation] = useState<{ name: string; mode: "in" | "out"; time: string; } | null>(null);
   const [loading, setLoading] = useState(false);
   const [classes, setClasses] = useState<ClassRecord[]>([]);
   const [students, setStudents] = useState<StudentRecord[]>([]);
-  // ADD THIS:
-  const [staffMembers, setStaffMembers] = useState<any[]>([]);
+  const [staffMembers] = useState<any[]>([]);
   const [classesLoading, setClassesLoading] = useState(true);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [showBiometric, setShowBiometric] = useState(false);
+  const [staffIdInput, setStaffIdInput] = useState("");
+  const [staffIdSubmitting, setStaffIdSubmitting] = useState(false);
 
-  useEffect(() => { loadClasses(); }, []);
+  const canUseAllStudentClasses =
+    userDoc?.role === "admin" || hasCapability;
+
+  function getSelectedClass() {
+    return classes.find(
+      (cls) => cls.classId === selectedClassId || cls.id === selectedClassId
+    );
+  }
+
+  useEffect(() => { loadClasses(); }, [actor, authorizationReady, assignedStudentClasses.length]);
+
+  useEffect(() => {
+    if (actor === "staff") {
+      setShowBiometric(false);
+    }
+  }, [actor]);
 
   useEffect(() => {
     if (actor !== "student" || !selectedClassId) {
       setStudents([]);
       return;
     }
-    const q = query(collection(db, "students"), where("classId", "==", selectedClassId));
+    const selectedClass = getSelectedClass();
+    const classField =
+      !canUseAllStudentClasses && selectedClass?.id ? "classDocId" : "classId";
+    const classValue =
+      !canUseAllStudentClasses && selectedClass?.id
+        ? selectedClass.id
+        : selectedClassId;
+    const q = query(collection(db, "students"), where(classField, "==", classValue));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setStudents(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as StudentRecord[]);
     }, (err) => {
       Alert.alert("Failed to load students", err?.message ?? String(err));
     });
     return () => unsubscribe();
-  }, [selectedClassId, actor]);
-
-// ADD THIS useEffect block:
-  useEffect(() => {
-    if (actor !== "staff") return;
-
-    const q = query(collection(db, "staff"), orderBy("name", "asc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setStaffMembers(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-    }, (err) => {
-      console.error("Staff fetch error:", err);
-    });
-    return () => unsubscribe();
-  }, [actor]);
-
+  }, [selectedClassId, actor, classes]);
   async function loadClasses() {
+    if (!authorizationReady) return;
+
     setClassesLoading(true);
     try {
-      const data = await listClasses();
+      const data =
+        actor === "student" && !canUseAllStudentClasses
+          ? assignedStudentClasses
+          : await listClasses();
       setClasses(data);
-      if (data.length > 0 && !selectedClassId) {
+      const selectedStillAvailable = data.some(
+        (cls) => cls.classId === selectedClassId || cls.id === selectedClassId
+      );
+      if (data.length > 0 && (!selectedClassId || !selectedStillAvailable)) {
         setSelectedClassId(data[0].classId ?? data[0].id ?? null);
+      } else if (data.length === 0) {
+        setSelectedClassId(null);
       }
     } catch (err: any) {
       Alert.alert("Failed to load classes", err?.message ?? String(err));
@@ -159,6 +189,14 @@ export default function CheckinScreen() {
   }
 
   async function tryFingerprint(actorId: string, checkType: "in" | "out") {
+  if (actor === "staff") {
+    Alert.alert(
+      "Use QR or face recognition",
+      "Staff attendance for other people should be recorded with QR code or face recognition."
+    );
+    return;
+  }
+
   const attendanceCheck = isAttendanceAllowed();
   if (!attendanceCheck.allowed) {
     Alert.alert("Attendance not allowed", attendanceCheck.reason);
@@ -204,8 +242,11 @@ export default function CheckinScreen() {
       await registerAttendanceUnified({
         studentId: actorId,
         classId: selectedClassId!,
+        classDocId: getSelectedClass()?.id,
         mode: checkType,
         biometric: true,
+        method: "fingerprint",
+        enforceClassAssignment: !canUseAllStudentClasses,
       });
 
       setConfirmation({
@@ -265,10 +306,66 @@ export default function CheckinScreen() {
     if (!attendanceCheck.allowed) return Alert.alert("Attendance not allowed", attendanceCheck.reason);
     if (actor === "student" && !selectedClassId) return Alert.alert("Select class first");
 
+    const selectedClass = getSelectedClass();
+
     router.push({
       pathname: "/attendance/qr",
-      params: actor === "student" ? { classId: selectedClassId, mode, actor } : { mode, actor },
+      params: actor === "student"
+        ? {
+            classId: selectedClassId,
+            classDocId: selectedClass?.id,
+            mode,
+            actor,
+          }
+        : { mode, actor },
     } as any);
+  }
+
+  async function submitStaffIdAttendance(mode: "in" | "out") {
+    if (actor !== "staff") return;
+
+    const attendanceCheck = isAttendanceAllowed();
+    if (!attendanceCheck.allowed) {
+      Alert.alert("Attendance not allowed", attendanceCheck.reason);
+      return;
+    }
+
+    const staffCode = staffIdInput.trim();
+    if (!staffCode) {
+      Alert.alert("Staff ID required", "Enter a staff ID before recording attendance.");
+      return;
+    }
+
+    setStaffIdSubmitting(true);
+    try {
+      const staff = await getStaffByStaffId(staffCode);
+      if (!staff?.id) {
+        Alert.alert("Staff not found", `No staff record found for ID: ${staffCode}`);
+        return;
+      }
+
+      await registerStaffAttendance({
+        staffId: staff.id,
+        mode,
+        method: "manual",
+        biometric: false,
+      });
+
+      setConfirmation({
+        name: staff.name ?? staff.staffId ?? "Staff member",
+        mode,
+        time: new Date().toLocaleTimeString(),
+      });
+      setStaffIdInput("");
+      setTimeout(() => setConfirmation(null), 3000);
+    } catch (error) {
+      Alert.alert(
+        "Attendance error",
+        error instanceof Error ? error.message : "Could not record staff attendance."
+      );
+    } finally {
+      setStaffIdSubmitting(false);
+    }
   }
 
   function renderClassChip({ item }: { item: ClassRecord }) {
@@ -307,6 +404,7 @@ export default function CheckinScreen() {
           </View>
         ) : null}
 
+        {actor === "student" ? (
         <Pressable onPress={() => setShowBiometric(!showBiometric)} className="bg-white rounded-2xl p-5 shadow flex-row items-center mb-5 mt-2">
           <View className="p-4 bg-primary/10 rounded-xl mr-4">
             <MaterialCommunityIcons name="fingerprint" size={28} color="#2563EB" />
@@ -319,6 +417,56 @@ export default function CheckinScreen() {
           </View>
           <MaterialIcons name={showBiometric ? "keyboard-arrow-up" : "arrow-forward-ios"} size={16} color="#64748B" />
         </Pressable>
+        ) : null}
+
+        {actor === "staff" ? (
+          <View className="bg-white rounded-2xl p-5 shadow mb-5 mt-2">
+            <View className="flex-row items-center mb-3">
+              <View className="p-4 bg-emerald-100 rounded-xl mr-4">
+                <MaterialIcons name="badge" size={28} color="#047857" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-lg font-semibold text-dark">
+                  Staff ID Attendance
+                </Text>
+                <Text className="text-sm text-neutral mt-1">
+                  Enter a staff ID to check staff in or out.
+                </Text>
+              </View>
+            </View>
+
+            <AppInput
+              value={staffIdInput}
+              onChangeText={setStaffIdInput}
+              placeholder="e.g. TCH-0001 or NST-0001"
+              autoCapitalize="characters"
+              className="border p-3 rounded-xl mb-3 bg-white"
+            />
+
+            <View className="flex-row gap-3">
+              <Pressable
+                onPress={() => submitStaffIdAttendance("in")}
+                disabled={staffIdSubmitting}
+                className="flex-1 bg-blue-600 rounded-xl py-3"
+                style={staffIdSubmitting ? { opacity: 0.7 } : undefined}
+              >
+                <Text className="text-white text-center font-semibold">
+                  Check-In
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => submitStaffIdAttendance("out")}
+                disabled={staffIdSubmitting}
+                className="flex-1 bg-amber-600 rounded-xl py-3"
+                style={staffIdSubmitting ? { opacity: 0.7 } : undefined}
+              >
+                <Text className="text-white text-center font-semibold">
+                  Check-Out
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
 
         <Pressable onPress={() => goToQR("in")} className="bg-white rounded-2xl p-5 shadow flex-row items-center mb-5">
           <View className="p-4 bg-primary/10 rounded-xl mr-4">
@@ -343,34 +491,60 @@ export default function CheckinScreen() {
         </Pressable>
 
 
-{/* Face Check-In */}
-<Pressable
-  onPress={() =>
-    router.push({
-      pathname: "/staff/face-checkin",
-      params: { mode: "in" },
-    })
-  }
-  className="bg-white rounded-2xl p-5 shadow flex-row items-center mb-5"
->
-  <View className="p-4 bg-indigo-100 rounded-xl mr-4">
-    <MaterialCommunityIcons name="face-man-profile" size={28} color="#4F46E5" />
-  </View>
-  <View className="flex-1">
-    <Text className="text-lg font-semibold text-dark">
-      Staff Face Check-In
-    </Text>
-    <Text className="text-sm text-neutral mt-1">
-      Record attendance using facial recognition.
-    </Text>
-  </View>
-  <MaterialIcons name="arrow-forward-ios" size={16} color="#64748B" />
-</Pressable>
+        {actor === "staff" ? (
+          <>
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: "/staff/face-checkin",
+                  params: { mode: "in" },
+                })
+              }
+              className="bg-white rounded-2xl p-5 shadow flex-row items-center mb-5"
+            >
+              <View className="p-4 bg-indigo-100 rounded-xl mr-4">
+                <MaterialCommunityIcons name="face-man-profile" size={28} color="#4F46E5" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-lg font-semibold text-dark">
+                  Staff Face Check-In
+                </Text>
+                <Text className="text-sm text-neutral mt-1">
+                  Check-in using facial recognition.
+                </Text>
+              </View>
+              <MaterialIcons name="arrow-forward-ios" size={16} color="#64748B" />
+            </Pressable>
+
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: "/staff/face-checkin",
+                  params: { mode: "out" },
+                })
+              }
+              className="bg-white rounded-2xl p-5 shadow flex-row items-center mb-5"
+            >
+              <View className="p-4 bg-violet-100 rounded-xl mr-4">
+                <MaterialCommunityIcons name="face-recognition" size={28} color="#7C3AED" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-lg font-semibold text-dark">
+                  Staff Face Check-Out
+                </Text>
+                <Text className="text-sm text-neutral mt-1">
+                  Check-out using facial recognition.
+                </Text>
+              </View>
+              <MaterialIcons name="arrow-forward-ios" size={16} color="#64748B" />
+            </Pressable>
+          </>
+        ) : null}
         {!showBiometric ? (
           <View className="mt-4 bg-white rounded-2xl p-4 shadow">
             <Text className="font-semibold text-dark text-base mb-2">How it works</Text>
             <View className="flex-row items-center mb-2">
-              <MaterialIcons name="check-circle" size={20} color="#10B981" /><Text className="ml-3 text-neutral">Scan QR or fingerprint for check-in.</Text>
+              <MaterialIcons name="check-circle" size={20} color="#10B981" /><Text className="ml-3 text-neutral">{actor === "staff" ? "Scan QR or use face recognition for check-in." : "Scan QR or fingerprint for check-in."}</Text>
             </View>
             <View className="flex-row items-center">
               <MaterialIcons name="check-circle" size={20} color="#10B981" /><Text className="ml-3 text-neutral">Attendance is logged automatically.</Text>
@@ -378,6 +552,15 @@ export default function CheckinScreen() {
           </View>
         ) : null}
         <View style={{ height: 20 }} />
+      </View>
+    );
+  }
+
+  if (authorizationLoading || !authorizationReady) {
+    return (
+      <View className="flex-1 justify-center items-center bg-slate-300">
+        <ActivityIndicator size="large" color="#2563EB" />
+        <Text className="mt-4 text-dark font-semibold">Checking access...</Text>
       </View>
     );
   }
@@ -420,40 +603,13 @@ export default function CheckinScreen() {
         </View>
       ) : null}
 
-     {showBiometric && actor === "staff" ? (
-        <View className="flex-1">
-          {staffMembers.length === 0 ? (
-            <View className="flex-1 justify-center items-center px-6">
-              <ActivityIndicator size="large" color="#2563EB" />
-              <Text className="mt-4 text-dark font-semibold">Loading Staff List...</Text>
-            </View>
-          ) : (
-            <View className="flex-1">
-              <FlatList
-                data={staffMembers}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                  <StaffRow 
-                    staff={item} 
-                    onCheckIn={() => tryFingerprint(item.id, "in")} 
-                    onCheckOut={() => tryFingerprint(item.id, "out")} 
-                  />
-                )}
-                contentContainerStyle={{ padding: 16, paddingTop: 60 }}
-              />
-              <Pressable 
-                onPress={() => setShowBiometric(false)} 
-                className="absolute top-4 right-4 bg-red-500 px-4 py-2 rounded-full shadow-lg z-50"
-              >
-                <Text className="text-white font-semibold">Close</Text>
-              </Pressable>
-            </View>
-          )}
-        </View>
-      ) : null}
-
       {!showBiometric ? (
-        <FlatList data={[]} renderItem={() => null} ListHeaderComponent={renderListHeader} contentContainerStyle={{ padding: 16 }} />
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ padding: 16 }}
+        >
+          {renderListHeader()}
+        </ScrollView>
       ) : null}
 
       {confirmation ? (

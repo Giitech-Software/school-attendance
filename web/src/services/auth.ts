@@ -1,7 +1,11 @@
 import {
   createUserWithEmailAndPassword,
+  reload,
+  sendPasswordResetEmail,
+  sendEmailVerification,
   signInWithEmailAndPassword,
   signOut,
+  type User,
   type UserCredential,
 } from "firebase/auth";
 import { auth } from "../firebase";
@@ -29,6 +33,11 @@ export async function signIn(email: string, password: string): Promise<UserCrede
   }
 }
 
+/** Get the currently logged-in user */
+export function getCurrentUser() {
+  return auth.currentUser;
+}
+
 /** Sign out the current user */
 export async function signOutUser(): Promise<void> {
   try {
@@ -37,4 +46,21 @@ export async function signOutUser(): Promise<void> {
     console.error("SignOut Error:", error.code, error.message);
     throw error;
   }
+}
+
+export async function sendEmailVerificationToCurrentUser(): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) throw new Error("No authenticated user to send verification to.");
+  await sendEmailVerification(user);
+}
+
+export async function reloadCurrentUser(): Promise<User | null> {
+  const user = auth.currentUser;
+  if (!user) return null;
+  await reload(user);
+  return auth.currentUser;
+}
+
+export async function sendPasswordReset(email: string): Promise<void> {
+  await sendPasswordResetEmail(auth, email);
 }

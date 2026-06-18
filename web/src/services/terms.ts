@@ -14,6 +14,9 @@ import {
 import { db } from "../firebase";
 import type { Term } from "../types";
 
+// Re-export Term type
+export type { Term };
+
 const termsCollection = collection(db, "terms");
 
 export async function createTerm(data: Omit<Term, "id">): Promise<Term> {
@@ -72,14 +75,13 @@ export async function deleteTerm(id: string): Promise<void> {
   }
 }
 
-/** Get the current term (date inside start/end). Returns null if none. */
+/** Get the current term. Explicit isCurrent wins, then date range fallback. */
 export async function getCurrentTerm(todayIso?: string): Promise<Term | null> {
   try {
     const today = todayIso ?? new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-    // simple approach: query all terms and find the one containing today
     const snap = await getDocs(termsCollection);
     const terms = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) } as Term));
-    return terms.find(t => t.startDate <= today && t.endDate >= today) ?? null;
+    return terms.find(t => t.isCurrent) ?? terms.find(t => t.startDate <= today && t.endDate >= today) ?? null;
   } catch (err: any) {
     console.error("getCurrentTerm error:", err.code ?? err);
     throw err;

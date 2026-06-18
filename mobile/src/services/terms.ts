@@ -11,6 +11,7 @@ import {
   where,
 } from "firebase/firestore";
 import type { Term } from "./types";
+import { logAdminAction } from "./adminLogs";
 
 const col = collection(db, "terms");
 const weeksCol = collection(db, "weeks");
@@ -70,6 +71,17 @@ export async function createTerm(
     isCurrent: false, // default new term is not current
     createdAt: new Date(),
   });
+  await logAdminAction({
+    action: "CREATE_TERM",
+    targetType: "term",
+    targetId: ref.id,
+    description: `Created term ${data.name}`,
+    metadata: {
+      name: data.name,
+      startDate: data.startDate,
+      endDate: data.endDate,
+    },
+  });
 
   return { id: ref.id };
 }
@@ -86,6 +98,18 @@ export async function updateTerm(
     ...data,
     updatedAt: new Date(),
   });
+  await logAdminAction({
+    action: "EDIT_TERM",
+    targetType: "term",
+    targetId: id,
+    description: `Updated term ${data.name}`,
+    metadata: {
+      name: data.name,
+      startDate: data.startDate,
+      endDate: data.endDate,
+      isCurrent: data.isCurrent,
+    },
+  });
 }
 
 /* =========================
@@ -100,6 +124,12 @@ export async function setCurrentTerm(termId: string) {
       updatedAt: new Date(),
     });
   }
+  await logAdminAction({
+    action: "SET_CURRENT_TERM",
+    targetType: "term",
+    targetId: termId,
+    description: "Changed the current academic term",
+  });
 }
 
 /* =========================
@@ -120,4 +150,10 @@ export async function deleteTerm(id: string) {
   // 2️⃣ Delete the term itself
   const ref = doc(db, "terms", id);
   await deleteDoc(ref);
+  await logAdminAction({
+    action: "DELETE_TERM",
+    targetType: "term",
+    targetId: id,
+    description: "Deleted term and its weeks",
+  });
 }

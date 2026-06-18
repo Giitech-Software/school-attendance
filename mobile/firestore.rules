@@ -1,0 +1,374 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers ----------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    function callerUserExists() {
+      return isSignedIn() && exists(userPath(request.auth.uid));
+    }
+
+    function callerUser() {
+      return get(userPath(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return callerUserExists() && callerUser().role == 'admin';
+    }
+
+    function isApproved() {
+      return isAdmin() || (callerUserExists() && callerUser().approved == true);
+    }
+
+    function isStaffRole() {
+      return isApproved()
+        && callerUser().role in [
+          'teacher',
+          'staff',
+          'non_teaching_staff',
+          'general_staff'
+        ];
+    }
+
+    function isTeacher() {
+      return isApproved() && callerUser().role == 'teacher';
+    }
+
+    function canTakeStudentAttendance() {
+      return isAdmin()
+        || (isApproved() && callerUser().canTakeStudentAttendance == true);
+    }
+
+    function canTakeStaffAttendance() {
+      return isAdmin()
+        || (isApproved() && callerUser().canTakeStaffAttendance == true);
+    }
+
+    function isAssignedToClassDoc(classDocId) {
+      return isApproved()
+        && classDocId is string
+        && exists(/databases/$(database)/documents/classes/$(classDocId))
+        && (
+          get(/databases/$(database)/documents/classes/$(classDocId)).data.teacherId == request.auth.uid
+          || (
+            get(/databases/$(database)/documents/classes/$(classDocId)).data.assignedStaffUids is list
+            && request.auth.uid in get(/databases/$(database)/documents/classes/$(classDocId)).data.assignedStaffUids
+          )
+        );
+    }
+
+    function isOwnStaffDoc() {
+      return isSignedIn()
+        && resource.data.userUid == request.auth.uid;
+    }
+
+    function wardIdFor(studentId) {
+      return request.auth.uid + "_" + studentId;
+    }
+
+    function isParentOfStudent(studentId) {
+      return isSignedIn()
+        && studentId is string
+        && exists(/databases/$(database)/documents/wards/$(wardIdFor(studentId)));
+    }
+
+    function isWritingOwnStaffAttendance() {
+      return isStaffRole()
+        && request.resource.data.subjectType == 'staff'
+        && request.resource.data.subjectId is string
+        && exists(/databases/$(database)/documents/staff/$(request.resource.data.subjectId))
+        && get(/databases/$(database)/documents/staff/$(request.resource.data.subjectId)).data.userUid == request.auth.uid;
+    }
+
+    function isReadingOwnStaffAttendance() {
+      return isStaffRole()
+        && resource.data.subjectType == 'staff'
+        && resource.data.subjectId is string
+        && exists(/databases/$(database)/documents/staff/$(resource.data.subjectId))
+        && get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.userUid == request.auth.uid;
+    }
+
+    function isReadingWardAttendance() {
+      return isSignedIn()
+        && (
+          (
+            resource.data.keys().hasAll(['subjectType', 'subjectId'])
+            && resource.data.subjectType == 'student'
+            && resource.data.subjectId is string
+            && isParentOfStudent(resource.data.subjectId)
+          )
+          || (
+            resource.data.keys().hasAny(['studentId'])
+            && resource.data.studentId is string
+            && isParentOfStudent(resource.data.studentId)
+          )
+        );
+    }
+
+    function validAttendanceShape() {
+      return request.resource.data.date is string
+        && request.resource.data.date.size() == 10
+        && request.resource.data.type in ['in', 'out']
+        && request.resource.data.method in ['qr', 'fingerprint', 'face', 'manual']
+        && (
+          !(request.resource.data.keys().hasAny(['status']))
+          || request.resource.data.status in ['present', 'absent', 'late', 'excused']
+        )
+        && (
+          !(request.resource.data.keys().hasAny(['subjectType']))
+          || request.resource.data.subjectType in ['student', 'staff']
+        )
+        && (
+          !(request.resource.data.keys().hasAny(['subjectId']))
+          || request.resource.data.subjectId is string
+        )
+        && (
+          !(request.resource.data.keys().hasAny(['studentId']))
+          || request.resource.data.studentId is string
+        )
+        && (
+          !(request.resource.data.keys().hasAny(['classId']))
+          || request.resource.data.classId is string
+        )
+        && (
+          !(request.resource.data.keys().hasAny(['classDocId']))
+          || request.resource.data.classDocId is string
+        );
+    }
+
+    function attendanceUsesGeofenceBypass() {
+      return request.resource.data.keys().hasAny(['location'])
+        && request.resource.data.location is map
+        && request.resource.data.location.geofencingBypassed == true;
+    }
+
+    // -------------------- USERS --------------------
+    match /users/{uid} {
+      allow create: if isSignedIn()
+        && (request.auth.uid == uid || isAdmin());
+
+      allow get: if isSignedIn()
+        && (request.auth.uid == uid || isAdmin());
+
+      allow list: if isAdmin();
+
+      allow update: if isSignedIn()
+        && (
+          isAdmin()
+          || (
+            request.auth.uid == uid
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+              'role',
+              'approved',
+              'canTakeStaffAttendance',
+              'canTakeStudentAttendance'
+            ])
+          )
+        );
+
+      allow delete: if isAdmin()
+        && resource.data.role != 'admin'
+        && request.auth.uid != uid;
+    }
+
+    // -------------------- CLASSES --------------------
+    match /classes/{classId} {
+      allow read: if isApproved();
+
+      allow create, update: if isAdmin()
+        && request.resource.data.name is string
+        && request.resource.data.classId is string
+        && (
+          !(request.resource.data.keys().hasAny(['teacherId']))
+          || request.resource.data.teacherId is string
+        )
+        && (
+          !(request.resource.data.keys().hasAny(['assignedStaffUids']))
+          || request.resource.data.assignedStaffUids is list
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    // -------------------- STUDENTS --------------------
+    match /students/{studentId} {
+      allow get: if isAdmin()
+        || isAssignedToClassDoc(resource.data.classDocId)
+        || isParentOfStudent(studentId);
+      allow list: if isAdmin()
+        || isAssignedToClassDoc(resource.data.classDocId);
+
+      allow create, update: if isAdmin()
+        && request.resource.data.name is string
+        && (
+          !(request.resource.data.keys().hasAny(['classId']))
+          || request.resource.data.classId is string
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    // -------------------- STAFF --------------------
+    match /staff/{staffId} {
+      allow get: if isAdmin() || canTakeStaffAttendance() || isOwnStaffDoc();
+      allow list: if isAdmin() || canTakeStaffAttendance() || isOwnStaffDoc();
+
+      allow create, update: if isAdmin()
+        && request.resource.data.name is string
+        && (
+          !(request.resource.data.keys().hasAny(['email']))
+          || request.resource.data.email is string
+        )
+        && (
+          !(request.resource.data.keys().hasAny(['staffId']))
+          || request.resource.data.staffId is string
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    // -------------------- ATTENDANCE --------------------
+    match /attendance/{recId} {
+      allow get: if isAdmin()
+        || canTakeStaffAttendance()
+        || (
+          resource.data.subjectType == 'student'
+          && isAssignedToClassDoc(resource.data.classDocId)
+        )
+        || isReadingOwnStaffAttendance()
+        || isReadingWardAttendance();
+
+      allow list: if isAdmin()
+        || canTakeStaffAttendance()
+        || (
+          resource.data.subjectType == 'student'
+          && isAssignedToClassDoc(resource.data.classDocId)
+        )
+        || isReadingOwnStaffAttendance()
+        || isReadingWardAttendance();
+
+      allow create: if validAttendanceShape()
+        && (
+          isAdmin()
+          || (
+            request.resource.data.subjectType == 'student'
+            && canTakeStudentAttendance()
+          )
+          || (
+            !attendanceUsesGeofenceBypass()
+            && request.resource.data.subjectType == 'student'
+            && isAssignedToClassDoc(request.resource.data.classDocId)
+          )
+          || (
+            request.resource.data.subjectType == 'staff'
+            && canTakeStaffAttendance()
+          )
+          || (
+            !attendanceUsesGeofenceBypass()
+            && isWritingOwnStaffAttendance()
+          )
+        );
+
+      allow update: if validAttendanceShape()
+        && (
+          isAdmin()
+          || (
+            resource.data.subjectType == 'student'
+            && canTakeStudentAttendance()
+          )
+          || (
+            !attendanceUsesGeofenceBypass()
+            && resource.data.subjectType == 'student'
+            && isAssignedToClassDoc(resource.data.classDocId)
+            && request.resource.data.classDocId == resource.data.classDocId
+          )
+          || (
+            resource.data.subjectType == 'staff'
+            && canTakeStaffAttendance()
+          )
+          || (
+            !attendanceUsesGeofenceBypass()
+            &&
+            isReadingOwnStaffAttendance()
+            && request.resource.data.subjectType == resource.data.subjectType
+            && request.resource.data.subjectId == resource.data.subjectId
+          )
+        );
+
+      allow delete: if isAdmin();
+    }
+
+    // -------------------- TERMS --------------------
+    match /terms/{termId} {
+      allow read: if isApproved();
+
+      allow create, update: if isAdmin()
+        && request.resource.data.name is string
+        && request.resource.data.startDate is string
+        && request.resource.data.endDate is string;
+
+      allow delete: if isAdmin();
+    }
+
+    // -------------------- ADMIN LOGS --------------------
+    match /adminLogs/{logId} {
+      allow create: if isApproved()
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.action is string
+        && request.resource.data.targetType is string
+        && request.resource.data.createdAt != null;
+
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // -------------------- WEEKS --------------------
+    match /weeks/{weekId} {
+      allow read: if isApproved();
+
+      allow create, update: if isAdmin()
+        && request.resource.data.termId is string
+        && request.resource.data.weekNumber is int
+        && request.resource.data.startDate is string
+        && request.resource.data.endDate is string;
+
+      allow delete: if isAdmin();
+    }
+
+    // -------------------- SETTINGS --------------------
+    match /settings/{docId} {
+      allow read: if isApproved();
+      allow write: if isAdmin();
+    }
+
+    // -------------------- WARDS --------------------
+    match /wards/{wardId} {
+      allow get: if isAdmin()
+        || (isSignedIn() && resource.data.parentUid == request.auth.uid);
+
+      allow list: if isAdmin()
+        || (isSignedIn() && resource.data.parentUid == request.auth.uid);
+
+      allow create, update, delete: if isAdmin();
+    }
+
+    // -------------------- LEGACY STAFF ATTENDANCE --------------------
+    match /staffAttendance/{recId} {
+      allow read: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // -------------------- DEFAULT: DENY --------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

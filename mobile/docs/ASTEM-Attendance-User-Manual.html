@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>M'Salem Attendance Register User Manual</title>
+  <style>
+body {
+  font-family: Arial, sans-serif;
+  color: #172033;
+  line-height: 1.55;
+  margin: 0;
+  background: #f5f7fb;
+}
+main {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 34px 22px 70px;
+  background: #ffffff;
+}
+h1 {
+  color: #0B1C33;
+  margin-bottom: 4px;
+  font-size: 34px;
+}
+h2 {
+  color: #123F7A;
+  border-top: 1px solid #E5EAF2;
+  padding-top: 20px;
+  margin-top: 30px;
+}
+h3 {
+  color: #172033;
+  margin-top: 20px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 14px 0 20px;
+}
+th,
+td {
+  border: 1px solid #D9E1EE;
+  padding: 9px 11px;
+  text-align: left;
+  vertical-align: top;
+}
+th {
+  background: #DDEBFF;
+  color: #0B1C33;
+}
+code {
+  background: #EEF2F7;
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+pre {
+  background: #F1F5F9;
+  border-left: 4px solid #2563EB;
+  padding: 14px;
+  overflow: auto;
+  color: #334155;
+}
+ul,
+ol {
+  padding-left: 25px;
+}
+strong {
+  color: #0B1C33;
+}
+@media print {
+  body {
+    background: #ffffff;
+  }
+  main {
+    max-width: none;
+    padding: 16mm;
+  }
+  h2 {
+    break-after: avoid;
+  }
+  table,
+  ul,
+  ol,
+  pre {
+    break-inside: avoid;
+  }
+}
+</style>
+</head>
+<body>
+<main>
+<h1>M'Salem Attendance Register: User Manual</h1>
+<p>Version 1.2 Expanded Edition</p>
+<p>For Administrators, Teachers, Staff, and Parents</p>
+<h2>Brand And Status Colours</h2>
+<p>M'Salem uses a simple colour language throughout the app and this manual.</p>
+<table>
+<tr><th>Colour</th><th>Meaning</th><th>Where You See It</th></tr>
+<tr><td>Navy</td><td>Main headers and admin areas</td><td>Admin dashboard, page headers</td></tr>
+<tr><td>Blue</td><td>Primary action</td><td>Save, download, setup, continue</td></tr>
+<tr><td>Green</td><td>Success or ready</td><td>Attendance ready, successful check-in</td></tr>
+<tr><td>Amber</td><td>Warning or attention</td><td>GPS accuracy, pending setup</td></tr>
+<tr><td>Red</td><td>Blocked, danger, or disabled</td><td>Delete, blocked attendance, geofence bypass</td></tr>
+<tr><td>Slate</td><td>Neutral information</td><td>Descriptions, secondary text</td></tr>
+</table>
+<h2>1. Welcome To M'Salem Attendance Register</h2>
+<p>M'Salem Attendance Register is an all-in-one school attendance system designed to make attendance fast, secure, traceable, and easy to report. It supports student attendance, staff attendance, parent visibility, reports, user approvals, QR cards, biometrics, face recognition, school location protection, and administrative setup.</p>
+<p>Depending on your school's setup, attendance can be recorded using:</p>
+<ul>
+<li><strong>QR Codes</strong>: scan a printed or digital student/staff card.</li>
+<li><strong>Fingerprint/Biometric</strong>: use the phone or tablet's biometric prompt.</li>
+<li><strong>Face Recognition</strong>: use the device camera to match a registered face.</li>
+<li><strong>Staff ID</strong>: manually type a staff ID when other methods are unavailable.</li>
+</ul>
+<p>The goal is simple: the right person records the right attendance at the right place and time.</p>
+<h3>System Overview Diagram</h3>
+<pre><code>                 M'SALEM ATTENDANCE REGISTER
+                            |
+        ------------------------------------------------
+        |              |              |                |
+     Users          Setup        Attendance         Reports
+        |              |              |                |
+ Admin approval   Terms/classes   QR / face / ID    Daily
+ Roles/rights     Staff/students   Biometric         Weekly
+ Parent wards     Location rules   Check-in/out      Monthly
+                                  Geofence audit     Termly</code></pre>
+<h3>Who Uses The App?</h3>
+<table>
+<tr><th>User Type</th><th>Main Purpose</th></tr>
+<tr><td>Administrator</td><td>Configure the school, approve users, manage records, export reports</td></tr>
+<tr><td>Teacher</td><td>Take attendance for assigned classes when permitted</td></tr>
+<tr><td>Staff</td><td>Check in/out and view own attendance when enabled</td></tr>
+<tr><td>Parent</td><td>View attendance for assigned children</td></tr>
+<tr><td>Supervised attendance taker</td><td>Record attendance for students or staff when explicitly permitted</td></tr>
+</table>
+<h2>2. Getting Into Your Account</h2>
+<h3>Signing In</h3>
+<ol>
+<li>Open the app on your phone, tablet, or computer.</li>
+<li>Enter your registered email address and password.</li>
+<li>Tap <strong>Sign In</strong>.</li>
+</ol>
+<p>If sign-in is successful, the app opens your home page based on your role and approval status.</p>
+<h3>Common Sign-In Messages</h3>
+<table>
+<tr><th>Message</th><th>Meaning</th><th>What To Do</th></tr>
+<tr><td>Email not verified</td><td>Your email address has not been confirmed</td><td>Open your inbox and verify your email</td></tr>
+<tr><td>Account pending approval</td><td>A school admin has not approved your account yet</td><td>Contact your school administrator</td></tr>
+<tr><td>No internet</td><td>The app cannot reach the server</td><td>Turn on mobile data or Wi-Fi and try again</td></tr>
+<tr><td>Invalid credentials</td><td>Email or password is incorrect</td><td>Check spelling or reset your password</td></tr>
+</table>
+<h3>Creating A New Account</h3>
+<ol>
+<li>Tap <strong>Create account</strong> on the login screen.</li>
+<li>Enter your full name.</li>
+<li>Choose your role, such as Teacher or Parent.</li>
+<li>Enter your email address.</li>
+<li>Create and confirm your password.</li>
+<li>Verify your email from your inbox.</li>
+<li>Wait for a school administrator to approve your account.</li>
+</ol>
+<p>New accounts cannot use protected school data until they are approved.</p>
+<h3>Resetting A Forgotten Password</h3>
+<ol>
+<li>Tap <strong>Forgot password?</strong> on the sign-in screen.</li>
+<li>Type your email address.</li>
+<li>Tap <strong>Send reset link</strong>.</li>
+<li>Open your email inbox and follow the reset instructions.</li>
+</ol>
+<h3>Verifying Your Email</h3>
+<p>If the verification email does not appear immediately:</p>
+<ul>
+<li>Check your inbox.</li>
+<li>Check spam or junk.</li>
+<li>Tap <strong>Resend verification email</strong> in the app.</li>
+<li>After clicking the email link, return to the app and tap <strong>I verified - Check now</strong>.</li>
+</ul>
+<h3>Account Access Flow</h3>
+<pre><code>Create account
+      |
+Verify email
+      |
+Admin reviews user
+      |
+Approved? ---- No ----&gt; Pending Approval screen
+      |
+     Yes
+      |
+Home page opens with role-based tools</code></pre>
+<h2>3. Getting Around The Home Page</h2>
+<p>The Home page is the main working dashboard. What you see depends on your role and permissions.</p>
+<h3>Main Buttons</h3>
+<table>
+<tr><th>Button</th><th>Purpose</th></tr>
+<tr><td>QR</td><td>Opens the camera scanner for student or staff QR cards</td></tr>
+<tr><td>Biometric</td><td>Opens fingerprint/biometric attendance</td></tr>
+<tr><td>Facial</td><td>Opens face recognition attendance</td></tr>
+<tr><td>ID</td><td>Allows staff attendance by typing staff ID</td></tr>
+<tr><td>Start</td><td>Lets you choose Student Attendance or Staff Attendance</td></tr>
+<tr><td>Reports</td><td>Opens reports for administrators</td></tr>
+<tr><td>Admin</td><td>Opens setup and management tools</td></tr>
+<tr><td>Add Student</td><td>Quickly adds a student</td></tr>
+<tr><td>Select Actor</td><td>Switches between Student and Staff tasks</td></tr>
+<tr><td>Sign out</td><td>Safely logs out</td></tr>
+</table>
+<h3>Home Page Decision Diagram</h3>
+<pre><code>Home Page
+   |
+   |-- Need to take attendance?
+   |      |-- Student -&gt; Select class -&gt; Choose QR / biometric / face
+   |      |-- Staff   -&gt; Choose QR / biometric / face / ID
+   |
+   |-- Need setup?
+   |      |-- Admin -&gt; Terms / classes / users / location / settings
+   |
+   |-- Need reports?
+          |-- Reports -&gt; Daily / weekly / monthly / termly</code></pre>
+<h2>4. How To Take Attendance</h2>
+<p>Attendance can be taken for students or staff. The app checks time rules, user permissions, and location rules before saving records.</p>
+<h3>Taking Student Attendance</h3>
+<p>Go to <strong>Start &gt; Student Attendance</strong> or tap <strong>QR</strong> on the Home page.</p>
+<ol>
+<li>Select the class.</li>
+<li>Choose an attendance method:</li>
+</ol>
+<p>   - <strong>Student Biometric Attendance</strong>: tap <strong>Check-In</strong> or <strong>Check-Out</strong> beside the student and use the device biometric prompt.</p>
+<p>   - <strong>Scan QR Code (In)</strong>: use for morning arrival.</p>
+<p>   - <strong>Scan QR Code (Out)</strong>: use for dismissal.</p>
+<p>   - <strong>Student Face Check-In</strong>: use where student face registration is enabled.</p>
+<ol>
+<li>Wait for the success confirmation before moving to the next student.</li>
+</ol>
+<h3>Taking Staff Attendance</h3>
+<p>Go to <strong>Start &gt; Staff Attendance</strong>, or use <strong>Biometric</strong>, <strong>Facial</strong>, <strong>QR</strong>, or <strong>ID</strong> from the Home page.</p>
+<ol>
+<li>Choose a method:</li>
+</ol>
+<p>   - <strong>Staff Biometric Attendance</strong>.</p>
+<p>   - <strong>Scan QR Code (In)</strong> or <strong>Scan QR Code (Out)</strong>.</p>
+<p>   - <strong>Staff Face Check-In</strong>.</p>
+<p>   - <strong>Staff ID Attendance</strong>.</p>
+<ol>
+<li>Follow the on-screen prompt.</li>
+<li>Confirm that the success message appears.</li>
+</ol>
+<h3>Attendance Save Flow</h3>
+<pre><code>User selects attendance method
+          |
+App checks account permission
+          |
+App checks date/time rules
+          |
+App checks school location or bypass policy
+          |
+Record is created or updated
+          |
+Reports and daily views are updated</code></pre>
+<h3>Important Attendance Rules</h3>
+<ul>
+<li>Attendance may be blocked on weekends or configured holidays.</li>
+<li>Check-ins after the configured late time are marked <strong>Late</strong>.</li>
+<li>Check-in is blocked after the configured close time.</li>
+<li>Check-out remains available after close time for people who already checked in.</li>
+<li>Geofencing checks that the device is inside the approved school/work radius.</li>
+<li>If geofencing is bypassed, only administrators or users with explicit attendance-taking permission can record attendance.</li>
+<li>Staff self-service and assigned-class-only attendance are blocked while geofencing is bypassed.</li>
+</ul>
+<h3>Emergency Bypass Rule</h3>
+<p>If GPS, weather, or rural internet conditions make geofencing unreliable, an administrator may temporarily disable geofencing. During this period:</p>
+<ul>
+<li>Only admins or users with <strong>Can take student attendance</strong> can record student attendance.</li>
+<li>Only admins or users with <strong>Can take staff attendance</strong> can record staff attendance.</li>
+<li>Staff cannot simply check in from home using self-service.</li>
+<li>Every bypassed record is audited with reason, admin, expiry, and timestamp.</li>
+</ul>
+<h3>QR Scanner</h3>
+<p>When the scanner opens, the top of the screen shows <strong>Scan Student QR</strong> or <strong>Scan Staff QR</strong>.</p>
+<ul>
+<li>Tap <strong>Check-in</strong> or <strong>Check-out</strong> to choose the attendance mode.</li>
+<li>Point the camera at the QR card.</li>
+<li>After success, tap <strong>Scan Again</strong> for the next person.</li>
+<li>Tap <strong>Done</strong>, <strong>Back</strong>, or <strong>Cancel</strong> to exit.</li>
+</ul>
+<h3>Today's Attendance</h3>
+<p>The Today's Attendance page lists current-day records, including check-in and check-out times.</p>
+<h2>5. Administrative Controls</h2>
+<p>The Admin dashboard is the control centre for school setup, permissions, attendance configuration, and records.</p>
+<h3>Admin Dashboard Tools</h3>
+<table>
+<tr><th>Tool</th><th>Purpose</th></tr>
+<tr><td>Attendance Readiness</td><td>Shows whether location/geofencing is ready, blocked, or bypassed</td></tr>
+<tr><td>Set School/Work Location</td><td>Saves GPS coordinates, radius, and geofencing policy</td></tr>
+<tr><td>Bypass Options</td><td>Temporarily disables geofencing for a selected duration</td></tr>
+<tr><td>Manage Terms</td><td>Creates school terms and weeks</td></tr>
+<tr><td>Manage Students</td><td>Adds, edits, imports, or deletes students</td></tr>
+<tr><td>Manage Staff</td><td>Adds, edits, imports, or deletes staff</td></tr>
+<tr><td>Promote Students</td><td>Moves students to a new class without deleting history</td></tr>
+<tr><td>Students QR Cards</td><td>Generates printable student QR cards</td></tr>
+<tr><td>Staff QR Cards</td><td>Generates staff QR cards</td></tr>
+<tr><td>Manage Classes</td><td>Creates and edits classes</td></tr>
+<tr><td>Manage Users</td><td>Approves users, changes roles, and assigns permissions</td></tr>
+<tr><td>Assign Students To Classes</td><td>Assigns or moves students into classes</td></tr>
+<tr><td>Attendance Time</td><td>Sets late time, close time, and timezone</td></tr>
+<tr><td>User Manual</td><td>Opens this guide and Word download</td></tr>
+</table>
+<h3>Attendance Readiness Diagram</h3>
+<pre><code>Admin Dashboard
+      |
+Attendance Readiness
+      |
+      |-- Ready -&gt; Normal attendance allowed with GPS checks
+      |
+      |-- Blocked -&gt; Set school/work location or choose bypass
+      |
+      |-- Emergency Mode -&gt; GPS bypass active, audited records only</code></pre>
+<h3>Recommended Admin Routine</h3>
+<ol>
+<li>Approve legitimate users.</li>
+<li>Create terms and weeks.</li>
+<li>Create classes.</li>
+<li>Add students and staff.</li>
+<li>Assign students to classes.</li>
+<li>Set attendance time and timezone.</li>
+<li>Set school/work location.</li>
+<li>Generate QR cards.</li>
+<li>Review daily reports.</li>
+</ol>
+<h2>6. Setting Up The School Year And Classes</h2>
+<h3>Managing School Terms</h3>
+<p>Go to <strong>Admin &gt; Manage Terms</strong>.</p>
+<ul>
+<li><strong>Add Term</strong>: enter the term name, start date, and end date.</li>
+<li><strong>Auto-Generate Weeks</strong>: creates weekly attendance periods automatically.</li>
+<li><strong>Edit</strong>: update term details.</li>
+<li><strong>Delete</strong>: remove a term after confirmation.</li>
+</ul>
+<p>Dates should use <code>YYYY-MM-DD</code>, for example <code>2026-05-20</code>.</p>
+<h3>Managing Classes</h3>
+<p>Go to <strong>Admin &gt; Manage Classes</strong>.</p>
+<ul>
+<li>Tap <strong>Add</strong> to create a class such as Basic 1 or Form 2.</li>
+<li>Add an optional description.</li>
+<li>Use <strong>Edit</strong> to update class details.</li>
+<li>Use <strong>Delete</strong> only when you are sure the class is no longer needed.</li>
+</ul>
+<h3>Assigning Students To Classes</h3>
+<p>Go to <strong>Admin &gt; Assign Students to Classes</strong>.</p>
+<ol>
+<li>Select a class.</li>
+<li>Search for a student.</li>
+<li>Tap:</li>
+</ol>
+<p>   - <strong>Assign</strong> to add the student.</p>
+<p>   - <strong>Assigned</strong> to remove the student.</p>
+<p>   - <strong>Move</strong> to move the student from another class.</p>
+<h3>Promoting Students</h3>
+<p>Go to <strong>Admin &gt; Promote Students</strong>.</p>
+<ol>
+<li>Choose the source class.</li>
+<li>Choose the target class.</li>
+<li>Select active students.</li>
+<li>Tap <strong>Promote Selected</strong>.</li>
+</ol>
+<p>Promotion updates current class placement. It does not delete old attendance records.</p>
+<h3>Academic Setup Flow</h3>
+<pre><code>Create term
+    |
+Generate weeks
+    |
+Create classes
+    |
+Add/import students
+    |
+Assign students to classes
+    |
+Promote students at end of year/term</code></pre>
+<h2>7. Managing Student Profiles</h2>
+<p>Go to <strong>Admin &gt; Manage Students</strong> or tap <strong>Add Student</strong>.</p>
+<h3>Student List</h3>
+<p>Use search to find a student by:</p>
+<ul>
+<li>Name.</li>
+<li>Student ID.</li>
+<li>Roll number.</li>
+<li>Class.</li>
+</ul>
+<p>Student cards show key identity and enrollment information.</p>
+<h3>Student Actions</h3>
+<table>
+<tr><th>Action</th><th>Purpose</th></tr>
+<tr><td>Edit</td><td>Update student details</td></tr>
+<tr><td>Delete</td><td>Remove a student after confirmation</td></tr>
+<tr><td>Import</td><td>Add many students from CSV</td></tr>
+<tr><td>Enroll</td><td>Register biometric/fingerprint</td></tr>
+<tr><td>Register Face</td><td>Save face profile for face attendance</td></tr>
+<tr><td>QR Generator</td><td>Create QR cards</td></tr>
+</table>
+<h3>Registering A Student</h3>
+<p>Enter:</p>
+<ul>
+<li>Full name.</li>
+<li>Class.</li>
+<li>Optional student ID.</li>
+<li>Optional roll number.</li>
+</ul>
+<p>Tap <strong>Create student</strong>.</p>
+<h3>Bulk Student Import</h3>
+<p>Go to <strong>Admin &gt; Manage Students &gt; Import</strong>.</p>
+<p>Paste CSV rows with matching headers:</p>
+<pre><code>name,className,studentId,rollNo
+Ama Mensah,Basic 1,STU001,1
+Kofi Addo,Basic 1,STU002,2</code></pre>
+<p>The importer checks class names and avoids duplicate student IDs or roll numbers where possible.</p>
+<h3>Student Biometric Enrollment</h3>
+<ol>
+<li>Open the student's profile.</li>
+<li>Tap <strong>Enroll Biometric</strong>.</li>
+<li>Confirm the student name.</li>
+<li>Tap <strong>Enroll fingerprint / biometric</strong>.</li>
+<li>Complete the device biometric prompt.</li>
+</ol>
+<h3>Student Face Registration</h3>
+<ol>
+<li>Open student face registration.</li>
+<li>Grant camera permission.</li>
+<li>Place the student in good light.</li>
+<li>Tap <strong>Capture Face</strong>.</li>
+</ol>
+<h3>Student QR Cards</h3>
+<p>Go to <strong>Admin &gt; Students QR Cards</strong>.</p>
+<ul>
+<li>Search for a student.</li>
+<li>Tap the student to view a QR code.</li>
+<li>Use <strong>Copy JSON</strong> or <strong>Share PNG</strong> for a digital copy.</li>
+<li>Use <strong>Export PDF</strong> to print QR cards for a class.</li>
+</ul>
+<h3>Student Data Flow</h3>
+<pre><code>Create/import student
+        |
+Assign to class
+        |
+Enroll QR / biometric / face
+        |
+Take attendance
+        |
+Reports show history</code></pre>
+<h2>8. Managing Staff Profiles</h2>
+<p>Go to <strong>Admin &gt; Manage Staff</strong>.</p>
+<h3>Staff List And Colour Codes</h3>
+<table>
+<tr><th>Colour</th><th>Meaning</th></tr>
+<tr><td>Red</td><td>No face or fingerprint enrollment</td></tr>
+<tr><td>Amber</td><td>Partly enrolled</td></tr>
+<tr><td>Green</td><td>Face and fingerprint enrolled</td></tr>
+</table>
+<h3>Adding Staff</h3>
+<p>Staff can be added in three ways:</p>
+<ul>
+<li><strong>Create Staff</strong>: manually enter name, staff ID, email, and role.</li>
+<li><strong>Bulk Import</strong>: paste CSV rows with <code>name,email,role,staffId</code>.</li>
+<li><strong>Register Staff From User</strong>: connect an existing app user to a staff record.</li>
+</ul>
+<h3>Staff Bulk Import Example</h3>
+<pre><code>name,email,role,staffId
+Kofi Boateng,kofi@example.com,Teacher,STA001
+Akua Owusu,akua@example.com,Non-Teaching,STA002</code></pre>
+<h3>Staff Face And Biometric Setup</h3>
+<ol>
+<li>Open the staff profile.</li>
+<li>Register face with the camera.</li>
+<li>Enroll biometric/fingerprint after face setup.</li>
+<li>Confirm the staff card shows the correct enrollment status.</li>
+</ol>
+<h3>Staff Self-Service</h3>
+<p>When enabled, staff can use:</p>
+<ul>
+<li><strong>My Attendance</strong> to view daily check-in/out.</li>
+<li><strong>My Report</strong> to view their own attendance report.</li>
+</ul>
+<p>Self-service is disabled during geofencing bypass unless the staff user also has explicit attendance-taking permission.</p>
+<h2>9. Managing App Users And Parents</h2>
+<h3>Managing Users</h3>
+<p>Go to <strong>Admin &gt; Manage Users</strong>.</p>
+<p>Admins can:</p>
+<ul>
+<li>Search users by name, email, or role.</li>
+<li>Approve or unapprove accounts.</li>
+<li>Change roles.</li>
+<li>Delete users after confirmation.</li>
+<li>Enable <strong>Can take student attendance</strong>.</li>
+<li>Enable <strong>Can take staff attendance</strong>.</li>
+<li>Assign parent wards.</li>
+</ul>
+<h3>User Role Guide</h3>
+<table>
+<tr><th>Role</th><th>Typical Access</th></tr>
+<tr><td>Admin</td><td>Full school setup and reports</td></tr>
+<tr><td>Teacher</td><td>Assigned classes and permitted attendance actions</td></tr>
+<tr><td>Staff</td><td>Staff attendance and own records</td></tr>
+<tr><td>Parent</td><td>Assigned child attendance view</td></tr>
+<tr><td>General staff</td><td>Staff workflows based on permissions</td></tr>
+</table>
+<h3>Parent Wards</h3>
+<p>Go to <strong>Manage Users &gt; Wards</strong> for a parent.</p>
+<ol>
+<li>Search for a student.</li>
+<li>Tap <strong>Assign</strong> to connect the student to the parent.</li>
+<li>Tap <strong>Assigned</strong> to remove.</li>
+<li>Tap <strong>Move</strong> if the student belongs to a different parent account.</li>
+</ol>
+<h3>Parent View</h3>
+<p>Parents see <strong>My Wards</strong>.</p>
+<ul>
+<li>They can view daily, weekly, monthly, or term attendance.</li>
+<li>They cannot edit attendance.</li>
+<li>They cannot access admin setup.</li>
+</ul>
+<h3>User Permission Diagram</h3>
+<pre><code>New user signs up
+       |
+Admin approves
+       |
+Admin chooses role
+       |
+Optional attendance permissions
+       |
+User sees role-based pages only</code></pre>
+<h2>10. Setting Up School Attendance Times</h2>
+<p>Go to <strong>Admin &gt; Go to Attendance Time</strong>.</p>
+<h3>Attendance Time Fields</h3>
+<table>
+<tr><th>Field</th><th>Purpose</th><th>Example</th></tr>
+<tr><td>Late Check-In Time</td><td>After this time, check-ins are marked late</td><td><code>08:00</code></td></tr>
+<tr><td>Attendance Close Time</td><td>After this time, new check-ins are blocked</td><td><code>10:00</code></td></tr>
+<tr><td>Timezone</td><td>Used to calculate school time correctly</td><td><code>Africa/Accra</code></td></tr>
+</table>
+<p>Use 24-hour time, such as <code>08:30</code> or <code>15:45</code>.</p>
+<h3>Time Rule Diagram</h3>
+<pre><code>Before late time       -&gt; Present
+After late time        -&gt; Late
+After close time       -&gt; Check-in blocked
+Already checked in     -&gt; Check-out still allowed</code></pre>
+<h2>11. School/Work Location And Geofencing</h2>
+<p>Go to <strong>Admin &gt; Set School/Work Location</strong>.</p>
+<p>This page controls:</p>
+<ul>
+<li>School latitude.</li>
+<li>School longitude.</li>
+<li>Allowed radius in meters.</li>
+<li>GPS accuracy review.</li>
+<li>Geofencing status.</li>
+<li>Emergency bypass duration.</li>
+<li>Re-enable geofencing.</li>
+</ul>
+<h3>Attendance Readiness</h3>
+<p>The Admin dashboard shows:</p>
+<table>
+<tr><th>Status</th><th>Meaning</th><th>Action</th></tr>
+<tr><td>Ready</td><td>Location is configured and geofencing is active</td><td>Attendance can proceed</td></tr>
+<tr><td>Blocked</td><td>Location is missing or invalid</td><td>Set location or choose bypass</td></tr>
+<tr><td>Emergency Mode</td><td>Geofencing is disabled temporarily</td><td>Only authorized attendance takers can record</td></tr>
+</table>
+<h3>Setting The Location</h3>
+<ol>
+<li>Stand in a clear open area on the school compound.</li>
+<li>Open <strong>Set School/Work Location</strong>.</li>
+<li>Review latitude, longitude, radius, and GPS accuracy.</li>
+<li>Tap <strong>Refresh GPS Location</strong> if the first reading is poor.</li>
+<li>Tap <strong>Set School/Work Location</strong>.</li>
+</ol>
+<p>Saving a valid location automatically re-enables geofencing and clears any old bypass.</p>
+<h3>Choosing A Practical Radius</h3>
+<p>Choose a radius that covers the school compound, not only the exact spot where the admin is standing.</p>
+<table>
+<tr><th>School Layout</th><th>Suggested Starting Radius</th></tr>
+<tr><td>Small compound</td><td>80-120 meters</td></tr>
+<tr><td>Medium compound</td><td>120-200 meters</td></tr>
+<tr><td>Large campus</td><td>200-400 meters</td></tr>
+</table>
+<p>Adjust based on real testing and GPS accuracy.</p>
+<h3>Geofencing Bypass</h3>
+<p>Use bypass only when the school cannot reliably use GPS, such as:</p>
+<ul>
+<li>Rural internet problems.</li>
+<li>Device GPS instability.</li>
+<li>Bad weather affecting GPS readings.</li>
+<li>Temporary setup or location-service issues.</li>
+</ul>
+<p>Admins choose a duration:</p>
+<table>
+<tr><th>Duration</th><th>Expiry</th></tr>
+<tr><td>Day</td><td>End of today</td></tr>
+<tr><td>Week</td><td>Seven calendar days</td></tr>
+<tr><td>Month</td><td>One calendar month</td></tr>
+<tr><td>Term</td><td>Current term end date</td></tr>
+<tr><td>Year</td><td>One calendar year</td></tr>
+</table>
+<p>The Term option requires a current term with a valid future end date.</p>
+<h3>Bypass Security Rule</h3>
+<p>During bypass:</p>
+<ul>
+<li>Student attendance requires admin or <strong>Can take student attendance</strong>.</li>
+<li>Staff attendance requires admin or <strong>Can take staff attendance</strong>.</li>
+<li>Staff self-service is blocked.</li>
+<li>Assigned-class-only attendance is blocked unless explicit permission is also granted.</li>
+<li>Each record is audited with bypass reason, admin, expiry, and timestamp.</li>
+</ul>
+<h3>Geofencing Diagram</h3>
+<pre><code>Normal Mode
+  User device GPS
+        |
+  Inside school radius? ---- No ----&gt; Attendance blocked
+        |
+       Yes
+        |
+  Attendance allowed if user has permission
+
+Bypass Mode
+  GPS check skipped
+        |
+  User has explicit can-take-attendance permission?
+        |---- No ----&gt; Attendance blocked
+        |
+       Yes
+        |
+  Attendance saved with bypass audit</code></pre>
+<h2>12. Understanding School Reports</h2>
+<p>Reports are for administrators and management.</p>
+<p>Go to <strong>Reports</strong>, then choose <strong>Student Reports</strong> or <strong>Staff Reports</strong>.</p>
+<h3>Report Types</h3>
+<table>
+<tr><th>Report</th><th>Use</th></tr>
+<tr><td>Daily Attendance</td><td>See one day of attendance</td></tr>
+<tr><td>Weekly Reports</td><td>Review a week</td></tr>
+<tr><td>Monthly Reports</td><td>Review attendance across a month</td></tr>
+<tr><td>Termly Reports</td><td>Review a full term</td></tr>
+<tr><td>Individual Student Report</td><td>View one student's history</td></tr>
+<tr><td>Individual Staff Report</td><td>View one staff member's history</td></tr>
+</table>
+<h3>Report Keys</h3>
+<table>
+<tr><th>Key</th><th>Meaning</th></tr>
+<tr><td>P</td><td>Present</td></tr>
+<tr><td>L</td><td>Late</td></tr>
+<tr><td>A</td><td>Absent</td></tr>
+<tr><td>Attended</td><td>Present plus Late</td></tr>
+<tr><td>Attendance %</td><td>Attendance rate for the selected period</td></tr>
+</table>
+<h3>Report Workflow</h3>
+<pre><code>Open Reports
+     |
+Choose Student or Staff
+     |
+Choose daily / weekly / monthly / termly
+     |
+Filter by date, class, or person
+     |
+Review summary
+     |
+Export PDF if needed</code></pre>
+<h2>13. Downloading And Sharing The Manual</h2>
+<p>Admins can open <strong>Admin &gt; User Manual</strong>.</p>
+<ul>
+<li>Read the manual inside the app.</li>
+<li>Tap <strong>Download Word Manual</strong> to share or save the <code>.docx</code> file.</li>
+<li>If the sharing sheet does not appear, restart the app and try again.</li>
+<li>If the app was recently updated, the developer may need to restart Expo with cache cleared so the Word asset is bundled.</li>
+</ul>
+<h2>14. Quick Troubleshooting Guide</h2>
+<table>
+<tr><th>Issue</th><th>What Is Happening</th><th>What To Do</th></tr>
+<tr><td>Cannot sign in</td><td>Wrong credentials or email is unverified</td><td>Check spelling, reset password, or verify email</td></tr>
+<tr><td>No internet error</td><td>Device is offline</td><td>Turn on mobile data or Wi-Fi</td></tr>
+<tr><td>Account pending</td><td>Admin has not approved the user</td><td>Ask admin to approve the account</td></tr>
+<tr><td>Camera blocked</td><td>App does not have camera permission</td><td>Enable camera permission in device settings</td></tr>
+<tr><td>Biometric unavailable</td><td>Device biometric is not ready</td><td>Set up fingerprint/face unlock on the device</td></tr>
+<tr><td>Location unavailable</td><td>GPS cannot get a reliable position</td><td>Enable precise location and move near a window or outdoors</td></tr>
+<tr><td>Too far from school</td><td>Device is outside geofence</td><td>Move onto campus or ask admin to review radius</td></tr>
+<tr><td>Attendance readiness blocked</td><td>Location setup is missing</td><td>Admin should set school/work location or choose bypass</td></tr>
+<tr><td>Geofencing bypass active</td><td>GPS is temporarily disabled</td><td>Only explicit attendance takers can record attendance</td></tr>
+<tr><td>Check-in closed</td><td>Close time has passed</td><td>Use check-out only if already checked in</td></tr>
+<tr><td>QR code not accepted</td><td>QR is wrong, damaged, or mismatched</td><td>Confirm QR belongs to the right student/staff and class</td></tr>
+<tr><td>Parent sees no children</td><td>No wards assigned</td><td>Admin should assign wards to the parent</td></tr>
+<tr><td>Word manual will not download</td><td>File sharing or asset cache issue</td><td>Restart app or ask developer to clear Expo cache</td></tr>
+</table>
+<h2>15. Best Practices</h2>
+<h3>For Administrators</h3>
+<ul>
+<li>Review pending users daily.</li>
+<li>Keep terms, weeks, classes, and staff records current.</li>
+<li>Set school location before the first attendance day.</li>
+<li>Test geofencing with multiple devices.</li>
+<li>Use bypass only when necessary and always provide a clear reason.</li>
+<li>Export reports regularly.</li>
+</ul>
+<h3>For Teachers And Staff</h3>
+<ul>
+<li>Confirm the correct class or attendance mode before scanning.</li>
+<li>Wait for the success message before moving to the next person.</li>
+<li>Report QR, GPS, camera, or biometric issues quickly.</li>
+<li>Do not share your login.</li>
+</ul>
+<h3>For Parents</h3>
+<ul>
+<li>Use the parent account linked to your child's records.</li>
+<li>Contact the school if a ward is missing.</li>
+<li>Use reports as attendance visibility, not as an editing tool.</li>
+</ul>
+<h2>16. Page Coverage</h2>
+<table>
+<tr><th>Area</th><th>Pages Covered</th></tr>
+<tr><td>Auth</td><td>Sign In, Create Account, Forgot Password, Verify Email, Pending Approval</td></tr>
+<tr><td>Home</td><td>Main dashboard, quick actions, actor selection</td></tr>
+<tr><td>Attendance</td><td>Student/Staff Attendance, QR Scanner, Today's Attendance, Staff ID, Face Check-In</td></tr>
+<tr><td>Admin</td><td>Admin dashboard, User Manual, School/Work Location, Attendance Time</td></tr>
+<tr><td>Setup</td><td>Terms, Weeks, Classes, Class Assignment, Promote Students</td></tr>
+<tr><td>Students</td><td>Student list, Create, Edit, Bulk Import, QR Generator, Face/Biometric Enrollment</td></tr>
+<tr><td>Staff</td><td>Staff list, Create, Edit, Bulk Import, QR Cards, Face/Biometric Enrollment, My Attendance</td></tr>
+<tr><td>Users</td><td>Manage Users, Edit User, Parent Wards</td></tr>
+<tr><td>Reports</td><td>Daily, Weekly, Monthly, Termly, Student Detail, Staff Detail</td></tr>
+</table>
+</main>
+</body>
+</html>

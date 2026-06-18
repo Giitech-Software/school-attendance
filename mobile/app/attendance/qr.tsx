@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CameraView, Camera } from "expo-camera";
 import * as Haptics from "expo-haptics";
-import { useRouter, Link, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 // use the unified register function (prevent duplicates)
 import { registerAttendanceUnified } from "../../src/services/attendance";
@@ -21,6 +21,8 @@ import { collection, query, where, getDocs, doc, getDoc } from "firebase/firesto
 import { db } from "../../app/firebase";
 import { validateQrPayload } from "../../src/services/qr";
 import { registerStaffAttendance } from "../../src/services/staffAttendance";
+import { useRequireAttendanceAccess } from "../../src/hooks/useRouteAuthorization";
+import { useCurrentStaff } from "../../src/hooks/useCurrentStaff";
 
 /** Helper: returns YYYY-MM-DD */
 function todayISO() {
@@ -70,6 +72,18 @@ function parseQRCodePayload(payload: string): {
 export default function QRScanner(): JSX.Element {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const actorParam = params?.actor === "staff" ? "staff" : "student";
+  const isSelfServiceStaff = actorParam === "staff" && params?.self === "1";
+  const { staff: currentStaff, loading: currentStaffLoading } = useCurrentStaff();
+  const {
+    userDoc,
+    assignedStudentClasses,
+    loading: authorizationLoading,
+    ready: authorizationReady,
+    hasCapability,
+  } = useRequireAttendanceAccess(actorParam, {
+    allowSelfService: isSelfServiceStaff,
+  });
 
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [scanned, setScanned] = useState(false);
@@ -247,6 +261,17 @@ if (!scannedId) {
 
      // Determine class id to use: prefer URL param, then QR payload
 const finalClassId = selectedClassIdFromParam ?? classIdFromQR ?? null;
+const classDocIdFromParam =
+  typeof params?.classDocId === "string" ? params.classDocId : null;
+const assignedClassForScan = assignedStudentClasses.find(
+  (cls) => cls.id === finalClassId || cls.classId === finalClassId
+);
+const finalClassDocId =
+  classDocIdFromParam ?? selectedClassResolvedDocId ?? assignedClassForScan?.id ?? null;
+const canUseAllStudentClasses =
+  params?.actor === "staff" ||
+  userDoc?.role === "admin" ||
+  hasCapability;
 
 // ✅ Only enforce class for STUDENTS
 if (!finalClassId && params?.actor !== "staff") {
@@ -257,6 +282,25 @@ if (!finalClassId && params?.actor !== "staff") {
   setScanned(false);
   setScannedPayload(null);
   return;
+}
+
+if (params?.actor !== "staff") {
+  const assignedClassAllowed = assignedStudentClasses.some(
+    (cls) =>
+      cls.id === finalClassId ||
+      cls.classId === finalClassId ||
+      (finalClassDocId ? cls.id === finalClassDocId : false)
+  );
+
+  if (!canUseAllStudentClasses && !assignedClassAllowed) {
+    Alert.alert(
+      "Class not assigned",
+      "You can only take attendance for classes assigned to you."
+    );
+    setScanned(false);
+    setScannedPayload(null);
+    return;
+  }
 }
 
 
@@ -278,6 +322,35 @@ try {
   }
 
   const finalId = scannedId; // e.g. "TCH-0017"
+
+  if (isSelfServiceStaff) {
+    const ownIds = [currentStaff?.staffId, currentStaff?.id].filter(Boolean);
+
+    if (!currentStaff?.id || !ownIds.includes(finalId)) {
+      Alert.alert(
+        "Wrong QR code",
+        "This QR code does not match your staff profile."
+      );
+      setProcessing(false);
+      setScanned(false);
+      return;
+    }
+
+    await registerStaffAttendance({
+      staffId: currentStaff.id,
+      mode,
+      method: "qr",
+      biometric: false,
+    });
+
+    Alert.alert(
+      "Success",
+      `${currentStaff.name ?? "Staff member"} ${
+        mode === "in" ? "checked in" : "checked out"
+      } successfully.`
+    );
+    return;
+  }
 
   // 2️⃣ Find the actual staff document in Firestore
   let staffDocId: string | null = null;
@@ -373,8 +446,10 @@ await registerAttendanceUnified({
   studentId: String(studentDoc.id),
   // Add the '!' to tell TypeScript: "I've checked, this is definitely not null"
   classId: finalClassId!, 
+  classDocId: finalClassDocId ?? undefined,
   mode,
   biometric: false,
+  enforceClassAssignment: !canUseAllStudentClasses,
 });
 
     Alert.alert(
@@ -401,10 +476,38 @@ await registerAttendanceUnified({
 }
 
     },
-    [scanned, processing, mode, selectedClassIdFromParam]
+    [
+      scanned,
+      processing,
+      mode,
+      selectedClassIdFromParam,
+      params?.actor,
+      isSelfServiceStaff,
+      currentStaff?.id,
+      currentStaff?.staffId,
+      currentStaff?.name,
+      params?.classDocId,
+      selectedClassResolvedDocId,
+      userDoc?.role,
+      hasCapability,
+      assignedStudentClasses,
+    ]
   );
 
   /** Permission states UI */
+  if (
+    authorizationLoading ||
+    (isSelfServiceStaff && currentStaffLoading) ||
+    !authorizationReady
+  ) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-white">
+        <ActivityIndicator size="large" />
+        <Text className="mt-3 text-neutral">Checking access...</Text>
+      </SafeAreaView>
+    );
+  }
+
   if (hasPermission === null) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-white">
@@ -420,7 +523,7 @@ await registerAttendanceUnified({
         <Text className="text-xl font-semibold mb-3">Camera permission required</Text>
 
         <Text className="text-neutral mb-6 text-center">
-          This screen needs camera access to scan student QR codes. Enable it in
+          This screen needs camera access to scan QR codes. Enable it in
           Settings.
         </Text>
 
@@ -437,11 +540,31 @@ await registerAttendanceUnified({
           </Text>
         </Pressable>
 
-        <Link href="/attendance/checkin" asChild>
-          <Pressable className="mt-4 border py-2 px-4 rounded-xl">
-            <Text className="text-neutral text-center">Back</Text>
-          </Pressable>
-        </Link>
+        <Pressable
+          onPress={() =>
+            router.replace(
+              isSelfServiceStaff
+                ? ("/staff/my-attendance" as any)
+                : ("/attendance/checkin" as any)
+            )
+          }
+          className="mt-4 border py-2 px-4 rounded-xl"
+        >
+          <Text className="text-neutral text-center">Back</Text>
+        </Pressable>
+      </SafeAreaView>
+    );
+  }
+
+  if (isSelfServiceStaff && !currentStaff) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-white p-6">
+        <Text className="text-xl font-semibold mb-3">
+          Staff profile not linked
+        </Text>
+        <Text className="text-neutral text-center">
+          Ask an administrator to link your user account to a staff record.
+        </Text>
       </SafeAreaView>
     );
   }
@@ -470,10 +593,19 @@ await registerAttendanceUnified({
          {/* TOP HEADER */}
 <View className="px-6 pt-10">
   <Text className="text-white text-xl font-bold text-center">
-    {params?.actor === "staff" ? "Scan Staff QR" : "Scan Student QR"}
+    {isSelfServiceStaff
+      ? "Scan Your Staff QR"
+      : params?.actor === "staff"
+      ? "Scan Staff QR"
+      : "Scan Student QR"}
   </Text>
   <Text className="text-white/70 text-sm text-center mt-1">
-    Point your camera at the {params?.actor === "staff" ? "staff member's" : "student's"} QR code
+    Point your camera at the{" "}
+    {isSelfServiceStaff
+      ? "QR code linked to your profile"
+      : params?.actor === "staff"
+      ? "staff member's QR code"
+      : "student's QR code"}
   </Text>
 
 
@@ -591,7 +723,9 @@ await registerAttendanceUnified({
           <Pressable
   onPress={() => {
     router.replace({
-      pathname: "/attendance/checkin",
+      pathname: isSelfServiceStaff
+        ? "/staff/my-attendance"
+        : "/attendance/checkin",
       params: { actor: params?.actor ?? "student" },
     });
   }}
@@ -618,7 +752,13 @@ await registerAttendanceUnified({
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <Pressable
-                    onPress={() => router.replace("/attendance/checkin")}
+                    onPress={() =>
+                      router.replace(
+                        isSelfServiceStaff
+                          ? ("/staff/my-attendance" as any)
+                          : ("/attendance/checkin" as any)
+                      )
+                    }
                     className="py-3 px-4 rounded-xl bg-white/10"
                   >
                     <Text className="text-white font-semibold">Cancel</Text>

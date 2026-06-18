@@ -17,6 +17,7 @@ import {
 import { db } from "../../app/firebase";
 import type { Student } from "./types";
 import { getClassById } from "./classes";
+import { logAdminAction } from "./adminLogs";
 
 const studentsCollection = collection(db, "students");
 
@@ -101,6 +102,19 @@ if (!payload.studentId) {
 
   const ref = await addDoc(studentsCollection, payload);
   const snap = await getDoc(ref);
+  await logAdminAction({
+    action: "CREATE_STUDENT",
+    targetType: "student",
+    targetId: ref.id,
+    description: `Created student ${data.name}`,
+    metadata: {
+      name: data.name,
+      classId: payload.classId,
+      classDocId: payload.classDocId,
+      studentId: payload.studentId,
+      rollNo: data.rollNo,
+    },
+  });
 
   return withShortId(ref.id, snap.data());
 }
@@ -158,6 +172,19 @@ if (student.classId) {
 
   await updateDoc(ref, patch);
   const snap = await getDoc(ref);
+  await logAdminAction({
+    action: "EDIT_STUDENT",
+    targetType: "student",
+    targetId: student.id,
+    description: `Updated student ${student.name ?? student.id}`,
+    metadata: {
+      name: student.name,
+      classId: patch.classId,
+      classDocId: patch.classDocId,
+      studentId: student.studentId,
+      rollNo: student.rollNo,
+    },
+  });
 
   return withShortId(snap.id, snap.data());
 }
@@ -168,6 +195,12 @@ if (student.classId) {
 
 export async function deleteStudent(id: string) {
   await deleteDoc(doc(db, "students", id));
+  await logAdminAction({
+    action: "DELETE_STUDENT",
+    targetType: "student",
+    targetId: id,
+    description: "Deleted student",
+  });
   return true;
 }
 

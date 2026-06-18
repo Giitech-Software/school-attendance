@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
 
 import { getStaffGlobalSummary } from "../../src/services/staffAttendanceSummary";
 import { exportMonthlyStaffAttendance } from "../../src/services/exports/exportMonthlyStaffAttendance";
@@ -33,6 +34,7 @@ function getMonthsForYear(year: number) {
 }
 export default function StaffMonthlyReport() {
   const router = useRouter();
+  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
 
   const [loading, setLoading] = useState(true);
   const [months, setMonths] = useState<
@@ -81,7 +83,7 @@ export default function StaffMonthlyReport() {
     })();
   }, [selectedMonth]);
 
-  if (loading && !selectedMonth) {
+  if (adminLoading || !adminReady || (loading && !selectedMonth)) {
     return (
       <View className="flex-1 items-center justify-center bg-slate-50">
         <ActivityIndicator />
@@ -90,17 +92,17 @@ export default function StaffMonthlyReport() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-slate-300 p-4">
+    <ScrollView className="flex-1 bg-slate-300 p-3">
       <View className="flex-row items-center mb-2">
         <Pressable
           onPress={() => router.back()}
           className="p-1 mr-2"
           hitSlop={8}
         >
-          <MaterialIcons name="arrow-back" size={26} color="#0f172a" />
+          <MaterialIcons name="arrow-back" size={24} color="#0f172a" />
         </Pressable>
 
-        <Text className="text-2xl font-extrabold text-slate-900">
+        <Text className="text-xl font-extrabold text-slate-900">
           Monthly Staff Reports
         </Text>
       </View>
@@ -112,7 +114,7 @@ export default function StaffMonthlyReport() {
           <Pressable
             key={`${m.year}-${m.month}`}
             onPress={() => setSelectedMonth(m)}
-            className={`p-4 mr-3 rounded-xl border ${
+            className={`px-3 py-2 mr-2 rounded-lg border ${
               selectedMonth?.year === m.year &&
               selectedMonth?.month === m.month
                 ? "bg-blue-600 border-blue-600"
@@ -134,7 +136,7 @@ export default function StaffMonthlyReport() {
       </ScrollView>
 
       {/* EXPORT PDF */}
-      <View className="mt-4">
+      <View className="mt-3">
         <Pressable
           disabled={!selectedMonth || exportingPdf}
           onPress={async () => {
@@ -162,7 +164,7 @@ export default function StaffMonthlyReport() {
               setExportingPdf(false);
             }
           }}
-          className={`rounded-xl p-3 items-center justify-center ${
+          className={`rounded-lg px-3 py-2.5 items-center justify-center ${
             selectedMonth && !exportingPdf
               ? "bg-blue-600"
               : "bg-slate-400"
@@ -179,7 +181,7 @@ export default function StaffMonthlyReport() {
       </View>
 
       {/* STAFF CARDS */}
-      <Text className="text-lg font-semibold mt-6 mb-2">
+      <Text className="text-lg font-semibold mt-3 mb-1.5">
         Staff ({staffRows.length})
       </Text>
 
@@ -218,14 +220,14 @@ export default function StaffMonthlyReport() {
                 },
               })
             }
-            className="bg-white p-4 rounded-xl mb-3 shadow"
+            className="bg-white px-3 py-2 rounded-md mb-2 shadow"
           >
             <Text className="font-semibold">
               {item.staffName}
               {item.displayId ? ` (${item.displayId})` : ""}
             </Text>
 
-            <View className="flex-row justify-between mt-2">
+            <View className="flex-row justify-between mt-1.5">
               <Text className="text-emerald-600">
                 P: {item.presentCount}
               </Text>
@@ -248,3 +250,5 @@ export default function StaffMonthlyReport() {
     </ScrollView>
   );
 }
+
+

@@ -6,9 +6,11 @@ import { listTerms, updateTerm, deleteTerm } from "../../src/services/terms";
 import type { Term } from "../../src/services/types";
 import { autoGenerateWeeksForTerm } from "../../src/services/weeks";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
 export default function TermEdit() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
 
   const [term, setTerm] = useState<Term | null>(null);
   const [saving, setSaving] = useState(false);
@@ -152,7 +154,7 @@ async function handleGenerateWeeks() {
   );
 }
 
-  if (loading || !term) {
+  if (adminLoading || !adminReady || loading || !term) {
     return (
       <View className="flex-1 items-center justify-center bg-slate-50">
         <ActivityIndicator />

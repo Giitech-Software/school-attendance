@@ -6,10 +6,13 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { indexFace } from "../../src/services/faceService";
 import { getStudentById, upsertStudent } from "../../src/services/students";
+import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
+import { MaterialIcons } from "@expo/vector-icons";
 
 export default function RegisterFaceStudent() {
   const { studentId } = useLocalSearchParams<{ studentId: string }>();
   const router = useRouter();
+  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [loading, setLoading] = useState(false);
@@ -33,9 +36,24 @@ export default function RegisterFaceStudent() {
     })();
   }, [studentId]);
 
+  if (adminLoading || !adminReady) {
+    return (
+      <View className="flex-1 items-center justify-center">
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
   if (!permission?.granted) {
     return (
       <View className="flex-1 items-center justify-center">
+        <Pressable
+          onPress={() => router.back()}
+          className="absolute top-12 left-4 bg-black/60 rounded-full p-3"
+          hitSlop={8}
+        >
+          <MaterialIcons name="arrow-back" size={24} color="#fff" />
+        </Pressable>
         <Pressable onPress={requestPermission}>
           <Text>Grant Camera Permission</Text>
         </Pressable>
@@ -86,6 +104,13 @@ export default function RegisterFaceStudent() {
   return (
     <View className="flex-1">
       <CameraView ref={cameraRef} style={{ flex: 1 }} facing="front" />
+      <Pressable
+        onPress={() => router.back()}
+        className="absolute top-12 left-4 bg-black/60 rounded-full p-3"
+        hitSlop={8}
+      >
+        <MaterialIcons name="arrow-back" size={24} color="#fff" />
+      </Pressable>
       <View className="absolute bottom-10 w-full items-center">
         <Pressable
           onPress={captureFace}

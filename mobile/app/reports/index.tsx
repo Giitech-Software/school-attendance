@@ -140,7 +140,7 @@ setPreviewLabel(range.label);
     >
       <Text className="text-lg font-extrabold text-white">{title}</Text>
       {subtitle ? (
-        <Text className="text-sm text-white/80 mt-2">{subtitle}</Text>
+        <Text className="text-sm text-white/80 mt-1.5">{subtitle}</Text>
       ) : null}
     </Pressable>
   );
@@ -172,7 +172,7 @@ if (userDoc?.role !== "admin") {
       <Text className="text-lg font-bold text-red-600">
         Access Denied
       </Text>
-      <Text className="text-sm text-slate-500 mt-2">
+      <Text className="text-sm text-slate-500 mt-1.5">
         You do not have permission to view reports.
       </Text>
     </View>
@@ -197,13 +197,13 @@ if (userDoc?.role !== "admin") {
   >
     <MaterialIcons
       name="arrow-back"
-      size={26}
+      size={24}
       color="#0f172a"
     />
   </Pressable>
 
 
-  <Text className="text-2xl font-extrabold text-slate-900">
+  <Text className="text-xl font-extrabold text-slate-900">
     Reports
   </Text>
 </View>
@@ -219,7 +219,7 @@ if (userDoc?.role !== "admin") {
   Quick previews — tap a tile to open detailed reports
 </Text>
 
-<View className="flex-row mb-4">
+<View className="flex-row mb-3">
   <Pressable
     onPress={() => setReportType("student")}
     className={`flex-1 py-2 rounded-l-xl ${
@@ -251,7 +251,7 @@ if (userDoc?.role !== "admin") {
   </Pressable>
 </View>
 
-      <View className="mt-2">
+      <View className="mt-1.5">
         <Tile
           title="Daily Attendance"
           subtitle="Preview by day • Last 5 school days"
@@ -354,3 +354,5 @@ if (userDoc?.role !== "admin") {
                                   </ScrollView>
                                 );
                               }
+
+

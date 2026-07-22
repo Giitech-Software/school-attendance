@@ -1,4 +1,4 @@
-﻿import { useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { createStaff, STAFF_ROLE_OPTIONS, type StaffRoleType } from "../services/staff";
 import { getUserByEmail, upsertUser } from "../services/users";
@@ -47,7 +47,7 @@ export default function StaffCreate() {
           uid: linkedUser.uid ?? linkedUser.id,
           id: linkedUser.id,
           approved: true,
-          ...(linkedUser.role === "admin" ? {} : { role: roleType }),
+          ...(linkedUser.role === "admin" || linkedUser.role === "super_admin" ? {} : { role: roleType }),
         });
       }
 
@@ -137,4 +137,5 @@ export default function StaffCreate() {
     </div>
   );
 }
+
 

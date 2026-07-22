@@ -14,10 +14,14 @@ import { listUsers, deleteUser, AppUser } from "../../src/services/users";
 import { MaterialIcons } from "@expo/vector-icons";
 import AppInput from "../../components/AppInput";
 import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
+import useCurrentUser from "../../src/hooks/useCurrentUser";
+import { allowsStudentAndParentFeatures } from "../../src/services/tenantScope";
 
 export default function UsersList() {
   const router = useRouter();
   const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
+  const { userDoc } = useCurrentUser();
+  const allowsSchoolFeatures = allowsStudentAndParentFeatures(userDoc);
   const [users, setUsers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -141,7 +145,7 @@ export default function UsersList() {
               </Pressable>
 
               {/* WARDS (parents only) */}
-              {item.role === "parent" && (
+              {allowsSchoolFeatures && item.role === "parent" && (
                 <Pressable
                   onPress={() => router.push(`/admin/parents/${item.id}` as any)}
                   className="p-2 rounded bg-teal-100"
@@ -164,3 +168,4 @@ export default function UsersList() {
     </View>
   );
 }
+

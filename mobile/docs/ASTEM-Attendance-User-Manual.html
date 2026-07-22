@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>M'Salem Attendance Register User Manual</title>
+  <title>ASTEM Attendance Register User Manual</title>
   <style>
 body {
   font-family: Arial, sans-serif;
@@ -90,11 +90,11 @@ strong {
 </head>
 <body>
 <main>
-<h1>M'Salem Attendance Register: User Manual</h1>
-<p>Version 1.2 Expanded Edition</p>
+<h1>ASTEM Attendance Register: User Manual</h1>
+<p>Version 1.3 Updated Edition</p>
 <p>For Administrators, Teachers, Staff, and Parents</p>
 <h2>Brand And Status Colours</h2>
-<p>M'Salem uses a simple colour language throughout the app and this manual.</p>
+<p>ASTEM uses a simple colour language throughout the app and this manual.</p>
 <table>
 <tr><th>Colour</th><th>Meaning</th><th>Where You See It</th></tr>
 <tr><td>Navy</td><td>Main headers and admin areas</td><td>Admin dashboard, page headers</td></tr>
@@ -104,8 +104,8 @@ strong {
 <tr><td>Red</td><td>Blocked, danger, or disabled</td><td>Delete, blocked attendance, geofence bypass</td></tr>
 <tr><td>Slate</td><td>Neutral information</td><td>Descriptions, secondary text</td></tr>
 </table>
-<h2>1. Welcome To M'Salem Attendance Register</h2>
-<p>M'Salem Attendance Register is an all-in-one school attendance system designed to make attendance fast, secure, traceable, and easy to report. It supports student attendance, staff attendance, parent visibility, reports, user approvals, QR cards, biometrics, face recognition, school location protection, and administrative setup.</p>
+<h2>1. Welcome To ASTEM Attendance Register</h2>
+<p>ASTEM Attendance Register is an all-in-one school attendance system designed to make attendance fast, secure, traceable, and easy to report. It supports student attendance, staff attendance, parent visibility, reports, user approvals, QR cards, biometrics, face recognition, school location protection, and administrative setup.</p>
 <p>Depending on your school's setup, attendance can be recorded using:</p>
 <ul>
 <li><strong>QR Codes</strong>: scan a printed or digital student/staff card.</li>
@@ -198,7 +198,7 @@ Home page opens with role-based tools</code></pre>
 <tr><td>Facial</td><td>Opens face recognition attendance</td></tr>
 <tr><td>ID</td><td>Allows staff attendance by typing staff ID</td></tr>
 <tr><td>Start</td><td>Lets you choose Student Attendance or Staff Attendance</td></tr>
-<tr><td>Reports</td><td>Opens reports for administrators</td></tr>
+<tr><td>Reports</td><td>Opens daily, weekly, monthly, termly, yearly, and individual reports for administrators</td></tr>
 <tr><td>Admin</td><td>Opens setup and management tools</td></tr>
 <tr><td>Add Student</td><td>Quickly adds a student</td></tr>
 <tr><td>Select Actor</td><td>Switches between Student and Staff tasks</td></tr>
@@ -215,7 +215,7 @@ Home page opens with role-based tools</code></pre>
    |      |-- Admin -&gt; Terms / classes / users / location / settings
    |
    |-- Need reports?
-          |-- Reports -&gt; Daily / weekly / monthly / termly</code></pre>
+          |-- Reports -&gt; Daily / weekly / monthly / termly / yearly</code></pre>
 <h2>4. How To Take Attendance</h2>
 <p>Attendance can be taken for students or staff. The app checks time rules, user permissions, and location rules before saving records.</p>
 <h3>Taking Student Attendance</h3>
@@ -229,6 +229,7 @@ Home page opens with role-based tools</code></pre>
 <p>   - <strong>Scan QR Code (Out)</strong>: use for dismissal.</p>
 <p>   - <strong>Student Face Check-In</strong>: use where student face registration is enabled.</p>
 <ol>
+<li>Add a movement-book reason if the app asks for one because the check-in is very late or the check-out is early.</li>
 <li>Wait for the success confirmation before moving to the next student.</li>
 </ol>
 <h3>Taking Staff Attendance</h3>
@@ -241,6 +242,7 @@ Home page opens with role-based tools</code></pre>
 <p>   - <strong>Staff Face Check-In</strong>.</p>
 <p>   - <strong>Staff ID Attendance</strong>.</p>
 <ol>
+<li>Add a movement-book reason if the app asks for one because the check-in is very late or the check-out is early.</li>
 <li>Follow the on-screen prompt.</li>
 <li>Confirm that the success message appears.</li>
 </ol>
@@ -265,6 +267,7 @@ Reports and daily views are updated</code></pre>
 <li>Geofencing checks that the device is inside the approved school/work radius.</li>
 <li>If geofencing is bypassed, only administrators or users with explicit attendance-taking permission can record attendance.</li>
 <li>Staff self-service and assigned-class-only attendance are blocked while geofencing is bypassed.</li>
+<li>A movement-book reason is required for very late check-ins and early check-outs when the configured policy requires it.</li>
 </ul>
 <h3>Emergency Bypass Rule</h3>
 <p>If GPS, weather, or rural internet conditions make geofencing unreliable, an administrator may temporarily disable geofencing. During this period:</p>
@@ -275,11 +278,14 @@ Reports and daily views are updated</code></pre>
 <li>Every bypassed record is audited with reason, admin, expiry, and timestamp.</li>
 </ul>
 <h3>QR Scanner</h3>
-<p>When the scanner opens, the top of the screen shows <strong>Scan Student QR</strong> or <strong>Scan Staff QR</strong>.</p>
+<p>When the scanner opens, the top of the screen shows <strong>Scan Student QR</strong>, <strong>Scan Staff QR</strong>, or <strong>Scan Your Staff QR</strong>.</p>
 <ul>
 <li>Tap <strong>Check-in</strong> or <strong>Check-out</strong> to choose the attendance mode.</li>
-<li>Point the camera at the QR card.</li>
-<li>After success, tap <strong>Scan Again</strong> for the next person.</li>
+<li>Point the camera at the QR card generated by the mobile or web QR card tools.</li>
+<li>The web check-in page uses camera scanning only; the old manual <strong>QR Code Payload</strong> paste box has been removed.</li>
+<li>Signed staff QR codes are validated before staff attendance is recorded.</li>
+<li>If a very late check-in or early check-out requires a reason, choose or type the movement-book reason before saving.</li>
+<li>After success, tap <strong>Scan Again</strong> for the next person where available.</li>
 <li>Tap <strong>Done</strong>, <strong>Back</strong>, or <strong>Cancel</strong> to exit.</li>
 </ul>
 <h3>Today's Attendance</h3>
@@ -297,11 +303,11 @@ Reports and daily views are updated</code></pre>
 <tr><td>Manage Staff</td><td>Adds, edits, imports, or deletes staff</td></tr>
 <tr><td>Promote Students</td><td>Moves students to a new class without deleting history</td></tr>
 <tr><td>Students QR Cards</td><td>Generates printable student QR cards</td></tr>
-<tr><td>Staff QR Cards</td><td>Generates staff QR cards</td></tr>
+<tr><td>Staff QR Cards</td><td>Generates professional printable staff QR cards and PDF/print output</td></tr>
 <tr><td>Manage Classes</td><td>Creates and edits classes</td></tr>
 <tr><td>Manage Users</td><td>Approves users, changes roles, and assigns permissions</td></tr>
 <tr><td>Assign Students To Classes</td><td>Assigns or moves students into classes</td></tr>
-<tr><td>Attendance Time</td><td>Sets late time, close time, and timezone</td></tr>
+<tr><td>Attendance Time</td><td>Sets late time, close time, timezone, weekend/holiday policy, and triggers absent auto-marking</td></tr>
 <tr><td>User Manual</td><td>Opens this guide and Word download</td></tr>
 </table>
 <h3>Attendance Readiness Diagram</h3>
@@ -432,7 +438,7 @@ Kofi Addo,Basic 1,STU002,2</code></pre>
 <ul>
 <li>Search for a student.</li>
 <li>Tap the student to view a QR code.</li>
-<li>Use <strong>Copy JSON</strong> or <strong>Share PNG</strong> for a digital copy.</li>
+<li>Use <strong>Share PNG</strong> or <strong>Export PDF</strong> for a digital or printable copy.</li>
 <li>Use <strong>Export PDF</strong> to print QR cards for a class.</li>
 </ul>
 <h3>Student Data Flow</h3>
@@ -472,6 +478,14 @@ Akua Owusu,akua@example.com,Non-Teaching,STA002</code></pre>
 <li>Enroll biometric/fingerprint after face setup.</li>
 <li>Confirm the staff card shows the correct enrollment status.</li>
 </ol>
+<h3>Staff QR Cards</h3>
+<p>Go to <strong>Admin &gt; Staff QR Cards</strong> or <strong>Attendance &gt; Staff QR Generator</strong>.</p>
+<ul>
+<li>Search staff by name, staff ID, email, or role.</li>
+<li>Generate QR cards using the signed professional QR payload used by the mobile app.</li>
+<li>Use <strong>Print / PDF</strong> or <strong>Export PDF</strong> to print staff cards.</li>
+<li>The card preview focuses on the QR image and staff identity. Raw payload text is no longer shown to ordinary check-in users.</li>
+</ul>
 <h3>Staff Self-Service</h3>
 <p>When enabled, staff can use:</p>
 <ul>
@@ -532,7 +546,7 @@ User sees role-based pages only</code></pre>
 <table>
 <tr><th>Field</th><th>Purpose</th><th>Example</th></tr>
 <tr><td>Late Check-In Time</td><td>After this time, check-ins are marked late</td><td><code>08:00</code></td></tr>
-<tr><td>Attendance Close Time</td><td>After this time, new check-ins are blocked</td><td><code>10:00</code></td></tr>
+<tr><td>Attendance Close Time</td><td>After this time, new check-ins are blocked and early check-out policy is calculated</td><td><code>10:00</code></td></tr>
 <tr><td>Timezone</td><td>Used to calculate school time correctly</td><td><code>Africa/Accra</code></td></tr>
 </table>
 <p>Use 24-hour time, such as <code>08:30</code> or <code>15:45</code>.</p>
@@ -635,6 +649,7 @@ Bypass Mode
 <tr><td>Weekly Reports</td><td>Review a week</td></tr>
 <tr><td>Monthly Reports</td><td>Review attendance across a month</td></tr>
 <tr><td>Termly Reports</td><td>Review a full term</td></tr>
+<tr><td>Yearly Reports</td><td>Review a full academic/calendar year</td></tr>
 <tr><td>Individual Student Report</td><td>View one student's history</td></tr>
 <tr><td>Individual Staff Report</td><td>View one staff member's history</td></tr>
 </table>
@@ -645,20 +660,33 @@ Bypass Mode
 <tr><td>L</td><td>Late</td></tr>
 <tr><td>A</td><td>Absent</td></tr>
 <tr><td>Attended</td><td>Present plus Late</td></tr>
-<tr><td>Attendance %</td><td>Attendance rate for the selected period</td></tr>
+<tr><td>Attendance %</td><td>Attended sessions divided by attended plus absent sessions</td></tr>
 </table>
 <h3>Report Workflow</h3>
 <pre><code>Open Reports
      |
 Choose Student or Staff
      |
-Choose daily / weekly / monthly / termly
+Choose daily / weekly / monthly / termly / yearly
      |
-Filter by date, class, or person
+Filter by date, class, term, year, or person
      |
-Review summary
+Review summary cards: Present, Late, Attended, Absent, Attendance %
      |
-Export PDF if needed</code></pre>
+Print / PDF or export PDF if needed</code></pre>
+<h3>Attendance Totals And Auto-Marked Absence</h3>
+<p>Recent report pages show total cards above the report table:</p>
+<table>
+<tr><th>Card</th><th>Meaning</th></tr>
+<tr><td>Present</td><td>People checked in before the late time</td></tr>
+<tr><td>Late</td><td>People checked in after the late time</td></tr>
+<tr><td>Attended</td><td>Present plus Late</td></tr>
+<tr><td>Absent</td><td>People auto-marked or recorded as absent for the selected period</td></tr>
+<tr><td>Attendance %</td><td>Attended divided by Attended plus Absent</td></tr>
+</table>
+<p>Daily reports automatically run the absence marking check for the selected day before showing the summary. Weekly, monthly, termly, yearly, and individual reports use the recorded attendance and absent records in the selected date range. If no absence records exist yet for a person or period, the Absent value remains 0 and the percentage is calculated from the records available.</p>
+<h3>Printing Reports</h3>
+<p>Use <strong>Print / PDF</strong> or <strong>Export PDF</strong> from report pages to create a printable report. The print view contains the selected filters, totals, and report rows without the normal app navigation.</p>
 <h2>13. Downloading And Sharing The Manual</h2>
 <p>Admins can open <strong>Admin &gt; User Manual</strong>.</p>
 <ul>
@@ -680,7 +708,7 @@ Export PDF if needed</code></pre>
 <tr><td>Attendance readiness blocked</td><td>Location setup is missing</td><td>Admin should set school/work location or choose bypass</td></tr>
 <tr><td>Geofencing bypass active</td><td>GPS is temporarily disabled</td><td>Only explicit attendance takers can record attendance</td></tr>
 <tr><td>Check-in closed</td><td>Close time has passed</td><td>Use check-out only if already checked in</td></tr>
-<tr><td>QR code not accepted</td><td>QR is wrong, damaged, or mismatched</td><td>Confirm QR belongs to the right student/staff and class</td></tr>
+<tr><td>QR code not accepted</td><td>QR is wrong, damaged, mismatched, or not from the app card generator</td><td>Confirm QR belongs to the right student/staff and class, then regenerate the card if needed</td></tr>
 <tr><td>Parent sees no children</td><td>No wards assigned</td><td>Admin should assign wards to the parent</td></tr>
 <tr><td>Word manual will not download</td><td>File sharing or asset cache issue</td><td>Restart app or ask developer to clear Expo cache</td></tr>
 </table>
@@ -712,14 +740,15 @@ Export PDF if needed</code></pre>
 <tr><th>Area</th><th>Pages Covered</th></tr>
 <tr><td>Auth</td><td>Sign In, Create Account, Forgot Password, Verify Email, Pending Approval</td></tr>
 <tr><td>Home</td><td>Main dashboard, quick actions, actor selection</td></tr>
-<tr><td>Attendance</td><td>Student/Staff Attendance, QR Scanner, Today's Attendance, Staff ID, Face Check-In</td></tr>
+<tr><td>Attendance</td><td>Student/Staff Attendance, QR Scanner, Today's Attendance, Staff ID, Face Check-In, Staff QR Generator, Movement Reasons</td></tr>
 <tr><td>Admin</td><td>Admin dashboard, User Manual, School/Work Location, Attendance Time</td></tr>
 <tr><td>Setup</td><td>Terms, Weeks, Classes, Class Assignment, Promote Students</td></tr>
 <tr><td>Students</td><td>Student list, Create, Edit, Bulk Import, QR Generator, Face/Biometric Enrollment</td></tr>
 <tr><td>Staff</td><td>Staff list, Create, Edit, Bulk Import, QR Cards, Face/Biometric Enrollment, My Attendance</td></tr>
 <tr><td>Users</td><td>Manage Users, Edit User, Parent Wards</td></tr>
-<tr><td>Reports</td><td>Daily, Weekly, Monthly, Termly, Student Detail, Staff Detail</td></tr>
+<tr><td>Reports</td><td>Daily, Weekly, Monthly, Termly, Yearly, Student Detail, Staff Detail, Staff Yearly</td></tr>
 </table>
 </main>
 </body>
 </html>
+

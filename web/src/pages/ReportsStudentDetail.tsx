@@ -117,7 +117,7 @@ export default function ReportsStudentDetail() {
               <div className="mt-2 text-2xl font-semibold text-blue-700">{summary.attendedSessions}</div>
             </div>
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-              <div className="text-sm text-slate-500">% Present</div>
+              <div className="text-sm text-slate-500">Attendance %</div>
               <div className="mt-2 text-2xl font-semibold text-slate-900">{summary.percentagePresent.toFixed(1)}%</div>
             </div>
           </div>

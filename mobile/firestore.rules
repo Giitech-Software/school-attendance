@@ -20,12 +20,43 @@ service cloud.firestore {
       return get(userPath(request.auth.uid)).data;
     }
 
+    function isSuperAdmin() {
+      return callerUserExists() && callerUser().role == 'super_admin';
+    }
+
     function isAdmin() {
-      return callerUserExists() && callerUser().role == 'admin';
+      return isSuperAdmin()
+        || (callerUserExists() && callerUser().role == 'admin');
     }
 
     function isApproved() {
       return isAdmin() || (callerUserExists() && callerUser().approved == true);
+    }
+
+    function callerHasTenant() {
+      return callerUserExists()
+        && callerUser().tenantId is string
+        && callerUser().tenantId != '';
+    }
+
+    function sameTenantResource() {
+      return isSuperAdmin()
+        || !callerHasTenant()
+        || resource.data.tenantId == callerUser().tenantId;
+    }
+
+    function sameTenantRequest() {
+      return isSuperAdmin()
+        || !callerHasTenant()
+        || request.resource.data.tenantId == callerUser().tenantId;
+    }
+
+    function sameTenantCreate() {
+      return sameTenantRequest();
+    }
+
+    function sameTenantUpdate() {
+      return sameTenantRequest() && sameTenantResource();
     }
 
     function isStaffRole() {
@@ -150,172 +181,206 @@ service cloud.firestore {
         && request.resource.data.location.geofencingBypassed == true;
     }
 
+
+    // -------------------- TENANTS --------------------
+    match /tenants/{tenantId} {
+      allow read: if isSuperAdmin()
+        || (
+          isSignedIn()
+          && callerUserExists()
+          && callerUser().tenantId == tenantId
+        );
+
+      allow create, update: if isSuperAdmin()
+        && request.resource.data.name is string
+        && request.resource.data.type in ['school', 'institution', 'company']
+        && request.resource.data.status in ['active', 'trial', 'suspended'];
+
+      allow delete: if isSuperAdmin();
+    }
+    // -------------------- TENANT INVITES --------------------
+    match /tenantInvites/{code} {
+      allow get: if resource.data.active == true
+        || isSuperAdmin()
+        || (callerHasTenant() && resource.data.tenantId == callerUser().tenantId);
+
+      allow list: if isSuperAdmin();
+
+      allow create, update: if isSuperAdmin()
+        && request.resource.data.code == code
+        && request.resource.data.tenantId is string
+        && request.resource.data.tenantName is string
+        && request.resource.data.tenantType in ['school', 'institution', 'company']
+        && request.resource.data.active is bool;
+
+      allow delete: if isSuperAdmin();
+    }
+
     // -------------------- USERS --------------------
     match /users/{uid} {
       allow create: if isSignedIn()
-        && (request.auth.uid == uid || isAdmin());
+        && (
+          (
+            request.auth.uid == uid
+            && (
+              !(request.resource.data.tenantId is string)
+              || request.resource.data.tenantId == ''
+              || (
+                request.resource.data.tenantInviteCode is string
+                && exists(/databases/$(database)/documents/tenantInvites/$(request.resource.data.tenantInviteCode))
+                && get(/databases/$(database)/documents/tenantInvites/$(request.resource.data.tenantInviteCode)).data.active == true
+                && get(/databases/$(database)/documents/tenantInvites/$(request.resource.data.tenantInviteCode)).data.tenantId == request.resource.data.tenantId
+                && get(/databases/$(database)/documents/tenantInvites/$(request.resource.data.tenantInviteCode)).data.tenantName == request.resource.data.tenantName
+                && get(/databases/$(database)/documents/tenantInvites/$(request.resource.data.tenantInviteCode)).data.tenantType == request.resource.data.tenantType
+              )
+            )
+          )
+          || (isAdmin() && sameTenantCreate())
+        );
 
       allow get: if isSignedIn()
-        && (request.auth.uid == uid || isAdmin());
+        && (request.auth.uid == uid || (isAdmin() && sameTenantResource()));
 
-      allow list: if isAdmin();
+      allow list: if isAdmin() && sameTenantResource();
 
       allow update: if isSignedIn()
         && (
-          isAdmin()
+          (isAdmin() && sameTenantUpdate())
           || (
             request.auth.uid == uid
             && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
               'role',
               'approved',
               'canTakeStaffAttendance',
-              'canTakeStudentAttendance'
+              'canTakeStudentAttendance',
+              'tenantId',
+              'tenantName',
+              'tenantType',
+              'tenantInviteCode'
             ])
           )
         );
 
       allow delete: if isAdmin()
+        && sameTenantResource()
         && resource.data.role != 'admin'
         && request.auth.uid != uid;
     }
 
     // -------------------- CLASSES --------------------
     match /classes/{classId} {
-      allow read: if isApproved();
+      allow read: if isApproved() && sameTenantResource();
 
-      allow create, update: if isAdmin()
+      allow create: if isAdmin()
+        && sameTenantCreate()
         && request.resource.data.name is string
         && request.resource.data.classId is string
-        && (
-          !(request.resource.data.keys().hasAny(['teacherId']))
-          || request.resource.data.teacherId is string
-        )
-        && (
-          !(request.resource.data.keys().hasAny(['assignedStaffUids']))
-          || request.resource.data.assignedStaffUids is list
-        );
+        && (!(request.resource.data.keys().hasAny(['teacherId'])) || request.resource.data.teacherId is string)
+        && (!(request.resource.data.keys().hasAny(['assignedStaffUids'])) || request.resource.data.assignedStaffUids is list);
 
-      allow delete: if isAdmin();
+      allow update: if isAdmin()
+        && sameTenantUpdate()
+        && request.resource.data.name is string
+        && request.resource.data.classId is string
+        && (!(request.resource.data.keys().hasAny(['teacherId'])) || request.resource.data.teacherId is string)
+        && (!(request.resource.data.keys().hasAny(['assignedStaffUids'])) || request.resource.data.assignedStaffUids is list);
+
+      allow delete: if isAdmin() && sameTenantResource();
     }
 
     // -------------------- STUDENTS --------------------
     match /students/{studentId} {
-      allow get: if isAdmin()
+      allow get: if (isAdmin() && sameTenantResource())
         || isAssignedToClassDoc(resource.data.classDocId)
         || isParentOfStudent(studentId);
-      allow list: if isAdmin()
+      allow list: if (isAdmin() && sameTenantResource())
         || isAssignedToClassDoc(resource.data.classDocId);
 
-      allow create, update: if isAdmin()
+      allow create: if isAdmin()
+        && sameTenantCreate()
         && request.resource.data.name is string
-        && (
-          !(request.resource.data.keys().hasAny(['classId']))
-          || request.resource.data.classId is string
-        );
+        && (!(request.resource.data.keys().hasAny(['classId'])) || request.resource.data.classId is string);
 
-      allow delete: if isAdmin();
+      allow update: if isAdmin()
+        && sameTenantUpdate()
+        && request.resource.data.name is string
+        && (!(request.resource.data.keys().hasAny(['classId'])) || request.resource.data.classId is string);
+
+      allow delete: if isAdmin() && sameTenantResource();
     }
 
     // -------------------- STAFF --------------------
     match /staff/{staffId} {
-      allow get: if isAdmin() || canTakeStaffAttendance() || isOwnStaffDoc();
-      allow list: if isAdmin() || canTakeStaffAttendance() || isOwnStaffDoc();
+      allow get: if ((isAdmin() || canTakeStaffAttendance()) && sameTenantResource()) || isOwnStaffDoc();
+      allow list: if ((isAdmin() || canTakeStaffAttendance()) && sameTenantResource()) || isOwnStaffDoc();
 
-      allow create, update: if isAdmin()
+      allow create: if isAdmin()
+        && sameTenantCreate()
         && request.resource.data.name is string
-        && (
-          !(request.resource.data.keys().hasAny(['email']))
-          || request.resource.data.email is string
-        )
-        && (
-          !(request.resource.data.keys().hasAny(['staffId']))
-          || request.resource.data.staffId is string
-        );
+        && (!(request.resource.data.keys().hasAny(['email'])) || request.resource.data.email is string)
+        && (!(request.resource.data.keys().hasAny(['staffId'])) || request.resource.data.staffId is string);
 
-      allow delete: if isAdmin();
+      allow update: if isAdmin()
+        && sameTenantUpdate()
+        && request.resource.data.name is string
+        && (!(request.resource.data.keys().hasAny(['email'])) || request.resource.data.email is string)
+        && (!(request.resource.data.keys().hasAny(['staffId'])) || request.resource.data.staffId is string);
+
+      allow delete: if isAdmin() && sameTenantResource();
     }
 
     // -------------------- ATTENDANCE --------------------
     match /attendance/{recId} {
-      allow get: if isAdmin()
-        || canTakeStaffAttendance()
-        || (
-          resource.data.subjectType == 'student'
-          && isAssignedToClassDoc(resource.data.classDocId)
-        )
+      allow get: if ((isAdmin() || canTakeStaffAttendance()) && sameTenantResource())
+        || (resource.data.subjectType == 'student' && isAssignedToClassDoc(resource.data.classDocId))
         || isReadingOwnStaffAttendance()
         || isReadingWardAttendance();
 
-      allow list: if isAdmin()
-        || canTakeStaffAttendance()
-        || (
-          resource.data.subjectType == 'student'
-          && isAssignedToClassDoc(resource.data.classDocId)
-        )
+      allow list: if ((isAdmin() || canTakeStaffAttendance()) && sameTenantResource())
+        || (resource.data.subjectType == 'student' && isAssignedToClassDoc(resource.data.classDocId))
         || isReadingOwnStaffAttendance()
         || isReadingWardAttendance();
 
       allow create: if validAttendanceShape()
+        && sameTenantCreate()
         && (
           isAdmin()
-          || (
-            request.resource.data.subjectType == 'student'
-            && canTakeStudentAttendance()
-          )
-          || (
-            !attendanceUsesGeofenceBypass()
-            && request.resource.data.subjectType == 'student'
-            && isAssignedToClassDoc(request.resource.data.classDocId)
-          )
-          || (
-            request.resource.data.subjectType == 'staff'
-            && canTakeStaffAttendance()
-          )
-          || (
-            !attendanceUsesGeofenceBypass()
-            && isWritingOwnStaffAttendance()
-          )
+          || (request.resource.data.subjectType == 'student' && canTakeStudentAttendance())
+          || (!attendanceUsesGeofenceBypass() && request.resource.data.subjectType == 'student' && isAssignedToClassDoc(request.resource.data.classDocId))
+          || (request.resource.data.subjectType == 'staff' && canTakeStaffAttendance())
+          || (!attendanceUsesGeofenceBypass() && isWritingOwnStaffAttendance())
         );
 
       allow update: if validAttendanceShape()
+        && sameTenantUpdate()
         && (
           isAdmin()
-          || (
-            resource.data.subjectType == 'student'
-            && canTakeStudentAttendance()
-          )
-          || (
-            !attendanceUsesGeofenceBypass()
-            && resource.data.subjectType == 'student'
-            && isAssignedToClassDoc(resource.data.classDocId)
-            && request.resource.data.classDocId == resource.data.classDocId
-          )
-          || (
-            resource.data.subjectType == 'staff'
-            && canTakeStaffAttendance()
-          )
-          || (
-            !attendanceUsesGeofenceBypass()
-            &&
-            isReadingOwnStaffAttendance()
-            && request.resource.data.subjectType == resource.data.subjectType
-            && request.resource.data.subjectId == resource.data.subjectId
-          )
+          || (resource.data.subjectType == 'student' && canTakeStudentAttendance())
+          || (!attendanceUsesGeofenceBypass() && resource.data.subjectType == 'student' && isAssignedToClassDoc(resource.data.classDocId) && request.resource.data.classDocId == resource.data.classDocId)
+          || (resource.data.subjectType == 'staff' && canTakeStaffAttendance())
+          || (!attendanceUsesGeofenceBypass() && isReadingOwnStaffAttendance() && request.resource.data.subjectType == resource.data.subjectType && request.resource.data.subjectId == resource.data.subjectId)
         );
 
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() && sameTenantResource();
     }
 
     // -------------------- TERMS --------------------
     match /terms/{termId} {
-      allow read: if isApproved();
+      allow read: if isApproved() && sameTenantResource();
 
-      allow create, update: if isAdmin()
+      allow create: if isAdmin()
+        && sameTenantCreate()
         && request.resource.data.name is string
         && request.resource.data.startDate is string
         && request.resource.data.endDate is string;
 
-      allow delete: if isAdmin();
+      allow update: if isAdmin()
+        && sameTenantUpdate()
+        && request.resource.data.name is string
+        && request.resource.data.startDate is string
+        && request.resource.data.endDate is string;
+
+      allow delete: if isAdmin() && sameTenantResource();
     }
 
     // -------------------- ADMIN LOGS --------------------
@@ -332,15 +397,23 @@ service cloud.firestore {
 
     // -------------------- WEEKS --------------------
     match /weeks/{weekId} {
-      allow read: if isApproved();
+      allow read: if isApproved() && sameTenantResource();
 
-      allow create, update: if isAdmin()
+      allow create: if isAdmin()
+        && sameTenantCreate()
         && request.resource.data.termId is string
         && request.resource.data.weekNumber is int
         && request.resource.data.startDate is string
         && request.resource.data.endDate is string;
 
-      allow delete: if isAdmin();
+      allow update: if isAdmin()
+        && sameTenantUpdate()
+        && request.resource.data.termId is string
+        && request.resource.data.weekNumber is int
+        && request.resource.data.startDate is string
+        && request.resource.data.endDate is string;
+
+      allow delete: if isAdmin() && sameTenantResource();
     }
 
     // -------------------- SETTINGS --------------------
@@ -372,3 +445,8 @@ service cloud.firestore {
     }
   }
 }
+
+
+
+
+

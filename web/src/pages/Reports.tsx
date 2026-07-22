@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { getAttendanceSummary, type AttendanceSummary } from "../services/attendanceSummary";
 import { getStaffGlobalSummary, type StaffAttendanceSummary } from "../services/staffAttendanceSummary";
 import useCurrentUser from "../hooks/useCurrentUser";
+import { allowsStudentAndParentFeatures } from "../services/tenantScope";
 
 type ReportType = "student" | "staff";
 type SummaryRow = AttendanceSummary | StaffAttendanceSummary;
@@ -40,18 +41,22 @@ const studentLinks = [
   { title: "Weekly Reports", subtitle: "Attendance grouped by school week", href: "/reports/weekly", tone: "border-l-indigo-500" },
   { title: "Monthly Reports", subtitle: "Attendance grouped by calendar month", href: "/reports/monthly", tone: "border-l-teal-500" },
   { title: "Termly Reports", subtitle: "Summaries by term", href: "/reports/termly", tone: "border-l-rose-500" },
+  { title: "Yearly Reports", subtitle: "Full-year attendance summaries", href: "/reports/yearly", tone: "border-l-orange-500" },
 ];
 
 const staffLinks = [
   { title: "Daily Attendance", subtitle: "Preview by day - staff", href: "/reports/staff-daily", tone: "border-l-purple-500" },
   { title: "Weekly Reports", subtitle: "Staff attendance grouped by week", href: "/reports/staff-weekly", tone: "border-l-indigo-500" },
   { title: "Monthly Reports", subtitle: "Staff attendance grouped by month", href: "/reports/staff-monthly", tone: "border-l-teal-500" },
-  { title: "Termly Reports", subtitle: "Staff summaries by term", href: "/reports/staff-termly", tone: "border-l-rose-500" },
+  { title: "Termly Reports", subtitle: "Staff summaries by term", href: "/reports/staff-termly", tone: "border-l-rose-500", schoolOnly: true },
+  { title: "Yearly Reports", subtitle: "Full-year staff summaries", href: "/reports/staff-yearly", tone: "border-l-orange-500" },
 ];
 
 export default function Reports() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { userDoc, loading: userLoading } = useCurrentUser();
+  const allowsSchoolFeatures = allowsStudentAndParentFeatures(userDoc);
+  const personnelLabel = allowsSchoolFeatures ? "Staff" : userDoc?.tenantType === "company" ? "Employee" : "Personnel";
   const [reportType, setReportType] = useState<ReportType>(searchParams.get("type") === "staff" ? "staff" : "student");
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<SummaryRow[]>([]);
@@ -59,9 +64,9 @@ export default function Reports() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const type = searchParams.get("type") === "staff" ? "staff" : "student";
+    const type = !allowsSchoolFeatures || searchParams.get("type") === "staff" ? "staff" : "student";
     setReportType(type);
-  }, [searchParams]);
+  }, [allowsSchoolFeatures, searchParams]);
 
   useEffect(() => {
     let active = true;
@@ -115,6 +120,7 @@ export default function Reports() {
   }, [summary]);
 
   function changeType(type: ReportType) {
+    if (type === "student" && !allowsSchoolFeatures) return;
     setSearchParams({ type });
   }
 
@@ -122,7 +128,7 @@ export default function Reports() {
     return <div className="enterprise-panel p-4 text-sm text-slate-600">Checking access...</div>;
   }
 
-  if (userDoc?.role !== "admin") {
+  if (userDoc?.role !== "admin" && userDoc?.role !== "super_admin") {
     return (
       <div className="mx-auto max-w-lg enterprise-panel p-6 text-center">
         <h1 className="text-xl font-bold text-red-600">Access Denied</h1>
@@ -131,7 +137,7 @@ export default function Reports() {
     );
   }
 
-  const tiles = reportType === "student" ? studentLinks : staffLinks;
+  const tiles = reportType === "student" && allowsSchoolFeatures ? studentLinks : staffLinks.filter((link) => !link.schoolOnly || allowsSchoolFeatures);
 
   return (
     <div className="space-y-3">
@@ -141,7 +147,11 @@ export default function Reports() {
             <h1 className="text-xl font-extrabold">Reports</h1>
             <p className="mt-1 text-xs text-white/70">Quick previews - tap a tile to open detailed reports.</p>
           </div>
-          <img src="/attendance-report.jpg" alt="Attendance report" className="hidden h-full min-h-28 w-full object-cover lg:block" />
+          <img
+            src="/attendance-report.jpg"
+            alt="Student and staff attendance reports"
+            className="h-[180px] w-full object-fill sm:h-[220px] lg:h-[240px]"
+          />
         </div>
       </section>
 
@@ -149,9 +159,9 @@ export default function Reports() {
         <div className="space-y-3">
           <div className="enterprise-panel p-3">
             <div className="grid grid-cols-2 gap-2">
-              {(["student", "staff"] as const).map((type) => (
+              {(allowsSchoolFeatures ? (["student", "staff"] as const) : (["staff"] as const)).map((type) => (
                 <button key={type} type="button" onClick={() => changeType(type)} className={`rounded-lg border px-3 py-2 text-sm font-bold ${reportType === type ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}>
-                  {type === "student" ? "Student Reports" : "Staff Reports"}
+                  {type === "student" ? "Student Reports" : `${personnelLabel} Reports`}
                 </button>
               ))}
             </div>
@@ -199,6 +209,3 @@ export default function Reports() {
     </div>
   );
 }
-
-
-

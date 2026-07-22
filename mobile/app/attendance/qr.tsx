@@ -15,14 +15,19 @@ import { LinearGradient } from "expo-linear-gradient";
 // use the unified register function (prevent duplicates)
 import { registerAttendanceUnified } from "../../src/services/attendance";
 import { getClassById } from "../../src/services/classes";
-import { listStudents, getStudentById } from "../../src/services/students";
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import { listStudents } from "../../src/services/students";
+import { collection, query, where, getDocs } from "firebase/firestore";
 
 import { db } from "../../app/firebase";
 import { validateQrPayload } from "../../src/services/qr";
 import { registerStaffAttendance } from "../../src/services/staffAttendance";
+import { getStaffByStaffId } from "../../src/services/staff";
+import { getAttendanceSettings } from "../../src/services/attendanceSettings";
+import { getMovementReasonRequirement } from "../../src/services/movementPolicy";
 import { useRequireAttendanceAccess } from "../../src/hooks/useRouteAuthorization";
 import { useCurrentStaff } from "../../src/hooks/useCurrentStaff";
+import { useMovementReasonPrompt } from "../../components/MovementReasonPrompt";
+import { getTenantScope, tenantConstraints } from "../../src/services/tenantScope";
 
 /** Helper: returns YYYY-MM-DD */
 function todayISO() {
@@ -89,8 +94,18 @@ export default function QRScanner(): JSX.Element {
   const [scanned, setScanned] = useState(false);
   const [scannedPayload, setScannedPayload] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
+  const { promptMovementReason, movementReasonPrompt } = useMovementReasonPrompt();
 
   const [mode, setMode] = useState<"in" | "out">("in"); // default check-in
+
+  async function getMovementReasonFor(nextMode: "in" | "out") {
+    const settings = await getAttendanceSettings();
+    const requirement = getMovementReasonRequirement({ settings, mode: nextMode });
+    if (!requirement) return undefined;
+    const reason = await promptMovementReason(requirement);
+    if (!reason) throw new Error("A movement book entry is required to complete this attendance action.");
+    return reason;
+  }
 
   // selectedClassId from URL param (if provided)
   const [selectedClassIdFromParam, setSelectedClassIdFromParam] = useState<string | null>(null);
@@ -145,7 +160,11 @@ export default function QRScanner(): JSX.Element {
       } catch {}
 
       try {
-        const q = query(collection(db, "classes"), where("classId", "==", selectedClassIdFromParam));
+        const q = query(
+          collection(db, "classes"),
+          where("classId", "==", selectedClassIdFromParam),
+          ...tenantConstraints(await getTenantScope())
+        );
         const snap = await getDocs(q);
         if (mounted && snap.docs.length > 0) {
           const d = snap.docs[0];
@@ -270,7 +289,7 @@ const finalClassDocId =
   classDocIdFromParam ?? selectedClassResolvedDocId ?? assignedClassForScan?.id ?? null;
 const canUseAllStudentClasses =
   params?.actor === "staff" ||
-  userDoc?.role === "admin" ||
+  (userDoc?.role === "admin" || userDoc?.role === "super_admin") ||
   hasCapability;
 
 // ✅ Only enforce class for STUDENTS
@@ -307,6 +326,7 @@ if (params?.actor !== "staff") {
       setProcessing(true);
 try {
   const currentActor = params?.actor ?? "student";
+  const movementReason = await getMovementReasonFor(mode);
 
   if (currentActor === "staff") {
   // ============================
@@ -341,6 +361,7 @@ try {
       mode,
       method: "qr",
       biometric: false,
+      movementReason,
     });
 
     Alert.alert(
@@ -353,33 +374,15 @@ try {
   }
 
   // 2️⃣ Find the actual staff document in Firestore
-  let staffDocId: string | null = null;
-  let staffName: string = "Staff Member";
-
-  const qStaff = query(
-    collection(db, "staff"),
-    where("staffId", "==", finalId)
-  );
-
-  const snapStaff = await getDocs(qStaff);
-
-  if (snapStaff.empty) {
-    // Fallback: maybe the QR contains the document ID itself
-    const directDoc = await getDoc(doc(db, "staff", finalId));
-
-    if (directDoc.exists()) {
-      staffDocId = directDoc.id;
-      staffName = directDoc.data()?.name ?? "Staff Member";
-    } else {
-      Alert.alert("Unknown Staff", `No staff record found for ID: ${finalId}`);
-      setProcessing(false);
-      setScanned(false);
-      return;
-    }
-  } else {
-    staffDocId = snapStaff.docs[0].id;
-    staffName = snapStaff.docs[0].data()?.name ?? "Staff Member";
+  const staffRecord = await getStaffByStaffId(finalId);
+  if (!staffRecord?.id) {
+    Alert.alert("Unknown Staff", `No staff record found for ID: ${finalId}`);
+    setProcessing(false);
+    setScanned(false);
+    return;
   }
+  const staffDocId = staffRecord.id;
+  const staffName = staffRecord.name ?? "Staff Member";
 
   // 3️⃣ Call your existing service
   // This internally calls findStaffAttendanceForDate + recordAttendanceCore
@@ -388,6 +391,7 @@ try {
     mode: mode,
     method: "qr",
     biometric: false,
+    movementReason,
   });
 
   Alert.alert(
@@ -405,7 +409,8 @@ try {
     // 1️⃣ Try studentId
     const q1 = query(
       collection(db, "students"),
-     where("studentId", "==", scannedId)
+     where("studentId", "==", scannedId),
+     ...tenantConstraints(await getTenantScope())
 
     );
     const snap1 = await getDocs(q1);
@@ -419,7 +424,8 @@ try {
     if (!studentDoc) {
       const q2 = query(
         collection(db, "students"),
-      where("rollNo", "==", scannedId)
+      where("rollNo", "==", scannedId),
+      ...tenantConstraints(await getTenantScope())
 
       );
       const snap2 = await getDocs(q2);
@@ -450,6 +456,7 @@ await registerAttendanceUnified({
   mode,
   biometric: false,
   enforceClassAssignment: !canUseAllStudentClasses,
+  movementReason,
 });
 
     Alert.alert(
@@ -769,6 +776,10 @@ await registerAttendanceUnified({
           </LinearGradient> 
         </View>
       </View>
+      {movementReasonPrompt}
     </SafeAreaView>
   );
 }
+
+
+

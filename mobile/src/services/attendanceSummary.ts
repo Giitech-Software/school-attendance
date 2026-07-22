@@ -2,6 +2,7 @@
 
 import { query, where, getDocs, collection, getDoc, doc } from "firebase/firestore";
 import { db } from "../../app/firebase";
+import { belongsToTenant, getTenantScope, tenantConstraints } from "./tenantScope";
 import type { AttendanceRecord } from "./types";
 
 const attendanceCollection = collection(db, "attendance");
@@ -61,6 +62,70 @@ function getLastNSchoolDays(n: number, today = new Date()): string[] {
 }
 
 /* -------------------------------------------------------------------------- */
+
+function getSchoolDaysInRange(fromIso: string, toIso: string): string[] {
+  const start = new Date(`${normalizeIsoDate(fromIso)}T12:00:00`);
+  const end = new Date(`${normalizeIsoDate(toIso)}T12:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) return [];
+
+  const days: string[] = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const dow = cursor.getDay();
+    if (dow >= 1 && dow <= 5) days.push(toIsoDate(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return days;
+}
+
+function statusRank(status: string) {
+  if (status === "present") return 3;
+  if (status === "late") return 2;
+  if (status === "absent") return 1;
+  return 0;
+}
+
+function summarizeRecords(studentId: string, records: AttendanceRecord[], expectedDates: string[]): AttendanceSummary {
+  const statusByDate = new Map<string, "present" | "late" | "absent">();
+
+  for (const record of records) {
+    const date = normalizeIsoDate(record.date);
+    if (!date) continue;
+    const status = (record.status ?? (record.checkInTime ? "present" : "absent")) as "present" | "late" | "absent";
+    const current = statusByDate.get(date);
+    if (!current || statusRank(status) > statusRank(current)) {
+      statusByDate.set(date, status);
+    }
+  }
+
+  const datesToCount = expectedDates.length ? expectedDates : Array.from(statusByDate.keys());
+  let present = 0;
+  let absent = 0;
+  let late = 0;
+
+  for (const date of datesToCount) {
+    const status = statusByDate.get(date);
+    if (status === "present") present++;
+    else if (status === "late") late++;
+    else absent++;
+  }
+
+  const totalSchoolDays = datesToCount.length;
+  const attendedSessions = present + late;
+  const score = present + late * 0.5;
+  const percentagePresent = totalSchoolDays === 0 ? 0 : Number(((score / totalSchoolDays) * 100).toFixed(2));
+
+  return {
+    studentId,
+    presentCount: present,
+    lateCount: late,
+    absentCount: absent,
+    attendedSessions,
+    totalSchoolDays,
+    percentagePresent,
+  };
+}
+
 /* RANGE → STUDENT RECORD FETCH */
 /* -------------------------------------------------------------------------- */
 
@@ -80,14 +145,13 @@ export async function getAttendanceForStudentInRange(
    const from = normalizeIsoDate(fromIso);
 const to = normalizeIsoDate(toIso);
 
-// 🔍 TEMP DEBUG — safe to remove later
-console.log("Normalized range", { from, to });
 
 const q = query(
   attendanceCollection,
   where("studentId", "==", studentId),
   where("date", ">=", from),
-  where("date", "<=", to)
+  where("date", "<=", to),
+  ...tenantConstraints(await getTenantScope())
 );
 
 
@@ -115,47 +179,11 @@ export type AttendanceScope =
 export async function computeAttendanceSummaryForStudent(
   studentId: string,
   fromIso: string,
-  toIso: string
+  toIso: string,
+  expectedDates = getSchoolDaysInRange(fromIso, toIso)
 ): Promise<AttendanceSummary> {
   const records = await getAttendanceForStudentInRange(studentId, fromIso, toIso);
-console.log("Attendance range", { studentId, fromIso, toIso });
-
-  let present = 0;
-  let absent = 0;
-  let late = 0;
-
-  for (const r of records) {
-    const s = r.status ?? (r.checkInTime ? "present" : "absent");
-    if (s === "present") present++;
-    else if (s === "absent") absent++;
-    else if (s === "late") late++;
-    console.log("Record date", r.date);
- 
-  }
-
-  const totalSchoolDays = present + late + absent;
-const attendedSessions = present + late;
-
-const score = present + late * 0.5;
-
-const percentage =
-  totalSchoolDays === 0
-    ? 0
-    : Number(((score / totalSchoolDays) * 100).toFixed(2));
-
-  return {
-  studentId,
-  presentCount: present,
-  lateCount: late,
-  absentCount: absent,
-
-  attendedSessions,
-  totalSchoolDays,
-
-  percentagePresent: percentage,
-};
-
-
+  return summarizeRecords(studentId, records, expectedDates);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -174,7 +202,8 @@ export async function computeClassSummary(
       attendanceCollection,
       where("classId", "==", classId),
       where("date", ">=", fromIso),
-      where("date", "<=", toIso)
+      where("date", "<=", toIso),
+      ...tenantConstraints(await getTenantScope())
     );
 
     const snap = await getDocs(q);
@@ -210,36 +239,12 @@ export async function computeClassSummary(
     }
 
     // 3️⃣ Compute summary per student
+    const expectedDates = getSchoolDaysInRange(fromIso, toIso);
     for (const [studentId, recs] of byStudent.entries()) {
-      let present = 0;
-      let absent = 0;
-      let late = 0;
-
-      for (const r of recs) {
-        const s = r.status ?? (r.checkInTime ? "present" : "absent");
-        if (s === "present") present++;
-        else if (s === "absent") absent++;
-        else if (s === "late") late++;
-      }
-
-      const totalSchoolDays = present + late + absent;
-      const attendedSessions = present + late;
-      const score = present + late * 0.5;
-      const percentage =
-        totalSchoolDays === 0
-          ? 0
-          : Number(((score / totalSchoolDays) * 100).toFixed(2));
-
       out.push({
-        studentId,
-        presentCount: present,
-        lateCount: late,
-        absentCount: absent,
-        attendedSessions,
-        totalSchoolDays,
-        percentagePresent: percentage,
-      studentName: includeStudentName ? nameMap[studentId] : undefined,
-  });
+        ...summarizeRecords(studentId, recs, expectedDates),
+        studentName: includeStudentName ? nameMap[studentId] : undefined,
+      });
     }
 
     // 4️⃣ Sort by highest attendance
@@ -278,14 +283,17 @@ export async function getAttendanceSummary(
   }
 
   try {
+    const expectedDates = getSchoolDaysInRange(fromIso, toIso);
+
     /* -------------------------------------------- */
     /* STEP 1: Load students (with optional classId) */
     /* -------------------------------------------- */
     let students: any[] = [];
 
     if (opts.studentId) {
+      const scope = await getTenantScope();
       const studentSnap = await getDoc(doc(db, "students", opts.studentId));
-      if (!studentSnap.exists()) return [];
+      if (!studentSnap.exists() || !belongsToTenant(studentSnap.data(), scope)) return [];
 
       students = [
         {
@@ -294,13 +302,16 @@ export async function getAttendanceSummary(
         },
       ];
     } else {
-      const studentSnap = await getDocs(studentsCollection);
+      const scope = await getTenantScope();
+      const studentSnap = await getDocs(query(studentsCollection, ...tenantConstraints(scope)));
 
       students = studentSnap.docs.map((docx) => ({
         id: docx.id,
         ...(docx.data() as any),
       }));
     }
+
+    students = students.filter((student) => student.isActive !== false);
 
     // If a classId filter is provided, support:
     // - classId stored on student doc (short class id)
@@ -322,7 +333,7 @@ export async function getAttendanceSummary(
     // Parallelise summaries for speed
     const summaries = await Promise.all(
       students.map(async (student) => {
-        const summary = await computeAttendanceSummaryForStudent(student.id, fromIso, toIso);
+        const summary = await computeAttendanceSummaryForStudent(student.id, fromIso, toIso, expectedDates);
    const studentName = opts.includeStudentName ? student.name ?? "" : undefined;
 const displayId   = student.studentId ?? student.rollNo ?? "";
 
@@ -350,3 +361,6 @@ return {
     return [];
   }
 }
+
+
+

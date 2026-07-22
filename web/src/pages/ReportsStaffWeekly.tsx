@@ -5,14 +5,47 @@ import { listTerms, type Term } from "../services/terms";
 import { listWeeks } from "../services/weeks";
 import type { Week } from "../types";
 import { exportReportCsv, openReportPdf } from "../services/reportExport";
+import AttendanceTotalsCards from "../components/AttendanceTotalsCards";
+import useCurrentUser from "../hooks/useCurrentUser";
+import { allowsStudentAndParentFeatures } from "../services/tenantScope";
 
 function currentTermFrom(terms: Term[]) {
   const today = new Date().toISOString().slice(0, 10);
   return terms.find((term) => term.isCurrent) ?? terms.find((term) => today >= term.startDate && today <= term.endDate) ?? null;
 }
 
+function isoDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function calendarWeeks(count = 8): Week[] {
+  const today = new Date();
+  const day = today.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(today);
+  monday.setHours(12, 0, 0, 0);
+  monday.setDate(today.getDate() + diffToMonday);
+
+  return Array.from({ length: count }, (_, index) => {
+    const start = new Date(monday);
+    start.setDate(monday.getDate() - index * 7);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    const weekNumber = count - index;
+    return {
+      id: `calendar-${isoDate(start)}`,
+      termId: "calendar",
+      weekNumber,
+      startDate: isoDate(start),
+      endDate: isoDate(end),
+    } as Week;
+  }).reverse();
+}
+
 export default function ReportsStaffWeekly() {
   const navigate = useNavigate();
+  const { userDoc } = useCurrentUser();
+  const allowsSchoolFeatures = allowsStudentAndParentFeatures(userDoc);
   const [loading, setLoading] = useState(true);
   const [weeks, setWeeks] = useState<Week[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<Week | null>(null);
@@ -25,6 +58,18 @@ export default function ReportsStaffWeekly() {
     (async () => {
       try {
         setLoading(true);
+        setError(null);
+
+        if (!allowsSchoolFeatures) {
+          const generatedWeeks = calendarWeeks();
+          const currentWeek = generatedWeeks[generatedWeeks.length - 1] ?? null;
+          if (active) {
+            setWeeks(generatedWeeks);
+            setSelectedWeek(currentWeek);
+          }
+          return;
+        }
+
         const terms = await listTerms().catch(() => []);
         if (!active) return;
 
@@ -55,9 +100,9 @@ export default function ReportsStaffWeekly() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [allowsSchoolFeatures]);
 
-  const sortedWeeks = useMemo(() => [...weeks].sort((a, b) => (a.weekNumber ?? 0) - (b.weekNumber ?? 0)), [weeks]);
+  const sortedWeeks = useMemo(() => [...weeks].sort((a, b) => (a.startDate ?? "").localeCompare(b.startDate ?? "")), [weeks]);
 
   useEffect(() => {
     let active = true;
@@ -94,7 +139,7 @@ export default function ReportsStaffWeekly() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-xl font-extrabold text-slate-950">Weekly Staff Reports</h1>
-            <p className="mt-1 text-sm text-slate-600">Select a generated term week and review staff attendance summaries.</p>
+            <p className="mt-1 text-sm text-slate-600">Select a week and review staff attendance summaries.</p>
           </div>
           <button onClick={() => navigate("/reports")} className="enterprise-button-secondary">
             Back
@@ -137,6 +182,7 @@ export default function ReportsStaffWeekly() {
           </div>
         ) : null}
 
+        {rows.length > 0 ? <AttendanceTotalsCards rows={rows} subjectLabel="Staff" groupLabel="All staff" /> : null}
         {loading && <div className="mt-4 text-slate-500">Loading report...</div>}
         {!loading && !selectedWeek && <div className="mt-4 text-slate-500">Select a week to view report data.</div>}
         {!loading && selectedWeek && rows.length === 0 && <div className="mt-4 text-slate-500">No data for selected week.</div>}
@@ -151,7 +197,7 @@ export default function ReportsStaffWeekly() {
                   <th className="px-2 py-1">L</th>
                   <th className="px-2 py-1">T</th>
                   <th className="px-2 py-1">A</th>
-                  <th className="px-2 py-1">% Present</th>
+                  <th className="px-2 py-1">Attendance %</th>
                   <th className="px-2 py-1"></th>
                 </tr>
               </thead>
@@ -189,10 +235,3 @@ export default function ReportsStaffWeekly() {
     </div>
   );
 }
-
-
-
-
-
-
-

@@ -4,6 +4,7 @@ import { listClasses, type SchoolClass } from "../services/classes";
 import { getAttendanceSummary, type AttendanceSummary } from "../services/attendanceSummary";
 import { listTerms, type Term } from "../services/terms";
 import { exportReportCsv, openReportPdf } from "../services/reportExport";
+import AttendanceTotalsCards from "../components/AttendanceTotalsCards";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -191,6 +192,7 @@ export default function ReportsMonthly() {
           </div>
         ) : null}
 
+        {rows.length > 0 ? <AttendanceTotalsCards rows={rows} subjectLabel="Students" groupLabel={selectedClassKey ? "Selected class" : "All classes"} /> : null}
         {loading && <div className="report-empty">Loading report...</div>}
         {!loading && !selectedRange && <div className="report-empty">Select a month in the current term to view report data.</div>}
         {!loading && selectedRange && rows.length === 0 && <div className="report-empty">No data for selected month or class.</div>}
@@ -205,7 +207,7 @@ export default function ReportsMonthly() {
                   <th className="px-2 py-1">L</th>
                   <th className="px-2 py-1">T</th>
                   <th className="px-2 py-1">A</th>
-                  <th className="px-2 py-1">% Present</th>
+                  <th className="px-2 py-1">Attendance %</th>
                   <th className="px-2 py-1"></th>
                 </tr>
               </thead>
@@ -243,15 +245,3 @@ export default function ReportsMonthly() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-

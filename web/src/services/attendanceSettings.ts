@@ -1,18 +1,23 @@
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
+import { scopedSettingsDocId } from "./tenantScope";
 
 export type AttendanceSettings = {
   lateAfter: string;
   closeAfter: string;
   timezone: string;
+  allowStaffWeekendAttendance: boolean;
 };
 
-const ATTENDANCE_SETTINGS_DOC = doc(db, "settings", "attendance");
+async function attendanceSettingsDoc() {
+  return doc(db, "settings", await scopedSettingsDocId("attendance"));
+}
 
 const DEFAULT_ATTENDANCE_SETTINGS: AttendanceSettings = {
   lateAfter: "08:00",
   closeAfter: "16:00",
   timezone: "Africa/Accra",
+  allowStaffWeekendAttendance: false,
 };
 
 function parseTimeToMinutes(time?: string): number | null {
@@ -60,8 +65,34 @@ export async function assertAttendanceCheckInOpen() {
   return settings;
 }
 
+function getDayInTimezone(date: Date, timezone: string): number {
+  try {
+    const weekday = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      weekday: "short",
+    }).format(date);
+    return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(weekday);
+  } catch {
+    return date.getDay();
+  }
+}
+
+export function isWeekendForAttendance(settings: AttendanceSettings, now = new Date()) {
+  const timezone = settings.timezone || DEFAULT_ATTENDANCE_SETTINGS.timezone;
+  const day = getDayInTimezone(now, timezone);
+  return day === 0 || day === 6;
+}
+
+export async function assertStaffAttendanceDayAllowed() {
+  const settings = await getAttendanceSettings();
+  if (isWeekendForAttendance(settings) && !settings.allowStaffWeekendAttendance) {
+    throw new Error("Staff attendance is disabled on weekends. Ask an admin to allow weekend staff attendance.");
+  }
+  return settings;
+}
+
 export async function getAttendanceSettings(): Promise<AttendanceSettings> {
-  const snap = await getDoc(ATTENDANCE_SETTINGS_DOC);
+  const snap = await getDoc(await attendanceSettingsDoc());
 
   if (!snap.exists()) {
     return DEFAULT_ATTENDANCE_SETTINGS;
@@ -72,12 +103,14 @@ export async function getAttendanceSettings(): Promise<AttendanceSettings> {
     lateAfter: data.lateAfter ?? DEFAULT_ATTENDANCE_SETTINGS.lateAfter,
     closeAfter: data.closeAfter ?? DEFAULT_ATTENDANCE_SETTINGS.closeAfter,
     timezone: data.timezone ?? DEFAULT_ATTENDANCE_SETTINGS.timezone,
+    allowStaffWeekendAttendance:
+      data.allowStaffWeekendAttendance ?? DEFAULT_ATTENDANCE_SETTINGS.allowStaffWeekendAttendance,
   };
 }
 
 export async function saveAttendanceSettings(settings: AttendanceSettings) {
   await setDoc(
-    ATTENDANCE_SETTINGS_DOC,
+    await attendanceSettingsDoc(),
     {
       ...settings,
       updatedAt: serverTimestamp(),
@@ -85,3 +118,4 @@ export async function saveAttendanceSettings(settings: AttendanceSettings) {
     { merge: true }
   );
 }
+

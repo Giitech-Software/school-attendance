@@ -26,6 +26,7 @@ import {
 } from "../../src/services/locationGuard";
 import { getCurrentTerm } from "../../src/services/terms";
 import { logAdminAction } from "../../src/services/adminLogs";
+import { allowsStudentAndParentFeatures } from "../../src/services/tenantScope";
 
 type LocationCoords = Location.LocationObjectCoords;
 type BypassDuration = "day" | "week" | "month" | "term" | "year";
@@ -73,6 +74,11 @@ export default function SetupSchoolLocation() {
     ready: adminReady,
   } = useRequireAdmin();
 
+  const allowsSchoolFeatures = allowsStudentAndParentFeatures(userDoc);
+  const locationLabel = allowsSchoolFeatures ? "School" : "Workplace";
+  const locationLabelLower = locationLabel.toLowerCase();
+  const bypassFallbackReason = `${locationLabel} verification temporarily unavailable`;
+
   const [latitude, setLatitude] = useState<string>("");
   const [longitude, setLongitude] = useState<string>("");
   const [radius, setRadius] = useState<string>("150");
@@ -89,9 +95,7 @@ export default function SetupSchoolLocation() {
   const [campusServer, setCampusServer] =
     useState<CampusServerSettings | null>(null);
   const [wifiBssidList, setWifiBssidList] = useState("");
-  const [bypassReason, setBypassReason] = useState(
-    "School location temporarily unavailable"
-  );
+  const [bypassReason, setBypassReason] = useState(bypassFallbackReason);
   const [bypassDuration, setBypassDuration] =
     useState<BypassDuration>("day");
   const [disabledUntil, setDisabledUntil] = useState<string | null>(null);
@@ -105,7 +109,7 @@ export default function SetupSchoolLocation() {
       if (status !== "granted") {
         Alert.alert(
           "Permission denied",
-          "Location permission is required to set school location."
+          `Location permission is required to set ${locationLabelLower} location.`
         );
         return null;
       }
@@ -156,7 +160,7 @@ export default function SetupSchoolLocation() {
         setCampusServerName(readiness.campusServer?.serverName ?? "");
         setWifiBssidList(formatWifiNetworks(readiness.institutionWifiNetworks));
         setBypassReason(
-          readiness.disabledReason ?? "School location temporarily unavailable"
+          readiness.disabledReason ?? bypassFallbackReason
         );
         setDisabledUntil(readiness.disabledUntil ?? null);
 
@@ -204,7 +208,7 @@ export default function SetupSchoolLocation() {
         "GPS accuracy too low",
         `Current accuracy is +/-${Math.round(
           accuracy
-        )}m. Move to an open area and refresh before saving the school location.`
+        )}m. Move to an open area and refresh before saving the ${locationLabelLower} location.`
       );
     }
 
@@ -232,7 +236,7 @@ export default function SetupSchoolLocation() {
         action: "UPDATE_SCHOOL_LOCATION",
         targetType: "settings",
         targetId: "location",
-        description: "Updated school geofence location",
+        description: `Updated ${locationLabelLower} verification location`,
         metadata: {
           latitude: lat,
           longitude: lng,
@@ -241,7 +245,7 @@ export default function SetupSchoolLocation() {
         },
       });
 
-      Alert.alert("Success", "School location has been saved!");
+      Alert.alert("Success", `${locationLabel} verification has been saved!`);
       setGeofencingEnabled(presenceMode !== "disabled");
       setDisabledUntil(presenceMode === "disabled" ? disabledUntil : null);
       router.back();
@@ -249,7 +253,7 @@ export default function SetupSchoolLocation() {
       console.error("Firestore save error:", err);
       Alert.alert(
         "Error",
-        "Failed to save school location. Check your internet connection."
+        `Failed to save ${locationLabelLower} verification. Check your internet connection.`
       );
     } finally {
       setLoading(false);
@@ -283,7 +287,7 @@ export default function SetupSchoolLocation() {
     if (!campusBaseUrl.trim() || !campusSetupCode.trim()) {
       return Alert.alert(
         "Missing setup",
-        "Enter the campus server URL and setup code."
+        "Enter the verification server URL and setup code."
       );
     }
 
@@ -304,7 +308,7 @@ export default function SetupSchoolLocation() {
       setCampusServerName(paired.serverName ?? "");
       setPresenceMode("campus_network_or_gps");
       setCampusSetupCode("");
-      Alert.alert("Paired", "Campus server verification is ready.");
+      Alert.alert("Paired", "Verification server is ready.");
     } catch (err) {
       Alert.alert(
         "Pairing failed",
@@ -324,8 +328,8 @@ export default function SetupSchoolLocation() {
       !campus
     ) {
       return Alert.alert(
-        "Campus server required",
-        "Enter and pair or save a campus server before using network verification."
+        "Verification server required",
+        "Enter and pair or save a verification server before using network verification."
       );
     }
 
@@ -453,7 +457,7 @@ export default function SetupSchoolLocation() {
         </Pressable>
 
         <Text className="text-2xl font-bold flex-1">
-          Set School/Work Location
+          Set {locationLabel} Verification
         </Text>
       </View>
 
@@ -471,7 +475,7 @@ export default function SetupSchoolLocation() {
         </Text>
         <Text className="text-slate-700 mt-1">
           {geofencingEnabled
-            ? "Attendance requires staff to be inside the configured school radius."
+            ? `Attendance requires staff to be inside the configured ${locationLabelLower} radius.`
             : `Emergency mode is active${disabledUntil ? ` until ${new Date(disabledUntil).toLocaleString()}` : ""}.`}
         </Text>
 
@@ -491,7 +495,7 @@ export default function SetupSchoolLocation() {
           Attendance Verification
         </Text>
         <Text className="text-slate-600 mt-1">
-          Campus network + GPS is recommended for fast check-ins.
+          Network + GPS verification is recommended for fast check-ins.
         </Text>
 
         {[
@@ -558,7 +562,7 @@ export default function SetupSchoolLocation() {
           value={campusInstitutionId}
           onChangeText={setCampusInstitutionId}
           autoCapitalize="none"
-          placeholder="school_001"
+          placeholder="institution_001"
         />
 
         <Text className="mt-2 font-medium">Server name</Text>
@@ -586,7 +590,7 @@ export default function SetupSchoolLocation() {
           autoCapitalize="none"
           multiline
           numberOfLines={4}
-          placeholder="BSSID, SSID, Label&#10;aa:bb:cc:dd:ee:ff, School WiFi, Admin Block"
+          placeholder="BSSID, SSID, Label&#10;aa:bb:cc:dd:ee:ff, Workplace WiFi, Main Office"
         />
         <Text className="text-slate-500 mt-1 text-xs">
           Add one WiFi access point per line. BSSID is required; SSID and label
@@ -689,7 +693,7 @@ export default function SetupSchoolLocation() {
         disabled={loading}
       >
         <Text className="text-white font-bold text-center">
-          {loading ? "Saving..." : "Set School/Work Location"}
+          {loading ? "Saving..." : `Set ${locationLabel} Verification`}
         </Text>
       </Pressable>
 

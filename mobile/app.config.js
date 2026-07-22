@@ -5,7 +5,7 @@ export default ({ config }) => ({
 
   owner: "giitech_software_systems",
 
-  name: "M'Salem Attendance Register",
+  name: "ASTEM Attendance Register",
   slug: "mobile",
   version: "2.0.0",
 
@@ -62,6 +62,8 @@ export default ({ config }) => ({
       "CAMERA",
       "ACCESS_FINE_LOCATION",
       "ACCESS_COARSE_LOCATION",
+      "ACCESS_WIFI_STATE",
+      "ACCESS_NETWORK_STATE",
     ],
 
     adaptiveIcon: {
@@ -140,3 +142,4 @@ export default ({ config }) => ({
     },
   },
 });
+

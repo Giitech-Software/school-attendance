@@ -1,142 +1,65 @@
-// src/services/weeks.ts
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  addDoc,
-  deleteDoc,
-  orderBy,
-} from "firebase/firestore";
+import { addDoc, collection, deleteDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from "../../app/firebase";
+import { getTenantScope, sortByCreatedAtDesc, tenantConstraints, withTenantScope } from "./tenantScope";
 
-/* =========================
-   LIST WEEKS (LEGACY SAFE)
-========================= */
 export async function listWeeks(termId?: string): Promise<any[]> {
+  const scope = await getTenantScope();
   const ref = collection(db, "weeks");
-
-  let q;
-
-  if (termId) {
-    q = query(
-      ref,
-      where("termId", "==", termId),
-      orderBy("weekNumber")
-    );
-  } else {
-    // legacy fallback (do NOT mix terms)
-    q = query(ref, orderBy("createdAt", "desc"));
-  }
-
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const filters = termId ? [where("termId", "==", termId), ...tenantConstraints(scope)] : tenantConstraints(scope);
+  const snap = await getDocs(query(ref, ...filters));
+  const rows: any[] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return termId ? rows.sort((a, b) => (a.weekNumber ?? 0) - (b.weekNumber ?? 0)) : sortByCreatedAtDesc(rows);
 }
 
-/* =========================
-   LIST WEEKS FOR TERM (STRICT)
-========================= */
 export async function listWeeksForTerm(termId: string): Promise<any[]> {
   if (!termId) return [];
-
-  const ref = collection(db, "weeks");
-  const q = query(
-    ref,
-    where("termId", "==", termId),
-    orderBy("weekNumber")
-  );
-
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  return listWeeks(termId);
 }
 
-/* =========================
-   DELETE WEEKS FOR TERM
-========================= */
 async function deleteWeeksForTerm(termId: string) {
+  const scope = await getTenantScope();
   const ref = collection(db, "weeks");
-  const q = query(ref, where("termId", "==", termId));
-  const snap = await getDocs(q);
-
-  const deletions = snap.docs.map(d =>
-    deleteDoc(d.ref)
-  );
-
-  await Promise.all(deletions);
+  const snap = await getDocs(query(ref, where("termId", "==", termId), ...tenantConstraints(scope)));
+  await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
 }
 
-/* =========================
-   AUTO-GENERATE WEEKS
-========================= */
-export async function autoGenerateWeeksForTerm(
-  termId: string,
-  startDate: string,
-  endDate: string
-): Promise<number> {
+export async function autoGenerateWeeksForTerm(termId: string, startDate: string, endDate: string): Promise<number> {
   await deleteWeeksForTerm(termId);
-
   const start = new Date(startDate);
   const end = new Date(endDate);
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+  if (start > end) throw new Error("Invalid term date range");
 
-  if (start > end) {
-    throw new Error("Invalid term date range");
-  }
-
+  const scope = await getTenantScope();
   const ref = collection(db, "weeks");
-
   let current = new Date(start);
   let weekNumber = 1;
   let created = 0;
 
- while (current <= end) {
-  // ⛔ Skip weekends
-  if (current.getDay() === 6) {
-    current.setDate(current.getDate() + 2);
-    continue;
+  while (current <= end) {
+    if (current.getDay() === 6) { current.setDate(current.getDate() + 2); continue; }
+    if (current.getDay() === 0) { current.setDate(current.getDate() + 1); continue; }
+    while (current.getDay() !== 1 && current > new Date(startDate)) current.setDate(current.getDate() - 1);
+    const weekStart = new Date(current);
+    const weekEnd = new Date(weekStart);
+    while (weekEnd.getDay() !== 5) weekEnd.setDate(weekEnd.getDate() + 1);
+    if (weekStart < start) weekStart.setTime(start.getTime());
+    if (weekEnd > end) weekEnd.setTime(end.getTime());
+
+    await addDoc(ref, withTenantScope({
+      termId,
+      weekNumber,
+      startDate: weekStart.toISOString().slice(0, 10),
+      endDate: weekEnd.toISOString().slice(0, 10),
+      createdAt: new Date(),
+    }, scope));
+
+    created += 1;
+    weekNumber += 1;
+    current = new Date(weekEnd);
+    current.setDate(current.getDate() + 3);
   }
-  if (current.getDay() === 0) {
-    current.setDate(current.getDate() + 1);
-    continue;
-  }
-
-  // ✅ Force week start = Monday
-  while (current.getDay() !== 1 && current > new Date(startDate)) {
-  current.setDate(current.getDate() - 1);
-}
-
-  const weekStart = new Date(current);
-
-  // ✅ Force week end = Friday
-  const weekEnd = new Date(weekStart);
-  while (weekEnd.getDay() !== 5) {
-    weekEnd.setDate(weekEnd.getDate() + 1);
-  }
-
-  // clamp inside term
-  if (weekStart < start) {
-    weekStart.setTime(start.getTime());
-  }
-  if (weekEnd > end) {
-    weekEnd.setTime(end.getTime());
-  }
-
-  await addDoc(ref, {
-    termId,
-    weekNumber,
-    startDate: weekStart.toISOString().slice(0, 10),
-    endDate: weekEnd.toISOString().slice(0, 10),
-    createdAt: new Date(),
-  });
-
-  created++;
-  weekNumber++;
-
-  // ➡️ move to next Monday
-  current = new Date(weekEnd);
-  current.setDate(current.getDate() + 3);
-}
-
-
   return created;
 }
- 
+

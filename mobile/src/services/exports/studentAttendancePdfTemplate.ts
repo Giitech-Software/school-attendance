@@ -27,7 +27,7 @@ export function studentAttendancePdfTemplate({
 }: TemplateParams) {
   const rowsHtml =
     records.length === 0
-      ? `<tr><td colspan="5">No attendance records</td></tr>`
+      ? `<tr><td colspan="6">No attendance records</td></tr>`
       : records
           .map((r, idx) => {
             const status =
@@ -47,6 +47,10 @@ export function studentAttendancePdfTemplate({
                 })
               : "—";
 
+            const movementReason = [r.lateReason, r.earlyCheckoutReason]
+              .filter(Boolean)
+              .join(" / ") || "â€”";
+
             return `
               <tr class="${status}">
                 <td>${idx + 1}</td>
@@ -54,6 +58,7 @@ export function studentAttendancePdfTemplate({
                 <td class="status ${status}">${status}</td>
                 <td>${checkIn}</td>
                 <td>${checkOut}</td>
+                <td>${movementReason}</td>
               </tr>
             `;
           })
@@ -160,6 +165,7 @@ td.status.late { color: #92400e; font-weight: 600; }
   <th>Status</th>
   <th>Check-in</th>
   <th>Check-out</th>
+  <th>Movement book entry</th>
 </tr>
 </thead>
 <tbody>

@@ -5,13 +5,14 @@ import { listStudents, type Student } from "../services/students";
 import { getAttendanceForDate, registerAttendanceUnified, todayISO } from "../services/attendance";
 import { getStaffByStaffId, listStaff, type Staff } from "../services/staff";
 import { registerStaffAttendance } from "../services/staffAttendance";
+import { getAttendanceSettings } from "../services/attendanceSettings";
 import type { AttendanceRecord } from "../types";
 
-function isAttendanceAllowed(): { allowed: boolean; reason?: string } {
+function isAttendanceAllowed(actor: "student" | "staff", allowStaffWeekendAttendance: boolean): { allowed: boolean; reason?: string } {
   const today = new Date();
   const day = today.getDay();
-  if (day === 0) return { allowed: false, reason: "Today is Sunday. Attendance is not allowed." };
-  if (day === 6) return { allowed: false, reason: "Today is Saturday. Attendance is not allowed." };
+  if (day === 0 && !(actor === "staff" && allowStaffWeekendAttendance)) return { allowed: false, reason: "Today is Sunday. Attendance is not allowed." };
+  if (day === 6 && !(actor === "staff" && allowStaffWeekendAttendance)) return { allowed: false, reason: "Today is Saturday. Attendance is not allowed." };
   const holidays = ["2026-01-01", "2026-04-15", "2026-12-25"];
   if (holidays.includes(today.toISOString().slice(0, 10))) return { allowed: false, reason: "Today is a holiday. Attendance is not allowed." };
   return { allowed: true };
@@ -25,6 +26,47 @@ function timeLabel(value?: string | null) {
   return value ? new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--";
 }
 
+
+const LATE_REASON_GRACE_MINUTES = 60;
+const LATE_REASON_OPTIONS = ["Transport or traffic disruption", "Health or medical matter", "Family or personal emergency", "Authorised organisational duty", "Severe weather or road conditions"];
+const EARLY_CHECKOUT_REASON_OPTIONS = ["Authorised organisational assignment", "Medical appointment or health matter", "Family or personal emergency", "Approved early departure", "Transport or safety requirement"];
+
+function parseTimeToMinutes(time?: string) {
+  if (!time || !/^\d{2}:\d{2}$/.test(time)) return null;
+  const [hour, minute] = time.split(":").map(Number);
+  if (hour > 23 || minute > 59) return null;
+  return hour * 60 + minute;
+}
+
+function minutesInTimezone(date: Date, timezone: string) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(date);
+    const hour = Number(parts.find((part) => part.type === "hour")?.value);
+    const minute = Number(parts.find((part) => part.type === "minute")?.value);
+    if (Number.isFinite(hour) && Number.isFinite(minute)) return hour * 60 + minute;
+  } catch {}
+  return date.getHours() * 60 + date.getMinutes();
+}
+
+async function promptMovementReason(mode: "in" | "out") {
+  const settings = await getAttendanceSettings();
+  const currentMinutes = minutesInTimezone(new Date(), settings.timezone || "Africa/Accra");
+  const targetMinutes = parseTimeToMinutes(mode === "in" ? settings.lateAfter : settings.closeAfter);
+  if (targetMinutes === null) return undefined;
+  const minutes = mode === "in" ? currentMinutes - targetMinutes : targetMinutes - currentMinutes;
+  const required = mode === "in" ? minutes >= LATE_REASON_GRACE_MINUTES : minutes > 0;
+  if (!required) return undefined;
+  const options = mode === "in" ? LATE_REASON_OPTIONS : EARLY_CHECKOUT_REASON_OPTIONS;
+  const eventLabel = mode === "in" ? "late arrival" : "early departure";
+  const timing = mode === "in" ? `${minutes} minutes after the scheduled time` : `${minutes} minutes before the scheduled closing time`;
+  const answer = window.prompt(`Movement Book Entry — ${eventLabel}\n\nThis attendance event is ${timing}. Record an approved reason to complete the audit trail.\n\nApproved reason categories:\n${options.map((option, index) => `${index + 1}. ${option}`).join("\n")}\n\nEnter a category number or provide a clear authorised reason:`);
+  if (answer === null) throw new Error("A movement book entry is required to complete this attendance action.");
+  const trimmed = answer.trim();
+  const selected = options[Number(trimmed) - 1];
+  const reason = selected ?? trimmed;
+  if (!reason) throw new Error("A movement book entry is required to complete this attendance action.");
+  return reason;
+}
 function actionCardClass(tone: "primary" | "sky" | "emerald" | "slate") {
   const tones = {
     primary: "border-l-primary bg-primary/5",
@@ -32,7 +74,7 @@ function actionCardClass(tone: "primary" | "sky" | "emerald" | "slate") {
     emerald: "border-l-emerald-500 bg-emerald-50",
     slate: "border-l-slate-500 bg-slate-50",
   };
-  return `rounded-lg border border-slate-200 border-l-4 p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${tones[tone]}`;
+  return `block min-w-0 overflow-hidden rounded-lg border border-slate-200 border-l-4 p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${tones[tone]}`;
 }
 
 export default function Checkin() {
@@ -52,8 +94,9 @@ export default function Checkin() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [allowStaffWeekendAttendance, setAllowStaffWeekendAttendance] = useState(false);
 
-  const attendanceCheck = isAttendanceAllowed();
+  const attendanceCheck = isAttendanceAllowed(actor, allowStaffWeekendAttendance);
   const selectedClass = useMemo(
     () => classes.find((cls) => cls.id === selectedClassId || cls.classId === selectedClassId),
     [classes, selectedClassId]
@@ -69,16 +112,18 @@ export default function Checkin() {
     (async () => {
       try {
         setLoading(true);
-        const [classRows, attendanceRows, studentRows, staffRows] = await Promise.all([
+        const [classRows, attendanceRows, studentRows, staffRows, attendanceSettings] = await Promise.all([
           listClasses(),
           getAttendanceForDate(todayISO()),
           listStudents().catch(() => []),
           listStaff().catch(() => []),
+          getAttendanceSettings(),
         ]);
         if (!active) return;
         setClasses(classRows);
         setAllStudents(studentRows);
         setStaffMembers(staffRows);
+        setAllowStaffWeekendAttendance(attendanceSettings.allowStaffWeekendAttendance);
         setTodayAttendance(attendanceRows);
         if (classRows.length > 0) setSelectedClassId((current) => current || classValue(classRows[0]));
       } catch (err: any) {
@@ -146,6 +191,7 @@ export default function Checkin() {
     setSuccess(null);
     try {
       const student = students.find((item) => item.id === studentId);
+      const movementReason = await promptMovementReason(nextMode);
       await registerAttendanceUnified({
         studentId,
         classId: selectedClassId,
@@ -153,6 +199,7 @@ export default function Checkin() {
         mode: nextMode,
         method: "manual",
         biometric: false,
+        movementReason,
       });
       setSuccess(`${student?.name ?? student?.studentId ?? "Student"} checked ${nextMode === "in" ? "in" : "out"} successfully.`);
       setSelectedStudentId("");
@@ -181,7 +228,8 @@ export default function Checkin() {
       const staffCode = staffIdInput.trim();
       const staff = await getStaffByStaffId(staffCode);
       if (!staff?.id) throw new Error(`No staff record found for ID: ${staffCode}`);
-      await registerStaffAttendance({ staffId: staff.id, mode: nextMode, method: "manual", biometric: false });
+      const movementReason = await promptMovementReason(nextMode);
+      await registerStaffAttendance({ staffId: staff.id, mode: nextMode, method: "manual", biometric: false, movementReason });
       setStaffMembers((current) => (current.some((item) => item.id === staff.id || item.staffId === staff.staffId) ? current : [...current, staff]));
       setSuccess(`${staff.name ?? staff.staffId ?? "Staff member"} checked ${nextMode === "in" ? "in" : "out"} successfully.`);
       setStaffIdInput("");
@@ -238,18 +286,18 @@ export default function Checkin() {
   const qrClassQuery = selectedClassId ? `&classId=${selectedClassId}&classDocId=${selectedClass?.id ?? ""}` : "";
 
   return (
-    <div className="space-y-3">
-      <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-900 px-4 py-3 text-white sm:flex-row sm:items-center sm:justify-between">
+    <div className="min-w-0 space-y-3">
+      <section className="enterprise-panel overflow-hidden">
+        <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-900 px-3 py-3 text-white sm:px-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-xl font-extrabold">{actor === "student" ? "Student Attendance" : "Staff Attendance"}</h1>
             <p className="mt-1 text-xs text-white/70">{actor === "student" ? "Scan QR or fingerprint for check-in." : "Scan QR or use face recognition for check-in."}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link to={`/attendance/qr?actor=${actor}&mode=${mode}${qrClassQuery}`} className="rounded-full bg-secondary px-3 py-1.5 text-xs font-extrabold text-primary">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+            <Link to={`/attendance/qr?actor=${actor}&mode=${mode}${qrClassQuery}`} className="inline-flex items-center justify-center rounded-lg bg-secondary px-3 py-2 text-xs font-extrabold text-primary">
               QR Scanner
             </Link>
-            <Link to="/attendance" className="rounded-full border border-white/20 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10">
+            <Link to="/attendance" className="inline-flex items-center justify-center rounded-lg border border-white/20 px-3 py-2 text-xs font-semibold text-white hover:bg-white/10">
               View List
             </Link>
           </div>
@@ -266,7 +314,11 @@ export default function Checkin() {
               </button>
             </div>
           </div>
-          <img src="/how-it-works2.jpg" alt="Attendance workflow" className="hidden h-full min-h-24 w-full object-cover lg:block" />
+          <img
+            src="/how-it-works.jpg"
+            alt={`${actor === "student" ? "Student" : "Staff"} attendance workflow`}
+            className="h-[180px] w-full object-fill sm:h-[220px] lg:h-[240px]"
+          />
         </div>
       </section>
 
@@ -274,17 +326,17 @@ export default function Checkin() {
       {error ? <div className="status-error">{error}</div> : null}
       {success ? <div className="status-success">{success}</div> : null}
 
-      <section className="grid gap-3 xl:grid-cols-[1fr_21rem]">
-        <div className="space-y-3">
+      <section className="grid min-w-0 gap-3 xl:grid-cols-[minmax(0,1fr)_21rem]">
+        <div className="min-w-0 space-y-3">
           {actor === "student" ? (
-            <div className="enterprise-panel p-3">
+            <div className="enterprise-panel min-w-0 overflow-hidden p-3">
               <p className="mb-2 text-sm font-semibold text-dark">Choose class</p>
               {loading ? (
                 <p className="text-sm text-neutral">Loading classes...</p>
               ) : classes.length === 0 ? (
                 <p className="text-sm text-neutral">No classes found.</p>
               ) : (
-                <div className="flex gap-2 overflow-x-auto pb-1">
+                <div className="-mx-1 flex max-w-full gap-2 overflow-x-auto px-1 pb-1" style={{ WebkitOverflowScrolling: "touch", overscrollBehaviorX: "contain" }}>
                   {classes.map((cls) => {
                     const value = classValue(cls);
                     const selected = value === selectedClassId || cls.id === selectedClassId;
@@ -300,9 +352,9 @@ export default function Checkin() {
           ) : null}
 
           {actor === "staff" ? (
-            <div className="enterprise-panel p-3">
+            <div className="enterprise-panel min-w-0 overflow-hidden p-3">
               <div className="mb-3">
-                <h2 className="text-base font-semibold text-dark">Staff ID Attendance</h2>
+                <h2 className="break-words text-base font-semibold text-dark">Staff ID Attendance</h2>
                 <p className="text-sm text-neutral">Enter a staff ID to check staff in or out.</p>
               </div>
               <input
@@ -323,9 +375,9 @@ export default function Checkin() {
           ) : null}
 
           {actor === "student" ? (
-            <div className="enterprise-panel p-3">
-              <div className="grid gap-2 lg:grid-cols-[1fr_auto_auto]">
-                <select value={selectedStudentId} onChange={(event) => setSelectedStudentId(event.target.value)} disabled={loading || students.length === 0} className="enterprise-input">
+            <div className="enterprise-panel min-w-0 overflow-hidden p-3 sm:p-4">
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto]">
+                <select value={selectedStudentId} onChange={(event) => setSelectedStudentId(event.target.value)} disabled={loading || students.length === 0} className="enterprise-input sm:col-span-2 lg:col-span-1">
                   <option value="">Choose a student</option>
                   {students.map((student) => (
                     <option key={student.id} value={student.id}>
@@ -333,54 +385,54 @@ export default function Checkin() {
                     </option>
                   ))}
                 </select>
-                <button type="button" onClick={() => { setMode("in"); submitStudentAttendance(selectedStudentId, "in"); }} disabled={submitting || !attendanceCheck.allowed || !selectedStudentId} className="enterprise-button-primary justify-center">
+                <button type="button" onClick={() => { setMode("in"); submitStudentAttendance(selectedStudentId, "in"); }} disabled={submitting || !attendanceCheck.allowed || !selectedStudentId} className="enterprise-button-primary min-h-11 w-full justify-center">
                   Check-In
                 </button>
-                <button type="button" onClick={() => { setMode("out"); submitStudentAttendance(selectedStudentId, "out"); }} disabled={submitting || !attendanceCheck.allowed || !selectedStudentId} className="rounded-lg bg-amber-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-700 disabled:opacity-60">
+                <button type="button" onClick={() => { setMode("out"); submitStudentAttendance(selectedStudentId, "out"); }} disabled={submitting || !attendanceCheck.allowed || !selectedStudentId} className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-amber-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-700 disabled:opacity-60">
                   Check-Out
                 </button>
               </div>
             </div>
           ) : null}
 
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid min-w-0 gap-3 sm:grid-cols-2">
             {actor === "student" ? (
               <>
                 <div className={actionCardClass("primary") + " opacity-75"}>
-                  <h2 className="text-base font-semibold text-dark">Student Biometric Attendance</h2>
-                  <p className="mt-1 text-sm text-neutral">Check-in or check-out using fingerprint.</p>
+                  <h2 className="break-words text-base font-semibold text-dark">Student Biometric Attendance</h2>
+                  <p className="mt-1 break-words text-sm text-neutral">Check-in or check-out using fingerprint.</p>
                   <p className="mt-2 text-xs font-semibold text-primary">Available on mobile</p>
                 </div>
                 <Link to={`/attendance/face?actor=student&mode=in${qrClassQuery}`} className={actionCardClass("emerald")}>
-                  <h2 className="text-base font-semibold text-dark">Student Face Check-In</h2>
-                  <p className="mt-1 text-sm text-neutral">Check-in using facial recognition.</p>
+                  <h2 className="break-words text-base font-semibold text-dark">Student Face Check-In</h2>
+                  <p className="mt-1 break-words text-sm text-neutral">Check-in using facial recognition.</p>
                 </Link>
                 <Link to={`/attendance/face?actor=student&mode=out${qrClassQuery}`} className={actionCardClass("slate")}>
-                  <h2 className="text-base font-semibold text-dark">Student Face Check-Out</h2>
-                  <p className="mt-1 text-sm text-neutral">Check-out using facial recognition.</p>
+                  <h2 className="break-words text-base font-semibold text-dark">Student Face Check-Out</h2>
+                  <p className="mt-1 break-words text-sm text-neutral">Check-out using facial recognition.</p>
                 </Link>
               </>
             ) : null}
 
             <Link to={`/attendance/qr?actor=${actor}&mode=in${qrClassQuery}`} className={actionCardClass("primary")}>
-              <h2 className="text-base font-semibold text-dark">Scan QR Code (In)</h2>
-              <p className="mt-1 text-sm text-neutral">Check-in via QR scan.</p>
+              <h2 className="break-words text-base font-semibold text-dark">Scan QR Code (In)</h2>
+              <p className="mt-1 break-words text-sm text-neutral">Check-in via QR scan.</p>
             </Link>
 
             <Link to={`/attendance/qr?actor=${actor}&mode=out${qrClassQuery}`} className={actionCardClass("sky")}>
-              <h2 className="text-base font-semibold text-dark">Scan QR Code (Out)</h2>
-              <p className="mt-1 text-sm text-neutral">Check-out via QR scan.</p>
+              <h2 className="break-words text-base font-semibold text-dark">Scan QR Code (Out)</h2>
+              <p className="mt-1 break-words text-sm text-neutral">Check-out via QR scan.</p>
             </Link>
 
             {actor === "staff" ? (
               <>
                 <Link to="/attendance/face?actor=staff&mode=in" className={actionCardClass("emerald")}>
-                  <h2 className="text-base font-semibold text-dark">Staff Face Check-In</h2>
-                  <p className="mt-1 text-sm text-neutral">Check-in using facial recognition.</p>
+                  <h2 className="break-words text-base font-semibold text-dark">Staff Face Check-In</h2>
+                  <p className="mt-1 break-words text-sm text-neutral">Check-in using facial recognition.</p>
                 </Link>
                 <Link to="/attendance/face?actor=staff&mode=out" className={actionCardClass("slate")}>
-                  <h2 className="text-base font-semibold text-dark">Staff Face Check-Out</h2>
-                  <p className="mt-1 text-sm text-neutral">Check-out using facial recognition.</p>
+                  <h2 className="break-words text-base font-semibold text-dark">Staff Face Check-Out</h2>
+                  <p className="mt-1 break-words text-sm text-neutral">Check-out using facial recognition.</p>
                 </Link>
               </>
             ) : null}
@@ -395,7 +447,7 @@ export default function Checkin() {
           </div>
         </div>
 
-        <aside className="enterprise-panel p-3">
+        <aside className="enterprise-panel min-w-0 p-3">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-bold text-dark">Today's attendance</h2>
@@ -419,7 +471,7 @@ export default function Checkin() {
                         <p className="text-xs text-slate-600">In: {timeLabel(record.checkInTime)}</p>
                         <p className="text-xs text-slate-600">Out: {timeLabel(record.checkOutTime)}</p>
                       </div>
-                      <span className={`rounded-full px-2 py-1 text-[11px] font-bold ${record.status === "late" ? "bg-amber-100 text-amber-700" : record.status === "absent" ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
+                      <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ${record.status === "late" ? "bg-amber-100 text-amber-700" : record.status === "absent" ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
                         {record.status ?? "present"}
                       </span>
                     </div>
@@ -433,9 +485,3 @@ export default function Checkin() {
     </div>
   );
 }
-
-
-
-
-
-

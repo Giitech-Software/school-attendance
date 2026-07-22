@@ -60,7 +60,7 @@ function percentageClass(row: ReportRow) {
 }
 
 function csvContent(options: ExportOptions) {
-  const header = [options.subjectLabel, "ID", "Present", "Late", "Attended", "Absent", "Total", "Percentage Present"];
+  const header = [options.subjectLabel, "ID", "Present", "Late", "Attended", "Absent", "Total", "Attendance %"];
   const lines = options.rows.map((row) =>
     [
       getName(row),
@@ -290,7 +290,7 @@ function printableHtml(options: ExportOptions) {
             <th class="total">Attended</th>
             <th class="absent">Absent</th>
             <th>Total</th>
-            <th class="percent">% Present</th>
+            <th class="percent">Attendance %</th>
           </tr>
         </thead>
         <tbody>${reportRowsHtml(options)}</tbody>

@@ -1,9 +1,13 @@
+import NetInfo from "@react-native-community/netinfo";
 import * as Location from "expo-location";
 import { getDoc, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../../app/firebase";
 import { logAdminAction } from "./adminLogs";
+import { scopedSettingsDocId } from "./tenantScope";
 
-const LOCATION_DOC = doc(db, "settings", "location");
+async function locationDoc() {
+  return doc(db, "settings", await scopedSettingsDocId("location"));
+}
 const LOCATION_SAMPLE_COUNT = 3;
 const CURRENT_LOCATION_TIMEOUT_MS = 8_000;
 const MAX_ACCEPTABLE_ACCURACY_METERS = 80;
@@ -223,7 +227,7 @@ export async function validateSchoolLocation(): Promise<LocationValidationResult
 }
 
 async function getSchoolLocationSettings(): Promise<SchoolLocationSettings> {
-  const snap = await getDoc(LOCATION_DOC);
+  const snap = await getDoc(await locationDoc());
 
   if (!snap.exists()) {
     return {
@@ -298,7 +302,7 @@ export async function savePresenceVerificationSettings({
   adminUid?: string | null;
 }) {
   await setDoc(
-    LOCATION_DOC,
+    await locationDoc(),
     {
       presenceVerificationMode: mode,
       geofencingEnabled: mode !== "disabled",
@@ -379,7 +383,7 @@ export async function setEmergencyGeofenceBypass({
   expiresAt?: string | null;
 }) {
   await setDoc(
-    LOCATION_DOC,
+    await locationDoc(),
     enabled
       ? {
           geofencingEnabled: false,
@@ -535,7 +539,26 @@ async function getCurrentWifiNetwork(): Promise<{
   bssid: string | null;
   ssid?: string | null;
 } | null> {
-  return null;
+  const { status } = await Location.requestForegroundPermissionsAsync();
+  if (status !== "granted") {
+    throw new Error("Location permission is required to read WiFi BSSID.");
+  }
+
+  const state = await NetInfo.fetch("wifi");
+  if (state.type !== "wifi" || state.isConnected === false) {
+    return null;
+  }
+
+  const details = state.details as {
+    bssid?: string | null;
+    ssid?: string | null;
+  } | null;
+  const bssid = normalizeBssid(details?.bssid);
+
+  return {
+    bssid: bssid || null,
+    ssid: typeof details?.ssid === "string" ? details.ssid : null,
+  };
 }
 
 function normalizeBssid(value: unknown) {
@@ -786,3 +809,5 @@ function getDistanceInMeters(
 
   return earthRadiusMeters * c;
 }
+
+

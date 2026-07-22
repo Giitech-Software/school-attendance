@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import FaceCameraCapture from "../components/FaceCameraCapture";
 import { searchFace } from "../services/faceService";
@@ -7,8 +7,47 @@ import { getStudentById } from "../services/students";
 import { getStaffById } from "../services/staff";
 import { registerAttendanceUnified } from "../services/attendance";
 import { registerStaffAttendance } from "../services/staffAttendance";
+import { getAttendanceSettings } from "../services/attendanceSettings";
 import { useCurrentStaff } from "../hooks/useCurrentStaff";
 
+
+const LATE_REASON_GRACE_MINUTES = 60;
+const LATE_REASON_OPTIONS = ["Transport or traffic disruption", "Health or medical matter", "Family or personal emergency", "Authorised organisational duty", "Severe weather or road conditions"];
+const EARLY_CHECKOUT_REASON_OPTIONS = ["Authorised organisational assignment", "Medical appointment or health matter", "Family or personal emergency", "Approved early departure", "Transport or safety requirement"];
+function parseTimeToMinutes(time?: string) {
+  if (!time || !/^\d{2}:\d{2}$/.test(time)) return null;
+  const [hour, minute] = time.split(":").map(Number);
+  if (hour > 23 || minute > 59) return null;
+  return hour * 60 + minute;
+}
+function minutesInTimezone(date: Date, timezone: string) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(date);
+    const hour = Number(parts.find((part) => part.type === "hour")?.value);
+    const minute = Number(parts.find((part) => part.type === "minute")?.value);
+    if (Number.isFinite(hour) && Number.isFinite(minute)) return hour * 60 + minute;
+  } catch {}
+  return date.getHours() * 60 + date.getMinutes();
+}
+async function promptMovementReason(mode: "in" | "out") {
+  const settings = await getAttendanceSettings();
+  const currentMinutes = minutesInTimezone(new Date(), settings.timezone || "Africa/Accra");
+  const targetMinutes = parseTimeToMinutes(mode === "in" ? settings.lateAfter : settings.closeAfter);
+  if (targetMinutes === null) return undefined;
+  const minutes = mode === "in" ? currentMinutes - targetMinutes : targetMinutes - currentMinutes;
+  const required = mode === "in" ? minutes >= LATE_REASON_GRACE_MINUTES : minutes > 0;
+  if (!required) return undefined;
+  const options = mode === "in" ? LATE_REASON_OPTIONS : EARLY_CHECKOUT_REASON_OPTIONS;
+  const eventLabel = mode === "in" ? "late arrival" : "early departure";
+  const timing = mode === "in" ? `${minutes} minutes after the scheduled time` : `${minutes} minutes before the scheduled closing time`;
+  const answer = window.prompt(`Movement Book Entry — ${eventLabel}\n\nThis attendance event is ${timing}. Record an approved reason to complete the audit trail.\n\nApproved reason categories:\n${options.map((option, index) => `${index + 1}. ${option}`).join("\n")}\n\nEnter a category number or provide a clear authorised reason:`);
+  if (answer === null) throw new Error("A movement book entry is required to complete this attendance action.");
+  const trimmed = answer.trim();
+  const selected = options[Number(trimmed) - 1];
+  const reason = selected ?? trimmed;
+  if (!reason) throw new Error("A movement book entry is required to complete this attendance action.");
+  return reason;
+}
 function classValue(cls: ClassRecord) {
   return cls.classId ?? cls.id ?? "";
 }
@@ -88,6 +127,8 @@ export default function AttendanceFace() {
       const result = await searchFace(base64Image, actor);
       if (!result.matched || !result.subjectId) throw new Error("Face not recognized.");
 
+      const movementReason = await promptMovementReason(mode);
+
       if (actor === "staff") {
         const matchedStaffId = result.subjectId;
         if (isSelfServiceStaff) {
@@ -96,7 +137,7 @@ export default function AttendanceFace() {
         }
         const staff = await getStaffById(matchedStaffId);
         if (!staff?.id) throw new Error("Matched face is not registered as staff.");
-        await registerStaffAttendance({ staffId: staff.id, mode, method: "face", biometric: true });
+        await registerStaffAttendance({ staffId: staff.id, mode, method: "face", biometric: true, movementReason });
         setSuccess(`${staff.name ?? "Staff member"} checked ${mode === "in" ? "in" : "out"} by face${similarityLabel(result.similarity)}.`);
       } else {
         const student = await getStudentById(result.subjectId);
@@ -108,6 +149,7 @@ export default function AttendanceFace() {
           mode,
           method: "face",
           biometric: true,
+          movementReason,
         });
         setSuccess(`${student.name ?? "Student"} checked ${mode === "in" ? "in" : "out"} by face${similarityLabel(result.similarity)}.`);
       }

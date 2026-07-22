@@ -1,4 +1,4 @@
-﻿import { Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 const sections = [
   {
@@ -14,23 +14,23 @@ const sections = [
     title: "Home Page",
     items: [
       "Use attendance actions to start student or staff attendance.",
-      "Use Reports for daily, weekly, monthly, and termly summaries.",
+      "Use Reports for daily, weekly, monthly, termly, yearly, and individual summaries.",
       "Use Admin to manage setup, users, students, staff, and classes.",
     ],
   },
   {
     title: "Attendance",
     items: [
-      "Student attendance supports class selection, QR check-in or check-out, and manual ID entry.",
-      "Staff attendance supports QR and staff ID attendance.",
+      "Student attendance supports class selection, QR, biometric, and face check-in/out where configured.",
+      "Staff attendance supports QR, face, biometric, and staff ID attendance where configured.",
       "After the configured attendance close time, check-in is blocked but check-out remains available.",
-      "Attendance records show whether the method was manual, QR, fingerprint, or face where available.",
+      "Late arrivals and early departures require a movement book entry when they cross the configured attendance threshold.",
     ],
   },
   {
     title: "Admin Setup",
     items: [
-      "Set Attendance Time to configure late time, close time, and timezone.",
+      "Set Attendance Time to configure late time, close time, timezone, weekend/holiday policy, and absence marking.",
       "Manage Terms, Classes, Students, Staff, Users, Parent Wards, and the User Manual from Admin.",
       "Use Promote Students to move selected active students without deleting attendance history.",
     ],
@@ -40,7 +40,7 @@ const sections = [
     items: [
       "Create or edit students with name, class, student ID, and roll number.",
       "Use Bulk Import to paste CSV rows with name, classId or className, studentId, and rollNo.",
-      "Generate student QR codes individually or export student QR payloads.",
+      "Generate student QR codes individually or export printable QR cards.",
       "Open each student profile to view enrollment and report links.",
     ],
   },
@@ -49,7 +49,7 @@ const sections = [
     items: [
       "Create or edit staff with name, staff ID, email, and role.",
       "Link staff records to matching user accounts when possible.",
-      "Generate signed staff QR payloads from the staff QR page.",
+      "Generate professional signed staff QR cards with print/PDF output from the staff QR page.",
       "Staff users can view My Attendance and My Report where enabled.",
     ],
   },
@@ -65,9 +65,9 @@ const sections = [
     title: "Reports",
     items: [
       "Choose Student Reports or Staff Reports.",
-      "Open daily, weekly, monthly, or termly reports.",
+      "Open daily, weekly, monthly, termly, yearly, or individual reports.",
       "Weekly reports use generated weeks from the current term.",
-      "Monthly student reports are limited to the active term range.",
+      "Report pages show Present, Late, Attended, Absent, and Attendance % totals; daily reports can auto-mark absentees before showing results.",
     ],
   },
 ];
@@ -78,7 +78,7 @@ const commonIssues = [
   ["Check-in closed", "Check-in is blocked after the close time; use check-out only if the person already checked in."],
   ["QR not accepted", "Confirm the QR belongs to the correct student or staff member."],
   ["Parent sees no wards", "Assign wards to the parent account."],
-  ["Reports are empty", "Confirm terms, weeks, students, staff, classes, and attendance records exist for the selected range."],
+  ["Reports are empty", "Confirm terms, weeks, students, staff, classes, and attendance or absent records exist for the selected range."],
 ];
 
 export default function AdminUserManual() {

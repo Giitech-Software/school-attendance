@@ -1,6 +1,7 @@
 ﻿import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { sendPasswordReset } from "../services/auth";
+import AuthBrandHeader from "../components/AuthBrandHeader";
 
 function isValidEmail(email: string) {
   return /\S+@\S+\.\S+/.test(email);
@@ -40,6 +41,7 @@ export default function ForgotPassword() {
 
   return (
     <div className="auth-shell">
+      <AuthBrandHeader />
       <div className="auth-card">
         <h1 className="mb-2 text-center text-3xl font-bold text-slate-950">Forgot password</h1>
         <p className="mb-5 text-center text-sm text-slate-600">Enter your email and we'll send you a password reset link.</p>

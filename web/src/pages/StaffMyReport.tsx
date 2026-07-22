@@ -304,6 +304,8 @@ export default function StaffMyReport() {
                   <div>
                     <p className="font-bold text-slate-950">{new Date(record.date).toLocaleDateString()}</p>
                     <p className="text-sm text-slate-500">In: {formatMaybeTime(record.checkInTime)} | Out: {formatMaybeTime(record.checkOutTime)}</p>
+                    {record.lateReason ? <p className="text-xs font-semibold text-amber-700">Movement book — late arrival: {record.lateReason}</p> : null}
+                    {record.earlyCheckoutReason ? <p className="text-xs font-semibold text-blue-700">Early out: {record.earlyCheckoutReason}</p> : null}
                   </div>
                   <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                     <span className={`rounded px-2 py-1 text-xs font-bold ${record.status === "late" ? "bg-amber-100 text-amber-700" : record.status === "absent" ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}>

@@ -16,9 +16,12 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { searchFace } from "../../src/services/faceService";
 import { handleStaffBiometricCheck } from "../../src/services/staffBiometricHandler";
+import { getAttendanceSettings } from "../../src/services/attendanceSettings";
+import { getMovementReasonRequirement } from "../../src/services/movementPolicy";
 import { useRequireAttendanceAccess } from "../../src/hooks/useRouteAuthorization";
 import { useCurrentStaff } from "../../src/hooks/useCurrentStaff";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useMovementReasonPrompt } from "../../components/MovementReasonPrompt";
 
 export default function FaceCheckin() {
   const router = useRouter();
@@ -38,6 +41,16 @@ export default function FaceCheckin() {
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [loading, setLoading] = useState(false);
+  const { promptMovementReason, movementReasonPrompt } = useMovementReasonPrompt();
+
+  async function getMovementReasonFor(mode: "in" | "out") {
+    const settings = await getAttendanceSettings();
+    const requirement = getMovementReasonRequirement({ settings, mode });
+    if (!requirement) return undefined;
+    const reason = await promptMovementReason(requirement);
+    if (!reason) throw new Error("A movement book entry is required to complete this attendance action.");
+    return reason;
+  }
 
   if (
     authorizationLoading ||
@@ -122,12 +135,14 @@ export default function FaceCheckin() {
       }
 
       const staffName = staffSnap.data()?.name ?? "Staff member";
+      const movementReason = await getMovementReasonFor(attendanceMode);
 
       await handleStaffBiometricCheck({
         staffId,
         mode: attendanceMode,
         biometricVerified: true,
         method: "face",
+        movementReason,
       });
 
       const similarity =
@@ -181,6 +196,7 @@ export default function FaceCheckin() {
           )}
         </Pressable>
       </View>
+      {movementReasonPrompt}
     </View>
   );
 }

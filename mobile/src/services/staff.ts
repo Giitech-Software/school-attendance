@@ -17,6 +17,7 @@ import {
 import { db } from "../../app/firebase";
 import type { Staff } from "./types";
 import { logAdminAction } from "./adminLogs";
+import { belongsToTenant, getTenantScope, sortByCreatedAtDesc, tenantConstraints, withTenantScope } from "./tenantScope";
 
 /* ============================
    COLLECTION
@@ -54,6 +55,7 @@ async function ensureStaffIdIsAvailable(staffId: string): Promise<void> {
   const existingQuery = query(
     collection(db, STAFF_COLLECTION),
     where("staffId", "==", staffId),
+    ...tenantConstraints(await getTenantScope()),
     limit(1)
   );
   const existingSnap = await getDocs(existingQuery);
@@ -66,7 +68,7 @@ async function ensureStaffIdIsAvailable(staffId: string): Promise<void> {
 async function generateStaffId(roleType: string): Promise<string> {
   const prefix = getStaffIdPrefix(roleType);
 
-  const snap = await getDocs(collection(db, STAFF_COLLECTION));
+  const snap = await getDocs(query(collection(db, STAFF_COLLECTION), ...tenantConstraints(await getTenantScope())));
   const maxNumber = snap.docs.reduce((max, staffDoc) => {
     const staffId = staffDoc.data().staffId as string | undefined;
     if (!staffId?.startsWith(`${prefix}-`)) return max;
@@ -90,6 +92,7 @@ export async function createStaffFromUser(
   const existingQuery = query(
     collection(db, STAFF_COLLECTION),
     where("userUid", "==", userUid),
+    ...tenantConstraints(await getTenantScope()),
     limit(1)
   );
 
@@ -105,6 +108,7 @@ export async function createStaffFromUser(
     const existingEmailQuery = query(
       collection(db, STAFF_COLLECTION),
       where("email", "==", normalizedEmail),
+      ...tenantConstraints(await getTenantScope()),
       limit(1)
     );
 
@@ -122,7 +126,7 @@ export async function createStaffFromUser(
         await ensureStaffIdIsAvailable(requestedStaffId.trim());
       }
 
-      await updateDoc(doc(db, STAFF_COLLECTION, staffDoc.id), withoutUndefined({
+      await updateDoc(doc(db, STAFF_COLLECTION, staffDoc.id), withoutUndefined(withTenantScope({
         staffId,
         userUid,
         name,
@@ -130,7 +134,7 @@ export async function createStaffFromUser(
         role: roleType,
         roleType,
         updatedAt: serverTimestamp(),
-      }));
+      }, await getTenantScope())));
       await logAdminAction({
         action: "LINK_STAFF_USER",
         targetType: "staff",
@@ -156,7 +160,7 @@ export async function createStaffFromUser(
   // ✅ 3. CREATE NEW STAFF DOC
   const ref = doc(collection(db, STAFF_COLLECTION));
 
-  await setDoc(ref, withoutUndefined({
+  await setDoc(ref, withoutUndefined(withTenantScope({
     staffId,
     userUid,
     name,
@@ -164,7 +168,7 @@ export async function createStaffFromUser(
     role: roleType,
     roleType,
     createdAt: serverTimestamp(),
-  }));
+  }, await getTenantScope())));
   await logAdminAction({
     action: "CREATE_STAFF",
     targetType: "staff",
@@ -186,7 +190,7 @@ export async function createStaffFromUser(
    LIST STAFF
 ============================ */
 export async function listStaff(): Promise<Staff[]> {
-  const snap = await getDocs(collection(db, STAFF_COLLECTION));
+  const snap = await getDocs(query(collection(db, STAFF_COLLECTION), ...tenantConstraints(await getTenantScope())));
   return snap.docs.map(
     (d) =>
       ({
@@ -203,11 +207,9 @@ export async function getStaffById(id: string): Promise<Staff | null> {
   const ref = doc(db, STAFF_COLLECTION, id);
   const snap = await getDoc(ref);
   if (!snap.exists()) return null;
-
-  return {
-    id: snap.id,
-    ...snap.data(),
-  } as Staff;
+  const data = snap.data();
+  if (!belongsToTenant(data, await getTenantScope())) return null;
+  return { id: snap.id, ...data } as Staff;
 }
 
 export async function getStaffByStaffId(staffId: string): Promise<Staff | null> {
@@ -217,6 +219,7 @@ export async function getStaffByStaffId(staffId: string): Promise<Staff | null> 
   const staffIdQuery = query(
     collection(db, STAFF_COLLECTION),
     where("staffId", "==", normalizedStaffId),
+    ...tenantConstraints(await getTenantScope()),
     limit(1)
   );
 
@@ -236,6 +239,7 @@ export async function getStaffByUserUid(userUid: string): Promise<Staff | null> 
   const q = query(
     collection(db, STAFF_COLLECTION),
     where("userUid", "==", userUid),
+    ...tenantConstraints(await getTenantScope()),
     limit(1)
   );
 
@@ -262,12 +266,12 @@ export async function createStaff(
     await ensureStaffIdIsAvailable(staffId);
   }
 
-  const payload = withoutUndefined({
+  const payload = withoutUndefined(withTenantScope({
     ...data,
     staffId,
     roleType,
     createdAt: serverTimestamp(),
-  });
+  }, await getTenantScope()));
 
   const ref = await addDoc(collection(db, STAFF_COLLECTION), payload);
   await logAdminAction({
@@ -302,10 +306,10 @@ export async function upsertStaff(staff: Staff): Promise<void> {
   const { id, ...data } = staff;
   const ref = doc(db, STAFF_COLLECTION, id);
 
-  await updateDoc(ref, withoutUndefined({
+  await updateDoc(ref, withoutUndefined(withTenantScope({
     ...data,
     updatedAt: serverTimestamp(),
-  }));
+  }, await getTenantScope())));
   await logAdminAction({
     action: "EDIT_STAFF",
     targetType: "staff",
@@ -333,3 +337,5 @@ export async function deleteStaff(id: string): Promise<void> {
     description: "Deleted staff profile",
   });
 }
+
+

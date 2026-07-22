@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getStaffGlobalSummary, type StaffAttendanceSummary } from "../services/staffAttendanceSummary";
 import { listTerms, type Term } from "../services/terms";
 import { exportReportCsv, openReportPdf } from "../services/reportExport";
+import AttendanceTotalsCards from "../components/AttendanceTotalsCards";
 
 function currentTermFrom(terms: Term[]) {
   const today = new Date().toISOString().slice(0, 10);
@@ -119,6 +120,7 @@ export default function ReportsStaffTermly() {
           </div>
         ) : null}
 
+        {rows.length > 0 ? <AttendanceTotalsCards rows={rows} subjectLabel="Staff" groupLabel="All staff" /> : null}
         {loading && <div className="mt-4 text-slate-500">Loading report...</div>}
         {!loading && !selectedTerm && <div className="mt-4 text-slate-500">Select a term to view report data.</div>}
         {!loading && selectedTerm && rows.length === 0 && <div className="mt-4 text-slate-500">No data for selected term.</div>}
@@ -133,7 +135,7 @@ export default function ReportsStaffTermly() {
                   <th className="px-2 py-1">L</th>
                   <th className="px-2 py-1">T</th>
                   <th className="px-2 py-1">A</th>
-                  <th className="px-2 py-1">% Present</th>
+                  <th className="px-2 py-1">Attendance %</th>
                   <th className="px-2 py-1"></th>
                 </tr>
               </thead>
@@ -171,10 +173,3 @@ export default function ReportsStaffTermly() {
     </div>
   );
 }
-
-
-
-
-
-
-

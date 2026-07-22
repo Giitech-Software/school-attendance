@@ -6,8 +6,8 @@ import { Asset } from "expo-asset";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 
-const WORD_MANUAL_ASSET = require("../../docs/MSalem-Attendance-User-Manual.docx");
-const WORD_MANUAL_FILE_NAME = "MSalem-Attendance-User-Manual.docx";
+const WORD_MANUAL_ASSET = require("../../docs/ASTEM-Attendance-User-Manual.docx");
+const WORD_MANUAL_FILE_NAME = "ASTEM-Attendance-User-Manual.docx";
 const WORD_MANUAL_MIME =
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
@@ -28,7 +28,7 @@ const sections = [
       "Use Start to choose Student Attendance or Staff Attendance.",
       "The quick attendance row shows QR, Biometric, Facial, ID, and Start actions.",
       "Use ID for staff ID attendance when a staff member cannot use QR, face, or biometric.",
-      "Use Reports for daily, weekly, monthly, and termly summaries.",
+      "Use Reports for daily, weekly, monthly, termly, yearly, and individual summaries.",
       "Use Admin to manage setup, users, students, staff, and classes.",
     ],
   },
@@ -41,6 +41,7 @@ const sections = [
       "After the configured attendance close time, check-in is blocked but check-out remains available.",
       "When geofencing is bypassed, only admins or users with explicit attendance-taking permission can record student or staff attendance.",
       "Staff self-service and assigned-class-only attendance are blocked while geofencing is bypassed.",
+      "Late arrivals and early departures require a movement book entry when they cross the configured attendance threshold.",
     ],
   },
   {
@@ -49,7 +50,7 @@ const sections = [
       "Attendance Readiness shows whether the school/work geofence is configured and whether attendance is ready or blocked.",
       "Set School/Work Location to save the GPS geofence, radius, optional manual latitude/longitude, and geofencing policy.",
       "Use Bypass Options to disable geofencing for a controlled period: day, week, month, term, or year.",
-      "Set Attendance Time to configure late time, close time, and timezone.",
+      "Set Attendance Time to configure late time, close time, timezone, weekend/holiday policy, and absence marking.",
       "Manage Terms, Classes, Students, Staff, Users, Parent Wards, and the User Manual from the Admin dashboard.",
       "Use Promote Students to move selected active students from one class to another without deleting attendance history.",
     ],
@@ -70,7 +71,7 @@ const sections = [
       "Create or edit staff with name, staff ID, email, and role.",
       "Use Bulk Import to paste CSV rows with name, email, role, and staffId.",
       "Register face before enrolling staff fingerprint/biometric.",
-      "Generate staff QR cards individually or export staff QR PDF.",
+      "Generate professional signed staff QR cards individually or export staff QR PDF.",
       "Staff users can view My Attendance and My Report where enabled.",
     ],
   },
@@ -87,7 +88,9 @@ const sections = [
     items: [
       "Reports are admin-only.",
       "Choose Student Reports or Staff Reports.",
-      "Open daily, weekly, monthly, or termly reports, then export PDF when needed.",
+      "Open daily, weekly, monthly, termly, yearly, or individual reports, then export PDF when needed.",
+      "Report dashboards show Present, Late, Attended, Absent, and Attendance % total cards.",
+      "Daily reports can auto-mark absentees before showing report results.",
     ],
   },
   {
@@ -117,6 +120,7 @@ const commonIssues = [
   ["Check-in closed", "Check-in is blocked after the close time; use check-out only if the person already checked in."],
   ["QR not accepted", "Confirm the QR belongs to the correct student/staff and class."],
   ["Parent sees no wards", "Assign wards to the parent account."],
+  ["Reports are empty", "Confirm terms, weeks, students, staff, classes, and attendance or absent records exist for the selected range."],
 ];
 
 export default function UserManualScreen() {
@@ -177,7 +181,7 @@ export default function UserManualScreen() {
               User Manual
             </Text>
             <Text className="text-blue-200 mt-1">
-              M'Salem Attendance Register
+              ASTEM Attendance Register
             </Text>
           </View>
         </View>
@@ -241,3 +245,4 @@ export default function UserManualScreen() {
     </View>
   );
 }
+

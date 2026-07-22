@@ -1,12 +1,15 @@
-import { addDoc, collection, deleteDoc, getDocs, orderBy, query, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from "../firebase";
 import type { Week } from "../types";
+import { getTenantScope, sortByCreatedAtDesc, tenantConstraints, withTenantScope } from "./tenantScope";
 
 export async function listWeeks(termId?: string): Promise<Week[]> {
+  const scope = await getTenantScope();
   const ref = collection(db, "weeks");
-  const q = termId ? query(ref, where("termId", "==", termId), orderBy("weekNumber")) : query(ref, orderBy("createdAt", "desc"));
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) } as Week));
+  const filters = termId ? [where("termId", "==", termId), ...tenantConstraints(scope)] : tenantConstraints(scope);
+  const snap = await getDocs(query(ref, ...filters));
+  const rows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) } as Week));
+  return termId ? rows.sort((a, b) => (a.weekNumber ?? 0) - (b.weekNumber ?? 0)) : sortByCreatedAtDesc(rows);
 }
 
 export async function listWeeksForTerm(termId: string): Promise<Week[]> {
@@ -15,9 +18,9 @@ export async function listWeeksForTerm(termId: string): Promise<Week[]> {
 }
 
 async function deleteWeeksForTerm(termId: string) {
+  const scope = await getTenantScope();
   const ref = collection(db, "weeks");
-  const q = query(ref, where("termId", "==", termId));
-  const snap = await getDocs(q);
+  const snap = await getDocs(query(ref, where("termId", "==", termId), ...tenantConstraints(scope)));
   await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
 }
 
@@ -31,6 +34,7 @@ export async function autoGenerateWeeksForTerm(termId: string, startDate: string
 
   if (start > end) throw new Error("Invalid term date range.");
 
+  const scope = await getTenantScope();
   const ref = collection(db, "weeks");
   let current = new Date(start);
   let weekNumber = 1;
@@ -46,26 +50,22 @@ export async function autoGenerateWeeksForTerm(termId: string, startDate: string
       continue;
     }
 
-    while (current.getDay() !== 1 && current > new Date(startDate)) {
-      current.setDate(current.getDate() - 1);
-    }
+    while (current.getDay() !== 1 && current > new Date(startDate)) current.setDate(current.getDate() - 1);
 
     const weekStart = new Date(current);
     const weekEnd = new Date(weekStart);
-    while (weekEnd.getDay() !== 5) {
-      weekEnd.setDate(weekEnd.getDate() + 1);
-    }
+    while (weekEnd.getDay() !== 5) weekEnd.setDate(weekEnd.getDate() + 1);
 
     if (weekStart < start) weekStart.setTime(start.getTime());
     if (weekEnd > end) weekEnd.setTime(end.getTime());
 
-    await addDoc(ref, {
+    await addDoc(ref, withTenantScope({
       termId,
       weekNumber,
       startDate: weekStart.toISOString().slice(0, 10),
       endDate: weekEnd.toISOString().slice(0, 10),
       createdAt: new Date(),
-    });
+    }, scope));
 
     created += 1;
     weekNumber += 1;
@@ -75,3 +75,4 @@ export async function autoGenerateWeeksForTerm(termId: string, startDate: string
 
   return created;
 }
+

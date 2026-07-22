@@ -14,11 +14,13 @@ import { getAttendanceSummary } from "../../src/services/attendanceSummary";
 import { exportDailyAttendancePdf } from "../../src/services/exports/exportDailyAttendancePdf";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
-/* ------------------------------------------------------------------ */
+import AttendanceTotalsCards from "../../components/AttendanceTotalsCards";
+import { autoMarkAbsentAllClasses } from "../../src/services/autoMarkAbsent";
+/* - */
 /* HELPERS */
-/* ------------------------------------------------------------------ */
+/* - */
 
-/** Get last N school days (Mon–Fri) */
+/** Get last N school days (Mon-Fri) */
 function getLastNSchoolDays(n: number) {
   const out: string[] = []; 
   let cursor = new Date();
@@ -34,9 +36,9 @@ function getLastNSchoolDays(n: number) {
   return out.reverse();
 }
 
-/* ------------------------------------------------------------------ */
+/* - */
 /* COMPONENT */
-/* ------------------------------------------------------------------ */
+/* - */
 
 export default function DailyReport() {
   const router = useRouter();
@@ -57,9 +59,9 @@ export default function DailyReport() {
 
   const [studentRows, setStudentRows] = useState<any[]>([]);
 
-  /* ------------------------------------------------------------------ */
+  /* - */
   /* LOAD DAYS + CLASSES */
-  /* ------------------------------------------------------------------ */
+  /* - */
   useEffect(() => {
     setDays(getLastNSchoolDays(5));
 
@@ -77,9 +79,9 @@ export default function DailyReport() {
     })();
   }, []);
 
-  /* ------------------------------------------------------------------ */
+  /* - */
   /* LOAD DAILY DATA */
-  /* ------------------------------------------------------------------ */
+  /* - */
   useEffect(() => {
     (async () => {
       if (!selectedDay) {
@@ -90,6 +92,7 @@ export default function DailyReport() {
       try {
         setLoading(true);
 
+        await autoMarkAbsentAllClasses({ dateIso: selectedDay });
         const rows = await getAttendanceSummary({
           fromIso: selectedDay,
           toIso: selectedDay,
@@ -107,9 +110,9 @@ export default function DailyReport() {
     })();
   }, [selectedDay, selectedClassKey]);
 
-  /* ------------------------------------------------------------------ */
+  /* - */
   /* LOADING */
-  /* ------------------------------------------------------------------ */
+  /* - */
   if (adminLoading || !adminReady || loading) {
     return (
       <View className="flex-1 items-center justify-center bg-slate-50">
@@ -118,9 +121,9 @@ export default function DailyReport() {
     );
   }
 
-  /* ------------------------------------------------------------------ */
+  /* - */
   /* UI */
-  /* ------------------------------------------------------------------ */
+  /* - */
   return (
     <ScrollView className="flex-1 bg-slate-300 p-3">
     <View className="flex-row items-center mb-2">
@@ -142,7 +145,7 @@ export default function DailyReport() {
 </View>
 
 
-      {/* -------------------- DAY SELECT -------------------- */}
+      {/* - DAY SELECT - */}
       <Text className="text-sm text-slate-600 mb-2">
         Select day
       </Text>
@@ -180,7 +183,7 @@ export default function DailyReport() {
         ))}
       </ScrollView>
 
-      {/* -------------------- CLASS FILTER -------------------- */}
+      {/* - CLASS FILTER - */}
       <Text className="text-sm text-slate-600 mt-3 mb-1.5">
         Filter by class
       </Text>
@@ -231,7 +234,7 @@ export default function DailyReport() {
         })}
       </ScrollView>
 
-      {/* -------- DAILY EXPORT (PDF ONLY) -------- */}
+      {/* - DAILY EXPORT (PDF ONLY) - */}
       <View className="mt-3 mb-2">
         <Pressable
           disabled={!selectedDay || exportingPdf}
@@ -264,13 +267,14 @@ export default function DailyReport() {
         </Pressable>
       </View>
 
-      {/* -------------------- STUDENTS -------------------- */}
+      {/* - STUDENTS - */}
       <Text className="text-lg font-semibold mt-3 mb-1.5">
         Students ({studentRows.length})
       </Text>
 
+{studentRows.length > 0 ? <AttendanceTotalsCards rows={studentRows} label="Students" /> : null}
 <Text className="text-ml text-slate-700 mb-2">
-  P = Present • L = Late • A = Absent
+  P = Present - L = Late - T = Attended - A = Absent
 </Text>
       {studentRows.length === 0 ? (
         <Text className="text-slate-500">
@@ -287,7 +291,7 @@ export default function DailyReport() {
                   id: item.studentId,
                   fromIso: selectedDay!,
                   toIso: selectedDay!,
-                  title: `Daily Report – ${selectedDay}`,
+                  title: `Daily Report - ${selectedDay}`,
                 },
               })
             }
@@ -308,6 +312,10 @@ export default function DailyReport() {
     L: {item.lateCount}
   </Text>
 
+  <Text className="text-sky-700">
+    T: {item.attendedSessions}
+  </Text>
+
   <Text className="text-red-500">
     A: {item.absentCount}
   </Text>
@@ -324,5 +332,4 @@ export default function DailyReport() {
     </ScrollView>
   );
 }
-
 

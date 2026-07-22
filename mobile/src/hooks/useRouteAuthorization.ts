@@ -10,8 +10,12 @@ type AttendanceAccessOptions = {
   allowSelfService?: boolean;
 };
 
+function isSuperAdminRole(userDoc: any) {
+  return userDoc?.role === "super_admin";
+}
+
 function isAdminRole(userDoc: any) {
-  return userDoc?.role === "admin";
+  return userDoc?.role === "admin" || isSuperAdminRole(userDoc);
 }
 
 function isApprovedUser(userDoc: any) {
@@ -57,6 +61,38 @@ function isStaffRole(userDoc: any) {
   );
 }
 
+
+export function useRequireSuperAdmin(
+  message = "You must be a super admin to access this page."
+) {
+  const router = useRouter();
+  const warnedRef = useRef(false);
+  const { userDoc, loading } = useCurrentUser();
+  const isSuperAdmin = isSuperAdminRole(userDoc);
+  const ready = !loading && isSuperAdmin;
+
+  useEffect(() => {
+    if (loading) return;
+
+    if (!userDoc) {
+      router.replace("/(auth)/login" as any);
+      return;
+    }
+
+    if (!isSuperAdmin && !warnedRef.current) {
+      warnedRef.current = true;
+      Alert.alert("Access denied", message);
+      router.replace("/" as any);
+    }
+  }, [isSuperAdmin, loading, message, router, userDoc]);
+
+  return {
+    userDoc,
+    loading,
+    isSuperAdmin,
+    ready,
+  };
+}
 export function useRequireAttendanceAccess(
   kind: AttendanceKind,
   options: AttendanceAccessOptions = {}
@@ -169,3 +205,4 @@ export function useRequireAttendanceAccess(
     hasCapability: explicitAttendanceTaker,
   };
 }
+

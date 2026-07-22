@@ -1,159 +1,59 @@
 import { db } from "../../app/firebase";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-} from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where } from "firebase/firestore";
 import type { Term } from "./types";
 import { logAdminAction } from "./adminLogs";
+import { belongsToTenant, getTenantScope, tenantConstraints, withTenantScope } from "./tenantScope";
 
 const col = collection(db, "terms");
 const weeksCol = collection(db, "weeks");
 
-/* =========================
-   LIST TERMS
-========================= */
-export async function listTerms(): Promise<Term[]> {
-  const snap = await getDocs(col);
-  return snap.docs.map((d) => ({
-    id: d.id,
-    ...(d.data() as Omit<Term, "id">),
-  }));
+function sortTerms(rows: Term[]) {
+  return [...rows].sort((a, b) => String(b.startDate ?? "").localeCompare(String(a.startDate ?? "")));
 }
 
-/* =========================
-   GET SINGLE TERM
-========================= */
+export async function listTerms(): Promise<Term[]> {
+  const scope = await getTenantScope();
+  const snap = await getDocs(query(col, ...tenantConstraints(scope)));
+  return sortTerms(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Term, "id">) })));
+}
+
 export async function getTerm(id: string): Promise<Term> {
   const ref = doc(db, "terms", id);
   const snap = await getDoc(ref);
-
-  if (!snap.exists()) {
-    throw new Error("Term not found");
-  }
-
-  return {
-    id: snap.id,
-    ...(snap.data() as Omit<Term, "id">),
-  };
+  if (!snap.exists() || !belongsToTenant(snap.data(), await getTenantScope())) throw new Error("Term not found");
+  return { id: snap.id, ...(snap.data() as Omit<Term, "id">) };
 }
 
-/* =========================
-   GET CURRENT TERM
-========================= */
 export async function getCurrentTerm(): Promise<Term | null> {
-  const snap = await getDocs(col);
-
-  for (const d of snap.docs) {
-    const data = d.data() as Term;
-    if (data.isCurrent) {
-      return { id: d.id, ...data };
-    }
-  }
-
-  return null;
+  const terms = await listTerms();
+  return terms.find((term) => term.isCurrent) ?? null;
 }
 
-/* =========================
-   CREATE TERM
-========================= */
-export async function createTerm(
-  data: Omit<Term, "id">
-): Promise<{ id: string }> {
-  const ref = await addDoc(col, {
-    ...data,
-    isCurrent: false, // default new term is not current
-    createdAt: new Date(),
-  });
-  await logAdminAction({
-    action: "CREATE_TERM",
-    targetType: "term",
-    targetId: ref.id,
-    description: `Created term ${data.name}`,
-    metadata: {
-      name: data.name,
-      startDate: data.startDate,
-      endDate: data.endDate,
-    },
-  });
-
+export async function createTerm(data: Omit<Term, "id">): Promise<{ id: string }> {
+  const ref = await addDoc(col, withTenantScope({ ...data, isCurrent: false, createdAt: new Date() }, await getTenantScope()));
+  await logAdminAction({ action: "CREATE_TERM", targetType: "term", targetId: ref.id, description: `Created term ${data.name}` });
   return { id: ref.id };
 }
 
-/* =========================
-   UPDATE TERM
-========================= */
-export async function updateTerm(
-  id: string,
-  data: Omit<Term, "id">
-) {
+export async function updateTerm(id: string, data: Partial<Term>) {
   const ref = doc(db, "terms", id);
-  await updateDoc(ref, {
-    ...data,
-    updatedAt: new Date(),
-  });
-  await logAdminAction({
-    action: "EDIT_TERM",
-    targetType: "term",
-    targetId: id,
-    description: `Updated term ${data.name}`,
-    metadata: {
-      name: data.name,
-      startDate: data.startDate,
-      endDate: data.endDate,
-      isCurrent: data.isCurrent,
-    },
-  });
+  await updateDoc(ref, withTenantScope({ ...data, updatedAt: new Date() }, await getTenantScope()));
+  await logAdminAction({ action: "UPDATE_TERM", targetType: "term", targetId: id, description: `Updated term ${data.name ?? id}` });
 }
 
-/* =========================
-   SET CURRENT TERM
-========================= */
 export async function setCurrentTerm(termId: string) {
-  const snap = await getDocs(col);
-
-  for (const d of snap.docs) {
-    await updateDoc(d.ref, {
-      isCurrent: d.id === termId,
-      updatedAt: new Date(),
-    });
-  }
-  await logAdminAction({
-    action: "SET_CURRENT_TERM",
-    targetType: "term",
-    targetId: termId,
-    description: "Changed the current academic term",
-  });
-}
-
-/* =========================
-   DELETE TERM + CLEAN WEEKS
-========================= */
-async function deleteWeeksForTerm(termId: string) {
-  const q = query(weeksCol, where("termId", "==", termId));
-  const snap = await getDocs(q);
-
-  const deletions = snap.docs.map((d) => deleteDoc(d.ref));
-  await Promise.all(deletions);
+  const scope = await getTenantScope();
+  const snap = await getDocs(query(col, ...tenantConstraints(scope)));
+  const updates = snap.docs.map((d) => updateDoc(d.ref, { isCurrent: d.id === termId }));
+  await Promise.all(updates);
+  await logAdminAction({ action: "SET_CURRENT_TERM", targetType: "term", targetId: termId, description: "Set current term" });
 }
 
 export async function deleteTerm(id: string) {
-  // 1️⃣ Delete all weeks associated with this term
-  await deleteWeeksForTerm(id);
-
-  // 2️⃣ Delete the term itself
   const ref = doc(db, "terms", id);
   await deleteDoc(ref);
-  await logAdminAction({
-    action: "DELETE_TERM",
-    targetType: "term",
-    targetId: id,
-    description: "Deleted term and its weeks",
-  });
+  const scope = await getTenantScope();
+  const weeksSnap = await getDocs(query(weeksCol, where("termId", "==", id), ...tenantConstraints(scope)));
+  await Promise.all(weeksSnap.docs.map((d) => deleteDoc(d.ref)));
+  await logAdminAction({ action: "DELETE_TERM", targetType: "term", targetId: id, description: "Deleted term" });
 }

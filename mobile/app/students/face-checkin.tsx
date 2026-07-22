@@ -6,8 +6,11 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
 import { searchFace } from "../../src/services/faceService";
 import { registerAttendanceUnified } from "../../src/services/attendance";
+import { getAttendanceSettings } from "../../src/services/attendanceSettings";
+import { getMovementReasonRequirement } from "../../src/services/movementPolicy";
 import { useRequireAttendanceAccess } from "../../src/hooks/useRouteAuthorization";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useMovementReasonPrompt } from "../../components/MovementReasonPrompt";
 
 export default function StudentFaceCheckin({ classId }: { classId: string }) {
   const router = useRouter();
@@ -18,6 +21,16 @@ export default function StudentFaceCheckin({ classId }: { classId: string }) {
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [loading, setLoading] = useState(false);
+  const { promptMovementReason, movementReasonPrompt } = useMovementReasonPrompt();
+
+  async function getLateReasonIfNeeded() {
+    const settings = await getAttendanceSettings();
+    const requirement = getMovementReasonRequirement({ settings, mode: "in" });
+    if (!requirement) return undefined;
+    const reason = await promptMovementReason(requirement);
+    if (!reason) throw new Error("A movement book entry is required to complete this attendance action.");
+    return reason;
+  }
 
   if (authorizationLoading || !authorizationReady) {
     return (
@@ -70,6 +83,8 @@ export default function StudentFaceCheckin({ classId }: { classId: string }) {
         return;
       }
 
+      const movementReason = await getLateReasonIfNeeded();
+
       // Register attendance immediately
       await registerAttendanceUnified({
         studentId: result.subjectId,
@@ -77,6 +92,7 @@ export default function StudentFaceCheckin({ classId }: { classId: string }) {
         mode: "in",
         method: "face",
         biometric: true,
+        movementReason,
       });
 
       Alert.alert("Check-in Successful", `Face matched (${result.similarity.toFixed(2)}%)`);
@@ -107,6 +123,7 @@ export default function StudentFaceCheckin({ classId }: { classId: string }) {
           {loading ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-semibold">Face Check-in</Text>}
         </Pressable>
       </View>
+      {movementReasonPrompt}
     </View>
   );
 }

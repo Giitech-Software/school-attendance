@@ -284,6 +284,18 @@ const attendedCount =
                   </Text>
                 )}
 
+                {item.lateReason ? (
+                  <Text className="text-xs text-amber-700">
+                    Movement book — late arrival: {item.lateReason}
+                  </Text>
+                ) : null}
+
+                {item.earlyCheckoutReason ? (
+                  <Text className="text-xs text-blue-700">
+                    Early out: {item.earlyCheckoutReason}
+                  </Text>
+                ) : null}
+
                 {item.checkOutTime && (
                   <Text className="text-xs text-slate-500">
                     Out:{" "}

@@ -38,7 +38,7 @@ export default function AttendanceList() {
 
   return (
     <View className="flex-1 bg-slate-50 p-4">
-      <Text className="text-xl font-semibold mb-4">Today's Attendance</Text>
+      <Text className="text-xl font-semibold mb-4">Today’s Attendance</Text>
 
       <FlatList
         data={rows}

@@ -12,6 +12,7 @@ import { auth, db } from "../../app/firebase";
 import type { AttendanceRecord } from "./types";
 import { validateSchoolLocation } from "./locationGuard";
 import { logAdminAction } from "./adminLogs";
+import { getTenantScope, withTenantScope } from "./tenantScope";
 /**
  * Supported attendance subjects
  */
@@ -44,6 +45,7 @@ export async function recordAttendanceCore({
     record.subjectType
   );
   const now = new Date().toISOString();
+  const tenantScope = await getTenantScope();
   const attendanceCollection = collection(db, collectionName);
   const locationAudit = {
     verificationMethod: locationValidation.verificationMethod,
@@ -95,7 +97,7 @@ export async function recordAttendanceCore({
     updateFields.location = locationAudit;
 
     const ref = doc(db, collectionName, id);
-    await updateDoc(ref, updateFields);
+    await updateDoc(ref, withTenantScope(updateFields, tenantScope));
     await logAdminAction({
       action: record.type === "out" ? "CHECK_OUT" : "UPDATE_ATTENDANCE",
       targetType: "attendance",
@@ -121,7 +123,7 @@ export async function recordAttendanceCore({
   /* ===============================
      CREATE NEW CHECK-IN
   =============================== */
-  const data = {
+  const data = withTenantScope({
     ...record,
     createdAt: serverTimestamp(),
     checkInTime: now,
@@ -130,7 +132,7 @@ export async function recordAttendanceCore({
     biometric: record.biometric ?? false,
     method: record.method ?? "qr",
     location: locationAudit,
-  };
+  }, tenantScope);
 
   const ref = await addDoc(attendanceCollection, data);
   await logAdminAction({
@@ -235,3 +237,5 @@ export async function handleStudentQrScan({
     },
   });
 } // ✅ CLOSED
+
+

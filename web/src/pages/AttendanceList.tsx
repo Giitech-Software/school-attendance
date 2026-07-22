@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { getAttendanceForDate, todayISO } from "../services/attendance";
 import { listStaff } from "../services/staff";
@@ -169,17 +169,17 @@ export default function AttendanceList() {
             <h1 className="text-xl font-extrabold">Today's Attendance</h1>
             <p className="mt-1 text-xs text-white/70">Review student and staff attendance records for a selected date.</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link to="/attendance/checkin" className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-dark">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+            <Link to="/attendance/checkin" className="inline-flex items-center justify-center rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-dark">
               Take attendance
             </Link>
-            <Link to="/attendance/qr" className="rounded-lg border border-white/20 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10">
+            <Link to="/attendance/qr" className="inline-flex items-center justify-center rounded-lg border border-white/20 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10">
               QR scan
             </Link>
           </div>
         </div>
 
-        <div className="grid gap-3 p-3 xl:grid-cols-[13rem_1fr_1fr_auto] xl:items-end">
+        <div className="grid gap-3 p-3 lg:grid-cols-[13rem_1fr] xl:grid-cols-[13rem_1fr_1fr_auto] xl:items-end">
           <label className="block">
             <span className="auth-label">Date</span>
             <input type="date" value={date} onChange={(event) => setDate(event.target.value)} className="enterprise-input mt-1.5" />
@@ -187,9 +187,9 @@ export default function AttendanceList() {
 
           <div>
             <p className="auth-label mb-1.5">Subject</p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
               {(["all", "student", "staff"] as SubjectFilter[]).map((value) => (
-                <button key={value} type="button" onClick={() => setSubjectFilter(value)} className={`rounded-lg border px-3 py-2 text-sm font-semibold ${subjectFilter === value ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}>
+                <button key={value} type="button" onClick={() => setSubjectFilter(value)} className={`shrink-0 rounded-lg border px-3 py-2 text-sm font-semibold ${subjectFilter === value ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}>
                   {value === "all" ? "All" : value === "student" ? "Students" : "Staff"}
                 </button>
               ))}
@@ -198,9 +198,9 @@ export default function AttendanceList() {
 
           <div>
             <p className="auth-label mb-1.5">Status</p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
               {(["all", "present", "late", "absent"] as StatusFilter[]).map((value) => (
-                <button key={value} type="button" onClick={() => setStatusFilter(value)} className={`rounded-lg border px-3 py-2 text-sm font-semibold capitalize ${statusFilter === value ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}>
+                <button key={value} type="button" onClick={() => setStatusFilter(value)} className={`shrink-0 rounded-lg border px-3 py-2 text-sm font-semibold capitalize ${statusFilter === value ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}>
                   {value}
                 </button>
               ))}
@@ -237,8 +237,54 @@ export default function AttendanceList() {
         ) : visibleRecords.length === 0 ? (
           <p className="rounded-lg bg-slate-50 p-3 text-center text-sm text-slate-500">No attendance recorded for the selected filters.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[780px] table-auto border-collapse text-sm">
+          <>
+          <div className="grid gap-3 md:hidden">
+            {visibleRecords.map((record) => {
+              const subject = displaySubject(record);
+              const type = subjectType(record);
+              const movementReason = [record.lateReason, record.earlyCheckoutReason].filter(Boolean).join(" / ");
+              return (
+                <div key={record.id ?? `${subjectKey(record)}-${record.date}`} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-bold text-slate-950">{subject.name}</div>
+                      <div className="mt-0.5 truncate text-xs text-slate-500">{subject.meta}</div>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold capitalize ring-1 ${statusClass(record.status)}`}>
+                      {record.status ?? "present"}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                    <div className="rounded-md bg-slate-50 p-2">
+                      <div className="text-[11px] font-bold uppercase text-slate-500">Subject</div>
+                      <div className="mt-1 capitalize text-slate-800">{type}</div>
+                    </div>
+                    <div className="rounded-md bg-slate-50 p-2">
+                      <div className="text-[11px] font-bold uppercase text-slate-500">Method</div>
+                      <div className="mt-1 capitalize text-slate-800">{record.method ?? "manual"}</div>
+                    </div>
+                    <div className="rounded-md bg-slate-50 p-2">
+                      <div className="text-[11px] font-bold uppercase text-slate-500">In</div>
+                      <div className="mt-1 text-slate-800">{formatTime(record.checkInTime)}</div>
+                    </div>
+                    <div className="rounded-md bg-slate-50 p-2">
+                      <div className="text-[11px] font-bold uppercase text-slate-500">Out</div>
+                      <div className="mt-1 text-slate-800">{formatTime(record.checkOutTime)}</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 rounded-md bg-slate-50 p-2 text-sm">
+                    <div className="text-[11px] font-bold uppercase text-slate-500">Movement book entry</div>
+                    <div className="mt-1 text-slate-800">{movementReason || "--"}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full min-w-[920px] table-auto border-collapse text-sm">
               <thead>
                 <tr className="border-b text-left text-xs font-bold uppercase tracking-wide text-slate-500">
                   <th className="px-2 py-2">Name</th>
@@ -248,6 +294,7 @@ export default function AttendanceList() {
                   <th className="px-2 py-2">Out</th>
                   <th className="px-2 py-2">Method</th>
                   <th className="px-2 py-2">Biometric</th>
+                  <th className="px-2 py-2">Movement book entry</th>
                 </tr>
               </thead>
               <tbody>
@@ -268,16 +315,17 @@ export default function AttendanceList() {
                       <td className="px-2 py-3 text-slate-700">{formatTime(record.checkOutTime)}</td>
                       <td className="px-2 py-3 capitalize text-slate-700">{record.method ?? "manual"}</td>
                       <td className="px-2 py-3 text-slate-700">{record.biometric ? "Yes" : "No"}</td>
+                      <td className="px-2 py-3 text-xs font-semibold text-slate-700">{[record.lateReason, record.earlyCheckoutReason].filter(Boolean).join(" / ") || "-"}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
+          </>
         )}
         {peopleLoading ? <p className="mt-3 text-xs text-slate-500">Resolving names...</p> : null}
       </section>
     </div>
   );
 }
-

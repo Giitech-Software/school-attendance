@@ -16,6 +16,8 @@ export type Student = {
   isActive?: boolean;
   createdAt?: { seconds: number; nanoseconds: number } | string | number;
   updatedAt?: { seconds: number; nanoseconds: number } | string | number;
+  tenantId?: string | null;
+  tenantName?: string | null;
 };
 
 export type AttendanceRecord = {
@@ -31,6 +33,10 @@ export type AttendanceRecord = {
   checkInTime?: string;  // ISO datetime
   checkOutTime?: string | null; // ISO datetime
   status?: 'present' | 'absent' | 'late' | 'excused';
+  lateReason?: string | null;
+  lateMinutes?: number | null;
+  earlyCheckoutReason?: string | null;
+  earlyCheckoutMinutes?: number | null;
   method?: 'qr' | 'fingerprint' | 'face' | 'manual';
   biometric?: boolean;
   location?: {
@@ -56,6 +62,8 @@ export type AttendanceRecord = {
     checkedAt: string;
   };
   createdAt?: { seconds: number; nanoseconds: number } | string | number;
+  tenantId?: string | null;
+  tenantName?: string | null;
 };
 
 export type Term = {
@@ -66,6 +74,8 @@ export type Term = {
   isCurrent?: boolean;
   createdAt?: any;
   updatedAt?: any;
+  tenantId?: string | null;
+  tenantName?: string | null;
 };
 
 export type Week = {
@@ -75,6 +85,9 @@ export type Week = {
   startDate: string;
   endDate: string;
   createdAt?: any;
+  tenantId?: string | null;
+  tenantName?: string | null;
 };
+
 
 

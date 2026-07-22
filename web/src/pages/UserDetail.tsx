@@ -1,8 +1,10 @@
-﻿import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getUserById, upsertUser, type AppUser, type UserRole } from "../services/users";
+import useCurrentUser from "../hooks/useCurrentUser";
+import { allowsStudentAndParentFeatures } from "../services/tenantScope";
 
-const USER_ROLES: UserRole[] = ["parent", "teacher", "non_teaching_staff", "general_staff", "staff", "admin"];
+const USER_ROLES: UserRole[] = ["parent", "teacher", "non_teaching_staff", "general_staff", "staff", "admin", "super_admin"];
 
 function roleLabel(role?: string | null) {
   return (role ?? "teacher").replaceAll("_", " ");
@@ -14,7 +16,8 @@ function isStaffAccount(user: AppUser | null) {
     user?.role === "non_teaching_staff" ||
     user?.role === "staff" ||
     user?.role === "general_staff" ||
-    user?.role === "admin"
+    user?.role === "admin" ||
+    user?.role === "super_admin"
   );
 }
 
@@ -25,6 +28,10 @@ export default function UserDetail() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [promoting, setPromoting] = useState(false);
+  const { userDoc: currentUserDoc } = useCurrentUser();
+  const allowsSchoolFeatures = allowsStudentAndParentFeatures(currentUserDoc);
+  const isSuperAdmin = currentUserDoc?.role === "super_admin";
+  const visibleRoles = USER_ROLES.filter((role) => (isSuperAdmin || role !== "super_admin") && (allowsSchoolFeatures || role !== "parent"));
 
   function userUid(row: AppUser) {
     return row.uid ?? row.id ?? "";
@@ -132,7 +139,7 @@ export default function UserDetail() {
                 onChange={(event) => setUser({ ...user, role: event.target.value as UserRole })}
                 className="enterprise-input mt-1.5"
               >
-                {USER_ROLES.map((role) => (
+                {visibleRoles.map((role) => (
                   <option key={role} value={role}>
                     {role.replaceAll("_", " ")}
                   </option>
@@ -175,6 +182,7 @@ export default function UserDetail() {
             <div className="admin-field-card">
               <p className="auth-label">Attendance Permissions</p>
               <div className="mt-3 grid gap-2">
+                {allowsSchoolFeatures ? (
                 <button
                   type="button"
                   onClick={() => setUser({ ...user, canTakeStudentAttendance: !user.canTakeStudentAttendance })}
@@ -182,6 +190,7 @@ export default function UserDetail() {
                 >
                   {user.canTakeStudentAttendance ? "Can take student attendance" : "Cannot take student attendance"}
                 </button>
+                ) : null}
 
                 <button
                   type="button"
@@ -207,7 +216,7 @@ export default function UserDetail() {
               Create / Link Staff Profile
             </Link>
           ) : null}
-          {user.role !== "admin" ? (
+          {user.role !== "admin" && user.role !== "super_admin" ? (
             <button type="button" onClick={handlePromoteToAdmin} disabled={promoting} className="enterprise-button-danger">
               {promoting ? "Promoting..." : "Promote to Admin"}
             </button>
@@ -217,4 +226,7 @@ export default function UserDetail() {
     </div>
   );
 }
+
+
+
 

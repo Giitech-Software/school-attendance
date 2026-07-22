@@ -1,5 +1,6 @@
 // mobile/src/services/constants/roles.ts
 export const USER_ROLES = [
+  "super_admin",
   "parent",
   "teacher",
   "non_teaching_staff",

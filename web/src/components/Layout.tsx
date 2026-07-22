@@ -2,24 +2,42 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { signOutUser } from "../services/auth";
 import useCurrentUser from "../hooks/useCurrentUser";
+import { autoMarkAbsentsForToday } from "../services/autoMarkAbsent";
+import { allowsStudentAndParentFeatures } from "../services/tenantScope";
 
 const mainLinks = [
   { to: "/", label: "Home" },
   { to: "/attendance/checkin", label: "Attendance" },
   { to: "/reports", label: "Reports", adminOnly: true },
-  { to: "/students", label: "Students", adminOnly: true },
+  { to: "/students", label: "Students", adminOnly: true, schoolOnly: true },
   { to: "/staff", label: "Staff", adminOnly: true },
   { to: "/admin", label: "Administration", adminOnly: true },
+  { to: "/super-admin", label: "Renting", superAdminOnly: true },
 ];
 
 const adminLinks = [
-  { to: "/admin/classes", label: "Classes" },
-  { to: "/terms", label: "Terms" },
+  { to: "/admin/classes", label: "Classes", schoolOnly: true },
+  { to: "/terms", label: "Terms", schoolOnly: true },
   { to: "/users", label: "Users" },
   { to: "/admin/attendance-settings", label: "Settings" },
 ];
 
 const publicRoutes = new Set(["/login", "/forgot-password", "/signup"]);
+
+const backTargets: Record<string, string> = {
+  "/terms": "/admin",
+  "/users": "/admin",
+  "/attendance": "/",
+  "/attendance/checkin": "/",
+  "/staff/my-attendance": "/",
+  "/reports": "/",
+  "/reports/daily": "/reports",
+  "/reports/yearly": "/reports",
+  "/reports/staff-daily": "/reports?type=staff",
+  "/admin": "/",
+  "/admin/classes": "/admin",
+  "/super-admin": "/admin",
+};
 
 function initialsFromEmail(email?: string | null) {
   if (!email) return "U";
@@ -48,10 +66,15 @@ export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const isPublicRoute = publicRoutes.has(location.pathname);
-  const isAdmin = userDoc?.role === "admin";
+  const isSuperAdmin = userDoc?.role === "super_admin";
+  const isAdmin = userDoc?.role === "admin" || isSuperAdmin;
   const isApproved = isAdmin || userDoc?.approved === true;
-  const visibleMainLinks = useMemo(() => mainLinks.filter((link) => !link.adminOnly || isAdmin), [isAdmin]);
-  const visibleAdminLinks = isAdmin ? adminLinks : [];
+  const allowsSchoolFeatures = allowsStudentAndParentFeatures(userDoc);
+  const visibleMainLinks = useMemo(
+    () => mainLinks.filter((link) => (!link.adminOnly || isAdmin) && (!link.superAdminOnly || isSuperAdmin) && (!link.schoolOnly || allowsSchoolFeatures)),
+    [allowsSchoolFeatures, isAdmin, isSuperAdmin]
+  );
+  const visibleAdminLinks = isAdmin ? adminLinks.filter((link) => !link.schoolOnly || allowsSchoolFeatures) : [];
 
   useEffect(() => {
     if (loading || isPublicRoute) return;
@@ -66,6 +89,13 @@ export default function Layout() {
   useEffect(() => {
     setMenuOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (loading || isPublicRoute || !isAdmin) return;
+    autoMarkAbsentsForToday({ adminUid: userDoc.uid ?? userDoc.id }).catch((error) => {
+      console.warn("Auto-mark absent check failed", error);
+    });
+  }, [isAdmin, isPublicRoute, loading, userDoc?.id, userDoc?.uid]);
 
   async function handleSignOut() {
     try {
@@ -82,7 +112,7 @@ export default function Layout() {
   if (loading || !authUser) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
-        <div className="enterprise-panel px-5 py-3 text-sm font-semibold text-slate-600">Loading workspace...</div>
+        <div className="enterprise-panel px-5 py-3 text-sm font-semibold text-slate-600">Loading ASTEM Attendance...</div>
       </div>
     );
   }
@@ -90,12 +120,12 @@ export default function Layout() {
   const pageTitle = getPageTitle(location.pathname);
   const accountLabel = userDoc?.displayName ?? authUser.email ?? "Signed in user";
   const avatarText = initialsFromEmail(authUser.email);
+  const backTarget = backTargets[location.pathname];
 
   const sidebar = (
     <aside className="flex h-full flex-col bg-white">
       <div className="border-b border-slate-200 px-3 py-3">
-        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Workspace</p>
-        <p className="mt-1 truncate text-sm font-extrabold text-slate-950">{pageTitle}</p>
+        <p className="truncate text-sm font-extrabold text-slate-950">{pageTitle}</p>
       </div>
 
       <nav className="flex-1 space-y-4 overflow-y-auto px-2.5 py-3">
@@ -156,7 +186,7 @@ export default function Layout() {
           <div className="hidden w-32 lg:block" />
 
           <Link to="/" className="absolute left-14 right-14 text-center sm:left-20 sm:right-20">
-            <span className="block truncate text-lg font-extrabold tracking-tight sm:text-xl">M'SALEM Attendance Register</span>
+            <span className="block truncate text-lg font-extrabold tracking-tight sm:text-xl">ASTEM Attendance Register</span>
           </Link>
 
           <div className="ml-auto flex items-center gap-3">
@@ -182,6 +212,18 @@ export default function Layout() {
 
       <div className="lg:pl-60">
         <main className="mx-auto max-w-[1440px] px-3 py-3 sm:px-4 lg:py-4">
+          {backTarget ? (
+            <div className="mb-3">
+              <Link
+                to={backTarget}
+                className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950"
+                aria-label="Go back"
+              >
+                <span aria-hidden="true">&larr;</span>
+                Back
+              </Link>
+            </div>
+          ) : null}
           <Outlet />
         </main>
       </div>

@@ -9,15 +9,14 @@ import {
   query,
   where,
   serverTimestamp,
-  orderBy,
   limit,
   deleteField,
 } from "firebase/firestore";
-import { db } from "../firebase"; // shared firebase.ts (platform-aware)
+import { db } from "../firebase";
 import type { Student } from "../types";
 import { getClassById } from "./classes";
+import { belongsToTenant, getTenantScope, sortByCreatedAtDesc, tenantConstraints, withTenantScope } from "./tenantScope";
 
-// Re-export Student type
 export type { Student };
 
 const studentsCollection = collection(db, "students");
@@ -35,7 +34,8 @@ async function findClassDocIdForShortId(shortClassId?: string): Promise<string |
   if (!shortClassId) return null;
 
   try {
-    const q = query(collection(db, "classes"), where("classId", "==", shortClassId), limit(1));
+    const scope = await getTenantScope();
+    const q = query(collection(db, "classes"), where("classId", "==", shortClassId), ...tenantConstraints(scope), limit(1));
     const snap = await getDocs(q);
     if (!snap.empty) return snap.docs[0].id;
   } catch (err) {
@@ -45,31 +45,30 @@ async function findClassDocIdForShortId(shortClassId?: string): Promise<string |
   return null;
 }
 
-/** Create a new student */
+async function nextStudentId() {
+  const scope = await getTenantScope();
+  const snap = await getDocs(query(studentsCollection, ...tenantConstraints(scope)));
+  const maxNumber = snap.docs.reduce((max, studentDoc) => {
+    const lastId: string = studentDoc.data()?.studentId ?? studentDoc.data()?.studentCode ?? "";
+    const match = lastId.match(/\d+$/);
+    return match ? Math.max(max, Number(match[0])) : max;
+  }, 0);
+  return `STU-${String(maxNumber + 1).padStart(3, "0")}`;
+}
+
 export async function createStudent(data: Omit<Student, "id" | "createdAt">): Promise<Student> {
   try {
-    const payload: any = {
+    const scope = await getTenantScope();
+    const payload: any = withTenantScope({
       ...data,
       createdAt: serverTimestamp(),
-    };
+    }, scope);
 
     Object.keys(payload).forEach((key) => {
       if (payload[key] === undefined) delete payload[key];
     });
 
-    if (!payload.studentId) {
-      const snap = await getDocs(query(studentsCollection, orderBy("createdAt", "desc"), limit(1)));
-      let nextNum = 1;
-
-      if (!snap.empty) {
-        const lastStudent = snap.docs[0].data();
-        const lastId: string = lastStudent?.studentId ?? lastStudent?.studentCode ?? "STU-000";
-        const match = lastId.match(/\d+$/);
-        if (match) nextNum = Number(match[0]) + 1;
-      }
-
-      payload.studentId = `STU-${String(nextNum).padStart(3, "0")}`;
-    }
+    if (!payload.studentId) payload.studentId = await nextStudentId();
 
     if (payload.classId) {
       const classDocId = await findClassDocIdForShortId(payload.classId);
@@ -91,7 +90,7 @@ export async function upsertStudent(student: Partial<Student> & { id?: string })
   }
 
   const ref = doc(db, "students", student.id);
-  const patch: any = { updatedAt: serverTimestamp() };
+  const patch: any = withTenantScope({ updatedAt: serverTimestamp() }, await getTenantScope());
 
   for (const [key, value] of Object.entries(student)) {
     if (key === "id") continue;
@@ -122,55 +121,44 @@ export async function deleteStudent(id: string): Promise<boolean> {
   return true;
 }
 
-/** Get student by ID */
 export async function getStudentById(id: string): Promise<Student | null> {
   try {
     const d = await getDoc(doc(db, "students", id));
     if (!d.exists()) return null;
-    return withShortId(d.id, d.data());
+    const data = d.data();
+    if (!belongsToTenant(data, await getTenantScope())) return null;
+    return withShortId(d.id, data);
   } catch (error: any) {
     console.error("getStudentById error:", error.code, error.message);
     throw error;
   }
 }
 
-/** List all students, optionally filtered by classId */
 export async function listStudents(classId?: string): Promise<Student[]> {
   try {
+    const scope = await getTenantScope();
+    const baseConstraints = tenantConstraints(scope);
+
     if (!classId) {
-      const qAll = query(studentsCollection, orderBy("createdAt", "desc"));
-      const snapAll = await getDocs(qAll);
-      return snapAll.docs.map((d) => withShortId(d.id, d.data()));
+      const snapAll = await getDocs(query(studentsCollection, ...baseConstraints));
+      return sortByCreatedAtDesc(snapAll.docs.map((d) => withShortId(d.id, d.data())));
     }
 
-    try {
-      const q1 = query(studentsCollection, where("classId", "==", classId), orderBy("createdAt", "desc"));
-      const snap1 = await getDocs(q1);
-      if (!snap1.empty) return snap1.docs.map((d) => withShortId(d.id, d.data()));
-    } catch (err) {
-      console.error("listStudents (classId) error:", err);
+    const candidates: Student[] = [];
+
+    for (const classField of ["classId", "classDocId"] as const) {
+      const snap = await getDocs(query(studentsCollection, where(classField, "==", classId), ...baseConstraints));
+      candidates.push(...snap.docs.map((d) => withShortId(d.id, d.data())));
     }
 
-    try {
-      const q2 = query(studentsCollection, where("classDocId", "==", classId), orderBy("createdAt", "desc"));
-      const snap2 = await getDocs(q2);
-      if (!snap2.empty) return snap2.docs.map((d) => withShortId(d.id, d.data()));
-    } catch (err) {
-      console.error("listStudents (classDocId) error:", err);
+    const cls = await getClassById(classId).catch(() => null);
+    if (cls?.classId && cls.classId !== classId) {
+      const snap = await getDocs(query(studentsCollection, where("classId", "==", cls.classId), ...baseConstraints));
+      candidates.push(...snap.docs.map((d) => withShortId(d.id, d.data())));
     }
 
-    try {
-      const cls = await getClassById(classId);
-      if (cls?.classId) {
-        const q3 = query(studentsCollection, where("classId", "==", cls.classId), orderBy("createdAt", "desc"));
-        const snap3 = await getDocs(q3);
-        if (!snap3.empty) return snap3.docs.map((d) => withShortId(d.id, d.data()));
-      }
-    } catch (err) {
-      console.error("listStudents (via class) error:", err);
-    }
-
-    return [];
+    const unique = new Map(candidates.map((student) => [student.id, student]));
+    return sortByCreatedAtDesc(Array.from(unique.values()));
   } catch (error: any) {
     console.error("listStudents error:", error.code, error.message);
     throw error;
@@ -179,10 +167,10 @@ export async function listStudents(classId?: string): Promise<Student[]> {
 
 export async function updateStudent(id: string, patch: Partial<Omit<Student, "id">>): Promise<void> {
   try {
-    await updateDoc(doc(db, "students", id), {
+    await updateDoc(doc(db, "students", id), withTenantScope({
       ...patch,
       updatedAt: serverTimestamp(),
-    });
+    }, await getTenantScope()));
   } catch (error: any) {
     console.error("updateStudent error:", error.code, error.message);
     throw error;

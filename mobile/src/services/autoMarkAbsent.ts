@@ -1,167 +1,200 @@
-// mobile/src/services/autoMarkAbsent.ts
 import {
   collection,
   query,
   where,
   getDocs,
-  addDoc,
   serverTimestamp,
   doc,
   getDoc,
   setDoc,
+  type QueryDocumentSnapshot,
+  type DocumentData,
 } from "firebase/firestore";
 import { db } from "../../app/firebase";
 import { todayISO } from "./attendance";
-import { getAttendanceSettings } from "./attendanceSettings";
+import {
+  getAttendanceSettings,
+  hasReachedAttendanceCloseTime,
+  isWeekendForAttendance,
+} from "./attendanceSettings";
+import {
+  getTenantScope,
+  tenantConstraints,
+  withTenantScope,
+  type TenantScope,
+} from "./tenantScope";
 
-/* -------------------------------------------------
-   Metadata doc to prevent duplicate auto-runs
--------------------------------------------------- */
-const META_REF = doc(db, "settings", "attendanceMeta");
+const ATTENDANCE_COLLECTION = collection(db, "attendance");
+const DEFAULT_CATCH_UP_DAYS = 7;
 type AutoMarkScope = "students" | "staff";
 
-function hasReachedAutoMarkCutoff(closeAfter?: string, lateAfter?: string): boolean {
-  const cutoffTime = closeAfter ?? lateAfter;
-  if (!cutoffTime) return false;
+type AutoMarkResult = {
+  created: number;
+  skipped: boolean;
+  complete: boolean;
+};
 
-  const [h, m] = cutoffTime.split(":").map(Number);
-  const now = new Date();
-  const cutoff = new Date();
-  cutoff.setHours(h, m, 0, 0);
+type AutoMarkRunResult = {
+  dateIso: string;
+  students: AutoMarkResult;
+  staff: AutoMarkResult;
+};
 
-  return now >= cutoff;
+function activeDocs(snapshot: { docs: QueryDocumentSnapshot<DocumentData>[] }) {
+  return snapshot.docs.filter((item) => item.data().isActive !== false);
 }
 
-/**
- * Check whether auto-mark already ran for a date
- */
-async function hasAutoMarked(dateIso: string, scope: AutoMarkScope): Promise<boolean> {
-  const snap = await getDoc(META_REF);
-  if (!snap.exists()) return false;
+function dateInTimezone(date: Date, timezone: string) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(date);
+    const year = parts.find((part) => part.type === "year")?.value;
+    const month = parts.find((part) => part.type === "month")?.value;
+    const day = parts.find((part) => part.type === "day")?.value;
 
-  const data = snap.data();
-  if (scope === "students") {
-    return (
-      data?.lastAutoMarkedStudentsDate === dateIso ||
-      data?.lastAutoMarkedDate === dateIso
-    );
+    if (year && month && day) return `${year}-${month}-${day}`;
+  } catch {
+    // Fall back to the existing helper if the saved timezone is unsupported.
   }
 
-  return data?.lastAutoMarkedStaffDate === dateIso;
+  return todayISO();
 }
 
-/**
- * Mark auto-mark as completed for a date
- */
-async function setAutoMarked(
-  dateIso: string,
-  scope: AutoMarkScope,
-  adminUid?: string
-) {
-  const key =
-    scope === "students" ? "lastAutoMarkedStudentsDate" : "lastAutoMarkedStaffDate";
-  const runByKey =
-    scope === "students" ? "lastStudentsRunBy" : "lastStaffRunBy";
+function addDays(dateIso: string, days: number) {
+  const [year, month, day] = dateIso.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day + days));
+  return date.toISOString().slice(0, 10);
+}
+
+function autoMarkDatesThrough(latestDateIso: string, days: number) {
+  const count = Math.max(1, Math.min(days, 31));
+  return Array.from({ length: count }, (_, index) => addDays(latestDateIso, index - count + 1));
+}
+
+
+function metaRef(tenantScope: TenantScope) {
+  const suffix = tenantScope.isScoped && tenantScope.tenantId ? `__${tenantScope.tenantId}` : "";
+  return doc(db, "settings", `attendanceMeta${suffix}`);
+}
+
+function allowsStudentScope(tenantScope: TenantScope) {
+  return !tenantScope.isScoped || tenantScope.tenantType === "school";
+}
+
+async function hasAutoMarked(dateIso: string, scope: AutoMarkScope, tenantScope: TenantScope) {
+  const snap = await getDoc(metaRef(tenantScope));
+  if (!snap.exists()) return false;
+  const data = snap.data();
+  return scope === "students"
+    ? data.lastAutoMarkedStudentsDate === dateIso || data.lastAutoMarkedDate === dateIso
+    : data.lastAutoMarkedStaffDate === dateIso;
+}
+
+async function setAutoMarked(dateIso: string, scope: AutoMarkScope, tenantScope: TenantScope, adminUid?: string) {
+  const key = scope === "students" ? "lastAutoMarkedStudentsDate" : "lastAutoMarkedStaffDate";
+  const runByKey = scope === "students" ? "lastStudentsRunBy" : "lastStaffRunBy";
 
   await setDoc(
-    META_REF,
-    {
+    metaRef(tenantScope),
+    withTenantScope({
       [key]: dateIso,
       [runByKey]: adminUid ?? null,
-      // Backward compatibility for old readers.
       ...(scope === "students" ? { lastAutoMarkedDate: dateIso } : {}),
       updatedAt: serverTimestamp(),
-    },
+    }, tenantScope),
     { merge: true }
   );
 }
 
-async function isStudentAutoMarkComplete(dateIso: string): Promise<boolean> {
-  const [studentsSnap, attendanceSnap] = await Promise.all([
-    getDocs(collection(db, "students")),
-    getDocs(
-      query(
-        collection(db, "attendance"),
-        where("date", "==", dateIso)
-      )
-    ),
-  ]);
-
-  if (studentsSnap.empty) return true;
-
-  const markedStudentIds = new Set(
-    attendanceSnap.docs
-      .map((d) => d.data().studentId)
-      .filter(Boolean)
+function markedIdsForScope(
+  attendanceDocs: QueryDocumentSnapshot<DocumentData>[],
+  scope: AutoMarkScope
+) {
+  return new Set(
+    attendanceDocs
+      .map((item) => {
+        const data = item.data();
+        if (scope === "students") {
+          return data.subjectType === "staff" ? null : data.studentId ?? data.subjectId;
+        }
+        return data.subjectType === "staff" ? data.subjectId ?? data.staffId : null;
+      })
+      .filter((value): value is string => Boolean(value))
   );
-
-  return markedStudentIds.size >= studentsSnap.size;
 }
 
-/* -------------------------------------------------
-   CORE: Auto-mark ABSENT for ALL classes
--------------------------------------------------- */
-export async function autoMarkAbsentAllClasses({
-  dateIso = todayISO(),
+async function loadScopeState(dateIso: string, scope: AutoMarkScope, tenantScope: TenantScope) {
+  const [peopleSnap, attendanceSnap] = await Promise.all([
+    getDocs(query(collection(db, scope === "students" ? "students" : "staff"), ...tenantConstraints(tenantScope))),
+    getDocs(query(ATTENDANCE_COLLECTION, where("date", "==", dateIso), ...tenantConstraints(tenantScope))),
+  ]);
+
+  const people = activeDocs(peopleSnap);
+  const markedIds = markedIdsForScope(attendanceSnap.docs, scope);
+  const complete = people.every((person) => markedIds.has(person.id));
+  return { people, markedIds, complete };
+}
+
+async function autoMarkScope({
+  scope,
+  dateIso,
   adminUid,
-  force = false, // allow manual reruns
+  force,
+  tenantScope,
 }: {
-  dateIso?: string;
+  scope: AutoMarkScope;
+  dateIso: string;
   adminUid?: string;
-  force?: boolean;
-}) {
+  force: boolean;
+  tenantScope: TenantScope;
+}): Promise<AutoMarkResult> {
+  if (scope === "students" && !allowsStudentScope(tenantScope)) {
+    return { created: 0, skipped: true, complete: true };
+  }
   const settings = await getAttendanceSettings();
+  const isWeekend = isWeekendForAttendance(settings, new Date(`${dateIso}T12:00:00`));
 
-  /* --------------------------------
-     Cutoff check (only for TODAY)
-  -------------------------------- */
-  if (!force && dateIso === todayISO()) {
-    if (!hasReachedAutoMarkCutoff(settings.closeAfter, settings.lateAfter)) {
-      console.warn("Auto-mark skipped: cutoff not reached");
-      return;
-    }
+  if (scope === "students" && isWeekend) {
+    await setAutoMarked(dateIso, scope, tenantScope, adminUid);
+    return { created: 0, skipped: true, complete: true };
+  }
+  if (scope === "staff" && isWeekend && !settings.allowStaffWeekendAttendance) {
+    await setAutoMarked(dateIso, scope, tenantScope, adminUid);
+    return { created: 0, skipped: true, complete: true };
   }
 
-  /* --------------------------------
-     Prevent duplicate auto-runs
-  -------------------------------- */
-  if (!force && (await hasAutoMarked(dateIso, "students"))) {
-    const isComplete = await isStudentAutoMarkComplete(dateIso);
-    if (isComplete) {
-      console.warn("Student auto-mark already completed for", dateIso);
-      return;
-    }
-    console.warn("Student meta lock found but data incomplete. Re-running for", dateIso);
+  const localTodayIso = dateInTimezone(new Date(), settings.timezone);
+  if (!force && dateIso > localTodayIso) {
+    return { created: 0, skipped: true, complete: false };
+  }
+  if (!force && dateIso === localTodayIso && !hasReachedAttendanceCloseTime(settings)) {
+    return { created: 0, skipped: true, complete: false };
   }
 
-  const studentsSnap = await getDocs(collection(db, "students"));
-  if (studentsSnap.empty) return;
+  const state = await loadScopeState(dateIso, scope, tenantScope);
+  if (state.complete) {
+    if (!(await hasAutoMarked(dateIso, scope, tenantScope))) {
+      await setAutoMarked(dateIso, scope, tenantScope, adminUid);
+    }
+    return { created: 0, skipped: true, complete: true };
+  }
 
-  const attendanceSnap = await getDocs(
-    query(
-      collection(db, "attendance"),
-      where("date", "==", dateIso)
-    )
-  );
+  if (!force && (await hasAutoMarked(dateIso, scope, tenantScope))) {
+    console.warn(`${scope} auto-mark lock was incomplete; repairing ${dateIso}`);
+  }
 
-  const presentStudentIds = new Set(
-    attendanceSnap.docs
-      .map((d) => d.data().studentId)
-      .filter(Boolean)
-  );
-
-  const writes: Promise<any>[] = [];
-
-  studentsSnap.forEach((studentDoc) => {
-    const studentId = studentDoc.id;
-    if (presentStudentIds.has(studentId)) return;
-
-    writes.push(
-      addDoc(collection(db, "attendance"), {
-        studentId,
-        subjectType: "student",
-        subjectId: studentId,
-        classId: studentDoc.data().classId ?? "",
+  const missingPeople = state.people.filter((person) => !state.markedIds.has(person.id));
+  await Promise.all(
+    missingPeople.map((person) => {
+      const data = person.data();
+      const attendanceId = `auto-${scope}-${dateIso}-${person.id}`;
+      const common = withTenantScope({
+        subjectType: scope === "students" ? "student" : "staff",
+        subjectId: person.id,
         date: dateIso,
         type: "in",
         method: "manual",
@@ -171,17 +204,39 @@ export async function autoMarkAbsentAllClasses({
         status: "absent",
         autoMarked: true,
         createdAt: serverTimestamp(),
-      })
-    );
-  });
+      }, tenantScope);
 
-  await Promise.all(writes);
+      return setDoc(
+        doc(ATTENDANCE_COLLECTION, attendanceId),
+        scope === "students"
+          ? {
+              ...common,
+              studentId: person.id,
+              classId: data.classId ?? "",
+              classDocId: data.classDocId ?? null,
+            }
+          : { ...common, staffId: person.id },
+        { merge: true }
+      );
+    })
+  );
 
-  /* --------------------------------
-     Lock date (important)
-  -------------------------------- */
-  await setAutoMarked(dateIso, "students", adminUid);
+  await setAutoMarked(dateIso, scope, tenantScope, adminUid);
+  return { created: missingPeople.length, skipped: false, complete: true };
 }
+
+export async function autoMarkAbsentAllClasses({
+  dateIso = todayISO(),
+  adminUid,
+  force = false,
+}: {
+  dateIso?: string;
+  adminUid?: string;
+  force?: boolean;
+} = {}) {
+  return autoMarkScope({ scope: "students", dateIso, adminUid, force, tenantScope: await getTenantScope() });
+}
+
 export async function autoMarkAbsentStaff({
   dateIso = todayISO(),
   adminUid,
@@ -190,70 +245,49 @@ export async function autoMarkAbsentStaff({
   dateIso?: string;
   adminUid?: string;
   force?: boolean;
-}) {
-  const settings = await getAttendanceSettings();
-
-  if (!force && dateIso === todayISO()) {
-    if (!hasReachedAutoMarkCutoff(settings.closeAfter, settings.lateAfter)) {
-      console.warn("Auto-mark skipped: cutoff not reached");
-      return;
-    }
-  }
-
-  if (!force && (await hasAutoMarked(dateIso, "staff"))) {
-    console.warn("Staff auto-mark already completed for", dateIso);
-    return;
-  }
-
-  const staffSnap = await getDocs(collection(db, "staff"));
-  if (staffSnap.empty) return;
-
-  const attendanceSnap = await getDocs(
-    query(
-      collection(db, "attendance"),
-      where("subjectType", "==", "staff"),
-      where("date", "==", dateIso)
-    )
-  );
-
-  const presentStaffIds = new Set(
-    attendanceSnap.docs.map((d) => d.data().subjectId)
-  );
-
-  const writes: Promise<any>[] = [];
-
-  staffSnap.forEach((staffDoc) => {
-    const staffId = staffDoc.id;
-
-    if (presentStaffIds.has(staffId)) return;
-
-    writes.push(
-      addDoc(collection(db, "attendance"), {
-        staffId, // legacy compatibility
-        subjectType: "staff",
-        subjectId: staffId,
-        date: dateIso,
-        type: "in",
-        method: "manual",
-        biometric: false,
-        checkInTime: null,
-        checkOutTime: null,
-        status: "absent",
-        autoMarked: true,
-        createdAt: serverTimestamp(),
-      })
-    );
-  });
-
-  await Promise.all(writes);
-  await setAutoMarked(dateIso, "staff", adminUid);
+} = {}) {
+  return autoMarkScope({ scope: "staff", dateIso, adminUid, force, tenantScope: await getTenantScope() });
 }
 
-export async function autoMarkAbsentsForToday(options?: {
+export async function autoMarkAbsentsForToday(options: {
   dateIso?: string;
   adminUid?: string;
   force?: boolean;
-}) {
-  await autoMarkAbsentAllClasses(options ?? {});
-  await autoMarkAbsentStaff(options ?? {});
+  catchUpDays?: number;
+} = {}) {
+  const tenantScope = await getTenantScope();
+  if (tenantScope.isSuperAdmin && !tenantScope.isScoped) {
+    const skipped = { created: 0, skipped: true, complete: true };
+    return { dateIso: options.dateIso ?? todayISO(), students: skipped, staff: skipped, runs: [] };
+  }
+  const settings = await getAttendanceSettings();
+  const localTodayIso = dateInTimezone(new Date(), settings.timezone);
+  const dateIso =
+    options.dateIso ??
+    (hasReachedAttendanceCloseTime(settings) ? localTodayIso : addDays(localTodayIso, -1));
+  const force = options.force ?? false;
+  const dates = options.dateIso
+    ? [dateIso]
+    : autoMarkDatesThrough(dateIso, options.catchUpDays ?? DEFAULT_CATCH_UP_DAYS);
+  const runs: AutoMarkRunResult[] = [];
+
+  for (const runDateIso of dates) {
+    const [students, staff] = await Promise.all([
+      autoMarkScope({ scope: "students", dateIso: runDateIso, adminUid: options.adminUid, force, tenantScope }),
+      autoMarkScope({ scope: "staff", dateIso: runDateIso, adminUid: options.adminUid, force, tenantScope }),
+    ]);
+    runs.push({ dateIso: runDateIso, students, staff });
+  }
+
+  const latest = runs[runs.length - 1] ?? {
+    dateIso,
+    students: { created: 0, skipped: true, complete: false },
+    staff: { created: 0, skipped: true, complete: false },
+  };
+
+  return { ...latest, runs };
 }
+
+
+
+

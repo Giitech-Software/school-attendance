@@ -6,6 +6,7 @@ import { listTerms, type Term } from "../services/terms";
 import { listWeeks } from "../services/weeks";
 import type { Week } from "../types";
 import { exportReportCsv, openReportPdf } from "../services/reportExport";
+import AttendanceTotalsCards from "../components/AttendanceTotalsCards";
 
 function classKey(cls: SchoolClass) {
   return cls.classId ?? cls.id ?? "";
@@ -170,6 +171,7 @@ export default function ReportsWeekly() {
           ) : null}
         </div>
 
+        {rows.length > 0 ? <AttendanceTotalsCards rows={rows} subjectLabel="Students" groupLabel={selectedClassKey ? "Selected class" : "All classes"} /> : null}
         {loading && <div className="report-empty">Loading report...</div>}
         {!loading && !selectedWeek && <div className="report-empty">Select a week to view report data.</div>}
         {!loading && selectedWeek && rows.length === 0 && <div className="report-empty">No data for selected week or class.</div>}
@@ -184,7 +186,7 @@ export default function ReportsWeekly() {
                   <th>L</th>
                   <th>T</th>
                   <th>A</th>
-                  <th>% Present</th>
+                  <th>Attendance %</th>
                   <th></th>
                 </tr>
               </thead>
@@ -215,6 +217,3 @@ export default function ReportsWeekly() {
     </div>
   );
 }
-
-
-

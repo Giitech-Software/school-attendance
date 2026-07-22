@@ -1,13 +1,19 @@
 import { Link } from "react-router-dom";
+import useCurrentUser from "../hooks/useCurrentUser";
+import { allowsStudentAndParentFeatures } from "../services/tenantScope";
 
 const staffLinks = [
   { label: "Staff daily report", href: "/reports/staff-daily", meta: "Daily", description: "Generate one-day staff attendance summaries." },
   { label: "Staff weekly report", href: "/reports/staff-weekly", meta: "Weekly", description: "Review staff attendance across a selected week." },
   { label: "Staff monthly report", href: "/reports/staff-monthly", meta: "Monthly", description: "Export monthly staff attendance results." },
-  { label: "Staff termly report", href: "/reports/staff-termly", meta: "Termly", description: "Summarize staff attendance for a term." },
+  { label: "Staff termly report", href: "/reports/staff-termly", meta: "Termly", description: "Summarize staff attendance for a term.", schoolOnly: true },
 ];
 
 export default function ReportsStaffDashboard() {
+  const { userDoc } = useCurrentUser();
+  const allowsSchoolFeatures = allowsStudentAndParentFeatures(userDoc);
+  const visibleLinks = staffLinks.filter((link) => !link.schoolOnly || allowsSchoolFeatures);
+
   return (
     <div className="space-y-3">
       <section className="enterprise-panel overflow-hidden">
@@ -25,7 +31,7 @@ export default function ReportsStaffDashboard() {
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {staffLinks.map((link) => (
+        {visibleLinks.map((link) => (
           <Link key={link.href} to={link.href} className="enterprise-panel p-4 transition hover:border-primary hover:bg-slate-50">
             <div className="flex items-start justify-between gap-3">
               <h2 className="text-base font-extrabold text-slate-950">{link.label}</h2>
@@ -38,6 +44,3 @@ export default function ReportsStaffDashboard() {
     </div>
   );
 }
-
-
-

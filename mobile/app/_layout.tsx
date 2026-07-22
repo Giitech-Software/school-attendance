@@ -46,7 +46,7 @@ function AppHeader() {
                 minimumFontScale={0.82}
                 className="absolute left-12 right-12 mt-2 text-white font-bold text-2xl text-center"
               >
-                M'SALEM Attendance Register
+                ASTEM Attendance Register
               </Text>
 
               <View className="absolute right-0">
@@ -107,3 +107,7 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
+
+
+
+

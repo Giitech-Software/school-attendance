@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { listClasses, type ClassRecord } from "../services/classes";
 import { listStudents } from "../services/students";
@@ -6,8 +6,11 @@ import { listStaff } from "../services/staff";
 import { listTerms } from "../services/terms";
 import { listWeeks } from "../services/weeks";
 import { getSchoolLocationReadiness, type SchoolLocationReadiness } from "../services/locationGuard";
+import useCurrentUser from "../hooks/useCurrentUser";
+import { allowsStudentAndParentFeatures } from "../services/tenantScope";
+import { getTenantById, type Tenant } from "../services/tenants";
 
-type AdminIconName = "book" | "location" | "calendar" | "students" | "move" | "staff" | "qr" | "classes" | "users" | "clock" | "settings" | "warning" | "chevron";
+type AdminIconName = "book" | "location" | "calendar" | "students" | "move" | "staff" | "qr" | "classes" | "users" | "clock" | "settings" | "shield" | "warning" | "chevron";
 
 type AdminSection = {
   label: string;
@@ -17,24 +20,45 @@ type AdminSection = {
   tone: string;
   icon: AdminIconName;
   iconTone: string;
+  schoolOnly?: boolean;
+  superAdminOnly?: boolean;
+};
+
+type AdminGroup = {
+  title: string;
+  description: string;
+  links: string[];
 };
 
 const adminSections: AdminSection[] = [
   { label: "User Manual", href: "/admin/user-manual", description: "Open concise guide for all app pages.", meta: "Support", tone: "border-l-blue-500", icon: "book", iconTone: "bg-blue-100 text-blue-800" },
   { label: "Activity Logs", href: "/admin/activity-logs", description: "Review recent user and admin actions.", meta: "Audit", tone: "border-l-slate-500", icon: "clock", iconTone: "bg-slate-100 text-slate-800" },
-  { label: "School Location", href: "/admin/setup-school-location", description: "Configure the geofence used for trusted check-ins.", meta: "Security", tone: "border-l-red-500", icon: "location", iconTone: "bg-red-100 text-red-800" },
-  { label: "Manage Terms", href: "/terms", description: "Create, edit and delete academic terms.", meta: "Calendar", tone: "border-l-amber-500", icon: "calendar", iconTone: "bg-amber-100 text-amber-800" },
-  { label: "Manage Students", href: "/students", description: "Enroll or assign students to classes.", meta: "Registry", tone: "border-l-sky-500", icon: "students", iconTone: "bg-sky-100 text-sky-800" },
-  { label: "Promote Students", href: "/admin/promote-students", description: "Move selected students from one class to another.", meta: "Term operations", tone: "border-l-cyan-500", icon: "move", iconTone: "bg-cyan-100 text-cyan-800" },
+  { label: "Tenant Organisations", href: "/super-admin", description: "Create organisations, assign tenant admins, and manage subscriptions.", meta: "Super admin", tone: "border-l-cyan-500", icon: "shield", iconTone: "bg-cyan-100 text-cyan-800", superAdminOnly: true },
+  { label: "Presence Verification", href: "/admin/setup-school-location", description: "Configure GPS, WiFi, or network verification for trusted check-ins.", meta: "Security", tone: "border-l-red-500", icon: "location", iconTone: "bg-red-100 text-red-800" },
+  { label: "Manage Terms", href: "/terms", description: "Create, edit and delete academic terms.", meta: "Calendar", tone: "border-l-amber-500", icon: "calendar", iconTone: "bg-amber-100 text-amber-800", schoolOnly: true },
+  { label: "Manage Students", href: "/students", description: "Enroll or assign students to classes.", meta: "Registry", tone: "border-l-sky-500", icon: "students", iconTone: "bg-sky-100 text-sky-800", schoolOnly: true },
+  { label: "Promote Students", href: "/admin/promote-students", description: "Move selected students from one class to another.", meta: "Term operations", tone: "border-l-cyan-500", icon: "move", iconTone: "bg-cyan-100 text-cyan-800", schoolOnly: true },
   { label: "Manage Staff", href: "/staff", description: "Enroll staff and manage attendance access.", meta: "Registry", tone: "border-l-orange-500", icon: "staff", iconTone: "bg-orange-100 text-orange-800" },
-  { label: "Student QR Cards", href: "/students/qr-generator", description: "Generate signed QR codes for students.", meta: "QR", tone: "border-l-violet-500", icon: "qr", iconTone: "bg-violet-100 text-violet-800" },
+  { label: "Student QR Cards", href: "/students/qr-generator", description: "Generate signed QR codes for students.", meta: "QR", tone: "border-l-violet-500", icon: "qr", iconTone: "bg-violet-100 text-violet-800", schoolOnly: true },
   { label: "Staff QR Cards", href: "/attendance/staff-qr-generator", description: "Generate signed QR payloads for staff.", meta: "QR", tone: "border-l-indigo-500", icon: "qr", iconTone: "bg-indigo-100 text-indigo-800" },
-  { label: "Manage Classes", href: "/admin/classes", description: "Create, edit and delete classes.", meta: "Academic structure", tone: "border-l-emerald-500", icon: "classes", iconTone: "bg-emerald-100 text-emerald-800" },
+  { label: "Manage Classes", href: "/admin/classes", description: "Create, edit and delete classes.", meta: "Academic structure", tone: "border-l-emerald-500", icon: "classes", iconTone: "bg-emerald-100 text-emerald-800", schoolOnly: true },
   { label: "Manage Users", href: "/users", description: "Assign wards, roles and edit users.", meta: "Identity", tone: "border-l-rose-500", icon: "users", iconTone: "bg-rose-100 text-rose-800" },
   { label: "Attendance Settings", href: "/admin/attendance-settings", description: "Control late windows, close times and timezone.", meta: "Policy", tone: "border-l-slate-500", icon: "clock", iconTone: "bg-slate-100 text-slate-800" },
 ];
 
-const marqueeItems = [
+const adminGroups: AdminGroup[] = [
+  { title: "People & access", description: "Manage the people who use your attendance system.", links: ["/students", "/staff", "/users", "/admin/promote-students"] },
+  { title: "Academic setup", description: "Organise the school calendar and class structure.", links: ["/terms", "/admin/classes"] },
+  { title: "Attendance & identification", description: "Configure attendance rules, verification, and identity cards.", links: ["/admin/setup-school-location", "/admin/attendance-settings", "/students/qr-generator", "/attendance/staff-qr-generator"] },
+  { title: "Support & oversight", description: "Find guidance and review administrative activity.", links: ["/admin/user-manual", "/admin/activity-logs", "/super-admin"] },
+];
+
+function signupInviteLink(code?: string | null) {
+  if (!code) return null;
+  return `${window.location.origin}/signup?invite=${encodeURIComponent(code)}`;
+}
+
+const schoolMarqueeItems = [
   { text: "Manage Terms", className: "text-red-300 ring-red-300/20" },
   { text: "Manage Students", className: "text-blue-300 ring-blue-300/20" },
   { text: "Generate QRs", className: "text-yellow-300 ring-yellow-300/20" },
@@ -78,7 +102,9 @@ function AdminIcon({ name, className = "h-5 w-5" }: { name: AdminIconName; class
     case "clock":
       return <svg {...common}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>;
     case "settings":
-      return <svg {...common}><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2 2-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V20h-4v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1-2-2 .1-.1A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.5-1H3v-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1 2-2 .1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5V4h4v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1 2 2-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.1v4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>;
+      return <svg {...common}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="M9 12l2 2 4-5" /></svg>;
+    case "shield":
+      return <svg {...common}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="M9 12l2 2 4-5" /></svg>;
     case "warning":
       return <svg {...common}><path d="M12 3 2 21h20L12 3z" /><path d="M12 9v5" /><path d="M12 17h.01" /></svg>;
     case "chevron":
@@ -89,6 +115,12 @@ function AdminIcon({ name, className = "h-5 w-5" }: { name: AdminIconName; class
 }
 
 export default function AdminIndex() {
+  const { userDoc } = useCurrentUser();
+  const allowsSchoolFeatures = allowsStudentAndParentFeatures(userDoc);
+  const isSuperAdmin = userDoc?.role === "super_admin";
+  const personnelLabel = allowsSchoolFeatures ? "Staff" : userDoc?.tenantType === "company" ? "Employees" : "Personnel";
+  const presenceLabel = allowsSchoolFeatures ? "School geofence" : "Workplace verification";
+  const setupSubtitle = allowsSchoolFeatures ? "Setup terms, classes, users" : `Setup ${personnelLabel.toLowerCase()}, users, attendance`;
   const [loading, setLoading] = useState(true);
   const [termsCount, setTermsCount] = useState(0);
   const [weeksCount, setWeeksCount] = useState(0);
@@ -96,15 +128,16 @@ export default function AdminIndex() {
   const [studentsCount, setStudentsCount] = useState(0);
   const [staffCount, setStaffCount] = useState(0);
   const [locationReadiness, setLocationReadiness] = useState<SchoolLocationReadiness | null>(null);
+  const [currentTenant, setCurrentTenant] = useState<Tenant | null>(null);
 
   async function loadDashboard() {
     setLoading(true);
     try {
       const [terms, weeks, classRows, students, staff, readiness] = await Promise.all([
-        listTerms().catch(() => []),
-        listWeeks().catch(() => []),
-        listClasses().catch(() => []),
-        listStudents().catch(() => []),
+        allowsSchoolFeatures ? listTerms().catch(() => []) : Promise.resolve([]),
+        allowsSchoolFeatures ? listWeeks().catch(() => []) : Promise.resolve([]),
+        allowsSchoolFeatures ? listClasses().catch(() => []) : Promise.resolve([]),
+        allowsSchoolFeatures ? listStudents().catch(() => []) : Promise.resolve([]),
         listStaff().catch(() => []),
         getSchoolLocationReadiness().catch(() => null),
       ]);
@@ -121,24 +154,47 @@ export default function AdminIndex() {
 
   useEffect(() => {
     loadDashboard();
-  }, []);
+  }, [allowsSchoolFeatures]);
+
+  useEffect(() => {
+    let active = true;
+    if (!userDoc?.tenantId || isSuperAdmin) {
+      setCurrentTenant(null);
+      return;
+    }
+
+    getTenantById(userDoc.tenantId)
+      .then((tenant) => {
+        if (active) setCurrentTenant(tenant);
+      })
+      .catch(() => {
+        if (active) setCurrentTenant(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isSuperAdmin, userDoc?.tenantId]);
 
   const attendanceReady = Boolean(locationReadiness?.configured) || Boolean(locationReadiness?.emergencyBypassActive);
+  const marqueeItems = allowsSchoolFeatures
+    ? schoolMarqueeItems
+    : schoolMarqueeItems.filter((item) => !["Manage Terms", "Manage Students", "Manage Classes", "Assign Students"].includes(item.text));
   const assignedStaffLinks = useMemo(() => classes.reduce((sum, cls) => sum + (cls.assignedStaffUids?.length ?? 0), 0), [classes]);
 
   return (
-    <div className="-m-3 min-h-[calc(100vh-5rem)] bg-slate-500 p-3 sm:-m-4 sm:p-4 lg:-m-5 lg:p-5">
+    <div className="-m-3 min-h-[calc(100vh-5rem)] bg-slate-100 p-3 sm:-m-4 sm:p-4 lg:-m-5 lg:p-5">
       <div className="mx-auto max-w-7xl space-y-3">
         <section className="overflow-hidden rounded-lg border border-blue-900/40 bg-[#0B1C33] text-white shadow-xl shadow-slate-900/20">
           <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="flex items-center gap-2">
                 <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/15 text-blue-300 ring-1 ring-blue-300/20">
-                  <AdminIcon name="settings" />
+                  <AdminIcon name="shield" />
                 </span>
                 <h1 className="text-2xl font-extrabold sm:text-3xl">Admin</h1>
               </div>
-              <p className="mt-1 text-sm text-blue-300">Setup terms, classes, users</p>
+              <p className="mt-1 text-sm text-blue-300">{setupSubtitle}</p>
             </div>
             <button type="button" onClick={loadDashboard} disabled={loading} className="rounded-lg border border-white/20 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10 disabled:opacity-60">
               {loading ? "Refreshing..." : "Refresh"}
@@ -156,24 +212,49 @@ export default function AdminIndex() {
           </div>
         </section>
 
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          {[
-            ["Terms", termsCount, "bg-red-50 text-red-700", "calendar"],
-            ["Weeks", weeksCount, "bg-amber-50 text-amber-700", "clock"],
-            ["Classes", classes.length, "bg-emerald-50 text-emerald-700", "classes"],
-            ["Students", studentsCount, "bg-blue-50 text-blue-700", "students"],
-            ["Staff", staffCount, "bg-orange-50 text-orange-700", "staff"],
-          ].map(([label, value, tone, icon]) => (
-            <div key={label} className="rounded-lg border border-slate-200 bg-white p-3 shadow-md shadow-slate-900/10">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</p>
-                <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${tone}`}>
-                  <AdminIcon name={icon as AdminIconName} className="h-4 w-4" />
+        {currentTenant?.inviteCode ? (
+          <section className="rounded-lg border border-cyan-200 bg-white p-4 shadow-md shadow-slate-900/10">
+            <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-cyan-700">Organisation invite</p>
+                <h2 className="mt-1 text-lg font-extrabold text-slate-950">{currentTenant.name}</h2>
+                <p className="mt-1 break-all text-sm text-slate-600">{signupInviteLink(currentTenant.inviteCode)}</p>
+              </div>
+              <div className="rounded-lg bg-cyan-50 px-4 py-3 text-center">
+                <p className="text-xs font-bold uppercase tracking-wide text-cyan-700">Code</p>
+                <p className="mt-1 font-mono text-2xl font-extrabold text-cyan-950">{currentTenant.inviteCode}</p>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-md shadow-slate-900/10" aria-label="School overview">
+          <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 sm:px-5">
+            <h2 className="text-base font-extrabold text-slate-950">Overview</h2>
+            <p className="mt-0.5 text-sm text-slate-500">Current records across your organisation.</p>
+          </div>
+          <div className="grid gap-px bg-slate-200 sm:grid-cols-2 xl:grid-cols-5">
+            {(allowsSchoolFeatures
+              ? [
+                  ["Terms", termsCount, "bg-red-50 text-red-700", "calendar"],
+                  ["Weeks", weeksCount, "bg-amber-50 text-amber-700", "clock"],
+                  ["Classes", classes.length, "bg-emerald-50 text-emerald-700", "classes"],
+                  ["Students", studentsCount, "bg-blue-50 text-blue-700", "students"],
+                  [personnelLabel, staffCount, "bg-orange-50 text-orange-700", "staff"],
+                ]
+              : [[personnelLabel, staffCount, "bg-orange-50 text-orange-700", "staff"]]
+            ).map(([label, value, tone, icon]) => (
+              <div key={label} className="flex min-h-24 items-center justify-between gap-3 bg-white px-4 py-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</p>
+                  <p className="mt-1 text-2xl font-extrabold text-slate-950">{value}</p>
+                </div>
+                <span className={`flex h-10 w-10 items-center justify-center rounded-xl ring-1 ring-inset ring-black/5 ${tone}`}>
+                  <AdminIcon name={icon as AdminIconName} className="h-5 w-5" />
                 </span>
               </div>
-              <p className={`mt-1 w-fit rounded px-2 py-1 text-2xl font-extrabold ${tone}`}>{value}</p>
-            </div>
-          ))}
+            ))}
+          </div>
         </section>
 
         <section className={`rounded-lg border p-4 shadow-md shadow-slate-900/10 ${attendanceReady ? "border-emerald-200 bg-emerald-100" : "border-red-200 bg-red-100"}`}>
@@ -188,15 +269,15 @@ export default function AdminIndex() {
                   {attendanceReady
                     ? locationReadiness?.emergencyBypassActive
                       ? "Emergency mode active: GPS checks bypassed for the approved period."
-                      : "School geofence configured and ready."
-                    : "Blocked: school location is not configured."}
+                      : allowsSchoolFeatures ? "School geofence configured and ready." : "Workplace verification configured and ready."
+                    : allowsSchoolFeatures ? "Blocked: school location is not configured." : "Blocked: workplace verification is not configured."}
                 </p>
                 <p className="mt-1 text-xs text-slate-600">Assigned staff links: {assignedStaffLinks}</p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
               <Link to="/admin/setup-school-location" className={attendanceReady ? "enterprise-button-secondary" : "enterprise-button-primary"}>
-                {attendanceReady ? "Review location" : "Set Location"}
+                {attendanceReady ? `Review ${presenceLabel}` : `Set ${presenceLabel}`}
               </Link>
               {!attendanceReady ? (
                 <Link to="/admin/setup-school-location" className="enterprise-button-danger">
@@ -207,29 +288,46 @@ export default function AdminIndex() {
           </div>
         </section>
 
-        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {adminSections.map((item) => (
-            <Link key={item.href} to={item.href} className={`rounded-lg border border-slate-200 border-l-4 bg-white p-4 shadow-md shadow-slate-900/10 transition hover:-translate-y-0.5 hover:shadow-lg ${item.tone}`}>
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex min-w-0 gap-3">
-                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${item.iconTone}`}>
-                    <AdminIcon name={item.icon} />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{item.meta}</p>
-                    <h2 className="mt-1 truncate text-base font-extrabold text-slate-950">{item.label}</h2>
-                  </div>
+        <section className="space-y-3" aria-label="Administration tools">
+          {adminGroups.map((group) => {
+            const items = group.links
+              .map((href) => adminSections.find((item) => item.href === href))
+              .filter((item): item is AdminSection => Boolean(item))
+              .filter((item) => (!item.schoolOnly || allowsSchoolFeatures) && (!item.superAdminOnly || isSuperAdmin));
+
+            if (!items.length) return null;
+
+            return (
+              <div key={group.title} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-md shadow-slate-900/10">
+                <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 sm:px-5">
+                  <h2 className="text-base font-extrabold text-slate-950">{group.title}</h2>
+                  <p className="mt-0.5 text-sm text-slate-500">{group.description}</p>
                 </div>
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-slate-100 text-slate-600">
-                  <AdminIcon name="chevron" className="h-4 w-4" />
-                </span>
+                <div className="grid gap-px bg-slate-200 sm:grid-cols-2 xl:grid-cols-4">
+                  {items.map((item) => {
+                    const label = item.href === "/staff" && !allowsSchoolFeatures ? `Manage ${personnelLabel}` : item.label;
+                    const description = item.href === "/staff" && !allowsSchoolFeatures ? `Enroll ${personnelLabel.toLowerCase()} and manage attendance access.` : item.description;
+                    return (
+                    <Link key={item.href} to={item.href} className="group flex min-h-28 items-start gap-3 bg-white p-4 transition hover:bg-blue-50/70 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600">
+                      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset ring-black/5 ${item.iconTone}`}>
+                        <AdminIcon name={item.icon} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="font-bold text-slate-900 group-hover:text-blue-800">{label}</span>
+                          <AdminIcon name="chevron" className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-blue-700" />
+                        </span>
+                        <span className="mt-1 block text-sm leading-5 text-slate-500">{description}</span>
+                      </span>
+                    </Link>
+                    );
+                  })}
+                </div>
               </div>
-              <p className="mt-3 text-sm leading-5 text-slate-600">{item.description}</p>
-            </Link>
-          ))}
+            );
+          })}
         </section>
       </div>
     </div>
   );
 }
-

@@ -1,8 +1,10 @@
 ﻿import { useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { updateProfile } from "firebase/auth";
 import { sendEmailVerificationToCurrentUser, signOutUser, signUp } from "../services/auth";
 import { upsertUser, type UserRole } from "../services/users";
+import { getTenantInviteByCode, normalizeInviteCode, type TenantInvite } from "../services/tenants";
+import AuthBrandHeader from "../components/AuthBrandHeader";
 
 const roles: Array<{ value: UserRole; label: string }> = [
   { value: "parent", label: "Parent" },
@@ -25,11 +27,13 @@ function friendlySignupError(err: any) {
 }
 
 export default function Signup() {
+  const [searchParams] = useSearchParams();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<UserRole>("teacher");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [inviteCode, setInviteCode] = useState(() => searchParams.get("invite") ?? "");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +66,16 @@ export default function Signup() {
 
     setLoading(true);
     try {
+      const normalizedInviteCode = normalizeInviteCode(inviteCode);
+      let tenantInvite: TenantInvite | null = null;
+
+      if (normalizedInviteCode) {
+        tenantInvite = await getTenantInviteByCode(normalizedInviteCode);
+        if (!tenantInvite) {
+          throw new Error("Invalid tenant invite code. Ask your administrator for the latest code.");
+        }
+      }
+
       const credential = await signUp(email.trim(), password);
 
       try {
@@ -81,6 +95,12 @@ export default function Signup() {
         canTakeStaffAttendance: false,
         canTakeStudentAttendance: false,
         wards: [],
+        ...(tenantInvite ? {
+          tenantId: tenantInvite.tenantId,
+          tenantName: tenantInvite.tenantName,
+          tenantType: tenantInvite.tenantType,
+          tenantInviteCode: tenantInvite.code,
+        } : {}),
         createdAt: new Date(),
       });
 
@@ -91,12 +111,19 @@ export default function Signup() {
       }
 
       await signOutUser();
-      setMessage("Account created. Please check your email for verification.");
+      const successMessage = tenantInvite
+        ? "Account created. First check your inbox or spam folder for the verification email, then contact your administrator for approval."
+        : "Account created. Please check your email for verification.";
+      if (tenantInvite) {
+        window.alert(successMessage);
+      }
+      setMessage(successMessage);
       setFullName("");
       setEmail("");
       setPassword("");
       setConfirm("");
       setRole("teacher");
+      setInviteCode("");
     } catch (err: any) {
       setError(friendlySignupError(err));
     } finally {
@@ -106,6 +133,7 @@ export default function Signup() {
 
   return (
     <div className="auth-shell">
+      <AuthBrandHeader />
       <div className="auth-card max-w-lg">
         <h1 className="mb-4 text-center text-3xl font-bold text-slate-950">Create an account</h1>
 
@@ -127,6 +155,11 @@ export default function Signup() {
           <label className="block">
             <span className="auth-label">Email</span>
             <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" className="enterprise-input mt-1.5" placeholder="you@example.com" />
+          </label>
+
+          <label className="block">
+            <span className="auth-label">Tenant invite code</span>
+            <input value={inviteCode} onChange={(event) => setInviteCode(event.target.value.toUpperCase())} className="enterprise-input mt-1.5" placeholder="Optional" />
           </label>
 
           <div className="grid gap-3 sm:grid-cols-2">

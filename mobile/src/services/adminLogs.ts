@@ -9,10 +9,8 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { auth, db } from "@/app/firebase";
+import { getTenantScope, tenantConstraints, withTenantScope } from "./tenantScope";
 
-/* ---------------------------
-   TYPES
---------------------------- */
 export type AdminLog = {
   id: string;
   actorUid: string;
@@ -23,6 +21,9 @@ export type AdminLog = {
   targetId?: string | null;
   description: string;
   metadata?: Record<string, any>;
+  tenantId?: string | null;
+  tenantName?: string | null;
+  tenantType?: string | null;
   createdAt?: Timestamp;
 };
 
@@ -38,15 +39,9 @@ export type AdminLogInput = {
 
 function cleanMetadata(metadata?: Record<string, any>) {
   if (!metadata) return {};
-
-  return Object.fromEntries(
-    Object.entries(metadata).filter(([, value]) => value !== undefined)
-  );
+  return Object.fromEntries(Object.entries(metadata).filter(([, value]) => value !== undefined));
 }
 
-/* ---------------------------
-   WRITE admin logs
---------------------------- */
 export async function logAdminAction({
   action,
   targetType,
@@ -57,14 +52,13 @@ export async function logAdminAction({
   metadata,
 }: AdminLogInput): Promise<void> {
   const currentUser = auth.currentUser;
-
   if (!currentUser) return;
 
   try {
-    await addDoc(collection(db, "adminLogs"), {
+    const scope = await getTenantScope();
+    await addDoc(collection(db, "adminLogs"), withTenantScope({
       actorUid: currentUser.uid,
-      actorName:
-        actorName ?? currentUser.displayName ?? currentUser.email ?? null,
+      actorName: actorName ?? currentUser.displayName ?? currentUser.email ?? null,
       actorRole: actorRole ?? null,
       action,
       targetType,
@@ -72,26 +66,26 @@ export async function logAdminAction({
       description,
       metadata: cleanMetadata(metadata),
       createdAt: serverTimestamp(),
-    });
+    }, scope));
   } catch (err) {
     console.warn("Failed to log admin action:", err);
   }
 }
 
-/* ---------------------------
-   READ admin logs
---------------------------- */
 export async function listAdminLogs(limitCount = 100): Promise<AdminLog[]> {
-  const q = query(
-    collection(db, "adminLogs"),
-    orderBy("createdAt", "desc"),
-    limit(limitCount)
-  );
-
+  const scope = await getTenantScope();
+  const q = scope.isScoped
+    ? query(collection(db, "adminLogs"), ...tenantConstraints(scope))
+    : query(collection(db, "adminLogs"), orderBy("createdAt", "desc"), limit(limitCount));
   const snap = await getDocs(q);
+  const rows = snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<AdminLog, "id">) }));
+  return rows.sort((a, b) => logTime(b.createdAt) - logTime(a.createdAt)).slice(0, limitCount);
+}
 
-  return snap.docs.map((d) => ({
-    id: d.id,
-    ...(d.data() as Omit<AdminLog, "id">),
-  }));
+function logTime(value: any): number {
+  if (!value) return 0;
+  if (typeof value?.toMillis === "function") return value.toMillis();
+  if (typeof value?.toDate === "function") return value.toDate().getTime();
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
 }

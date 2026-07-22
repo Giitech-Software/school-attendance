@@ -7,10 +7,14 @@ import type { Term } from "../../src/services/types";
 import { autoGenerateWeeksForTerm } from "../../src/services/weeks";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
+import useCurrentUser from "../../src/hooks/useCurrentUser";
+import { allowsStudentAndParentFeatures } from "../../src/services/tenantScope";
 export default function TermEdit() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
+  const { userDoc, loading: userLoading } = useCurrentUser();
+  const allowsSchoolFeatures = allowsStudentAndParentFeatures(userDoc);
 
   const [term, setTerm] = useState<Term | null>(null);
   const [saving, setSaving] = useState(false);
@@ -27,6 +31,11 @@ function isWeekend(dateStr: string) {
 
   useEffect(() => {
     (async () => {
+      if (!allowsSchoolFeatures) {
+        setLoading(false);
+        return;
+      }
+
       try {
         const terms = await listTerms();
         const found = terms.find((t: Term) => t.id === id);
@@ -48,7 +57,7 @@ originalDatesRef.current = {
         setLoading(false);
       }
     })();
-  }, [id]);
+  }, [allowsSchoolFeatures, id]);
 
   async function handleUpdate() {
   if (!term) return;
@@ -57,7 +66,7 @@ originalDatesRef.current = {
     Alert.alert("Validation", "All fields are required.");
     return;
   }
-// ⚠️ Weekend warning (non-blocking)
+// ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Weekend warning (non-blocking)
 if (isWeekend(term.startDate) || isWeekend(term.endDate)) {
   Alert.alert(
     "Weekend dates",
@@ -123,7 +132,7 @@ async function handleGenerateWeeks() {
   if (isWeekend(term!.startDate) || isWeekend(term!.endDate)) {
   Alert.alert(
     "Note",
-    "This term includes weekend dates. Generated weeks will still follow Monday–Friday."
+    "This term includes weekend dates. Generated weeks will still follow MondayÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“Friday."
   );
 }
 
@@ -154,13 +163,24 @@ async function handleGenerateWeeks() {
   );
 }
 
-  if (adminLoading || !adminReady || loading || !term) {
+  if (adminLoading || userLoading || !adminReady || loading || (allowsSchoolFeatures && !term)) {
     return (
       <View className="flex-1 items-center justify-center bg-slate-50">
         <ActivityIndicator />
       </View>
     );
   }
+
+  if (!allowsSchoolFeatures) {
+    return (
+      <View className="flex-1 items-center justify-center bg-slate-50 p-6">
+        <Text className="text-lg font-bold text-slate-900">School feature unavailable</Text>
+        <Text className="mt-2 text-center text-sm text-slate-500">Editing terms is only available for school tenants.</Text>
+      </View>
+    );
+  }
+
+  if (!term) return null;
 
   return (
     <View className="flex-1 bg-slate-50 p-4">
@@ -181,7 +201,7 @@ async function handleGenerateWeeks() {
     Edit Term
   </Text>
 </View>
-    
+
       <Text className="text-sm text-neutral">Name</Text>
       <TextInput
         value={term.name}
@@ -209,7 +229,7 @@ async function handleGenerateWeeks() {
         className={`py-3 rounded ${saving ? "bg-slate-400" : "bg-primary"}`}
       >
         <Text className="text-white text-center font-semibold">
-          {saving ? "Saving…" : "Save changes"}
+          {saving ? "SavingÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦" : "Save changes"}
         </Text>
       </Pressable>
 <Pressable

@@ -201,7 +201,7 @@ if (!indexList.includes(studentId)) {
 
       <View className="bg-white rounded-2xl p-4 mb-4 shadow">
         <Text className="text-m text-neutral mb-3">
-          This enrollment links the device to the student's biometric mapping. It stores a private token on the student
+          This enrollment links the device to the student’s biometric mapping. It stores a private token on the student
           and a secure entry on this device. No raw biometric data is stored.
         </Text>
 

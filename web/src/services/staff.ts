@@ -1,5 +1,6 @@
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { db } from "../firebase";
+import { belongsToTenant, getTenantScope, sortByCreatedAtDesc, tenantConstraints, withTenantScope } from "./tenantScope";
 
 export type Staff = {
   id?: string;
@@ -13,6 +14,8 @@ export type Staff = {
   faceImageUrl?: string;
   faceId?: string;
   faceEnrolled?: boolean;
+  tenantId?: string | null;
+  tenantName?: string | null;
   createdAt?: any;
   updatedAt?: any;
 };
@@ -41,21 +44,25 @@ function withoutUndefined<T extends Record<string, any>>(data: T): T {
 }
 
 export async function listStaff(): Promise<Staff[]> {
-  const snap = await getDocs(collection(db, STAFF_COLLECTION));
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) } as Staff));
+  const scope = await getTenantScope();
+  const snap = await getDocs(query(collection(db, STAFF_COLLECTION), ...tenantConstraints(scope)));
+  return sortByCreatedAtDesc(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) } as Staff)));
 }
 
 export async function getStaffById(id: string): Promise<Staff | null> {
   const snap = await getDoc(doc(db, STAFF_COLLECTION, id));
   if (!snap.exists()) return null;
-  return { id: snap.id, ...(snap.data() as any) } as Staff;
+  const data = snap.data();
+  if (!belongsToTenant(data, await getTenantScope())) return null;
+  return { id: snap.id, ...(data as any) } as Staff;
 }
 
 export async function getStaffByStaffId(staffId: string): Promise<Staff | null> {
   const normalizedStaffId = staffId.trim().toUpperCase();
   if (!normalizedStaffId) return null;
 
-  const staffIdQuery = query(collection(db, STAFF_COLLECTION), where("staffId", "==", normalizedStaffId), limit(1));
+  const scope = await getTenantScope();
+  const staffIdQuery = query(collection(db, STAFF_COLLECTION), where("staffId", "==", normalizedStaffId), ...tenantConstraints(scope), limit(1));
   const staffIdSnap = await getDocs(staffIdQuery);
   if (!staffIdSnap.empty) {
     const staffDoc = staffIdSnap.docs[0];
@@ -66,14 +73,16 @@ export async function getStaffByStaffId(staffId: string): Promise<Staff | null> 
 }
 
 async function ensureStaffIdIsAvailable(staffId: string): Promise<void> {
-  const existingQuery = query(collection(db, STAFF_COLLECTION), where("staffId", "==", staffId), limit(1));
+  const scope = await getTenantScope();
+  const existingQuery = query(collection(db, STAFF_COLLECTION), where("staffId", "==", staffId), ...tenantConstraints(scope), limit(1));
   const existingSnap = await getDocs(existingQuery);
   if (!existingSnap.empty) throw new Error(`Staff ID ${staffId} is already in use.`);
 }
 
 async function generateStaffId(roleType: string): Promise<string> {
+  const scope = await getTenantScope();
   const prefix = getStaffIdPrefix(roleType);
-  const snap = await getDocs(collection(db, STAFF_COLLECTION));
+  const snap = await getDocs(query(collection(db, STAFF_COLLECTION), ...tenantConstraints(scope)));
   const maxNumber = snap.docs.reduce((max, staffDoc) => {
     const staffId = staffDoc.data().staffId as string | undefined;
     if (!staffId?.startsWith(`${prefix}-`)) return max;
@@ -87,11 +96,9 @@ export async function createStaff(data: Omit<Staff, "id" | "createdAt">): Promis
   const roleType = data.roleType ?? data.role ?? "staff";
   const staffId = data.staffId?.trim() || (await generateStaffId(roleType));
 
-  if (data.staffId?.trim()) {
-    await ensureStaffIdIsAvailable(staffId);
-  }
+  if (data.staffId?.trim()) await ensureStaffIdIsAvailable(staffId);
 
-  const payload = withoutUndefined({ ...data, staffId, roleType, createdAt: serverTimestamp() });
+  const payload = withoutUndefined(withTenantScope({ ...data, staffId, roleType, createdAt: serverTimestamp() }, await getTenantScope()));
   const ref = await addDoc(collection(db, STAFF_COLLECTION), payload);
   return { id: ref.id, ...payload, staffId, roleType } as Staff;
 }
@@ -99,7 +106,7 @@ export async function createStaff(data: Omit<Staff, "id" | "createdAt">): Promis
 export async function upsertStaff(staff: Staff): Promise<void> {
   if (!staff.id) throw new Error("Staff ID is required for update.");
   const { id, ...data } = staff;
-  await updateDoc(doc(db, STAFF_COLLECTION, id), withoutUndefined({ ...data, updatedAt: serverTimestamp() }));
+  await updateDoc(doc(db, STAFF_COLLECTION, id), withoutUndefined(withTenantScope({ ...data, updatedAt: serverTimestamp() }, await getTenantScope())));
 }
 
 export async function deleteStaff(id: string): Promise<void> {

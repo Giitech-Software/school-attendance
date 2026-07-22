@@ -247,7 +247,7 @@ const html = `<!doctype html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>M'Salem Attendance Register User Manual</title>
+  <title>ASTEM Attendance Register User Manual</title>
   <style>${styles}</style>
 </head>
 <body>
@@ -260,3 +260,4 @@ ${markdownToHtml(markdown)}
 
 fs.writeFileSync(outputPath, html, "utf8");
 console.log(outputPath);
+

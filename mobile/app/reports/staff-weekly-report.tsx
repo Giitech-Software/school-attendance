@@ -12,15 +12,46 @@ import {
 import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
+import AttendanceTotalsCards from "../../components/AttendanceTotalsCards";
 
 import { listWeeks } from "../../src/services/weeks";
 import { listTerms } from "../../src/services/terms";
 import { getStaffGlobalSummary } from "../../src/services/staffAttendanceSummary";
 import { exportWeeklyStaffAttendance } from "../../src/services/exports/exportWeeklyStaffAttendance";
+import useCurrentUser from "../../src/hooks/useCurrentUser";
+import { allowsStudentAndParentFeatures } from "../../src/services/tenantScope";
+
+function isoDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function getCalendarWeeks(count = 8) {
+  const today = new Date();
+  const day = today.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(today);
+  monday.setHours(12, 0, 0, 0);
+  monday.setDate(today.getDate() + diffToMonday);
+
+  return Array.from({ length: count }, (_, index) => {
+    const start = new Date(monday);
+    start.setDate(monday.getDate() - index * 7);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    return {
+      id: `calendar-${isoDate(start)}`,
+      weekNumber: count - index,
+      startDate: isoDate(start),
+      endDate: isoDate(end),
+    };
+  }).reverse();
+}
 
 export default function StaffWeeklyReport() {
   const router = useRouter();
   const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
+  const { userDoc } = useCurrentUser();
+  const allowsSchoolFeatures = allowsStudentAndParentFeatures(userDoc);
 
   const [loading, setLoading] = useState(true);
   const [weeks, setWeeks] = useState<any[]>([]);
@@ -28,11 +59,18 @@ export default function StaffWeeklyReport() {
   const [staffRows, setStaffRows] = useState<any[]>([]);
   const [exportingWeeklyPdf, setExportingWeeklyPdf] = useState(false);
 
-  /* LOAD WEEKS + CURRENT TERM */
+  /* LOAD WEEKS */
   useEffect(() => {
     (async () => {
       try {
         setLoading(true);
+
+        if (!allowsSchoolFeatures) {
+          const calendarWeeks = getCalendarWeeks();
+          setWeeks(calendarWeeks);
+          setSelectedWeek(calendarWeeks[calendarWeeks.length - 1] ?? null);
+          return;
+        }
 
         const terms = await listTerms().catch(() => []);
         const nowIso = new Date().toISOString().slice(0, 10);
@@ -61,12 +99,10 @@ export default function StaffWeeklyReport() {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [allowsSchoolFeatures]);
 
   const sortedWeeks = useMemo(() => {
-    return [...weeks].sort(
-      (a, b) => (a.weekNumber ?? 0) - (b.weekNumber ?? 0)
-    );
+    return [...weeks].sort((a, b) => String(a.startDate ?? "").localeCompare(String(b.startDate ?? "")));
   }, [weeks]);
 
   /* LOAD STAFF WEEK DATA */
@@ -152,7 +188,7 @@ export default function StaffWeeklyReport() {
                   : "text-slate-500"
               }`}
             >
-              {w.startDate} → {w.endDate}
+              {w.startDate} - {w.endDate}
             </Text>
           </Pressable>
         ))}
@@ -196,13 +232,16 @@ export default function StaffWeeklyReport() {
         Staff ({staffRows.length})
       </Text>
 
-      <Text className="text-ml text-slate-700 mb-2">
-        P = Present • L = Late • T = Attended • A = Absent
+      {staffRows.length > 0 ? <AttendanceTotalsCards rows={staffRows} label="Staff" /> : null}
+<Text className="text-ml text-slate-700 mb-2">
+        P = Present - L = Late - T = Attended - A = Absent
       </Text>
 
-      {staffRows.length === 0 ? (
-        <Text className="text-slate-500">
-          No data for selected week.
+      {loading ? (
+        <ActivityIndicator className="mt-4" />
+      ) : staffRows.length === 0 ? (
+        <Text className="text-slate-500 mt-3">
+          No weekly attendance records found.
         </Text>
       ) : (
         staffRows.map((item) => (
@@ -210,7 +249,7 @@ export default function StaffWeeklyReport() {
             key={item.staffId}
             onPress={() =>
               router.push({
-                pathname: `/reports/staff/[id]`,
+                pathname: "/reports/staff/[id]",
                 params: {
                   id: item.staffId,
                   fromIso: selectedWeek.startDate,
@@ -227,22 +266,10 @@ export default function StaffWeeklyReport() {
             </Text>
 
             <View className="flex-row justify-between mt-1.5">
-              <Text className="text-emerald-600">
-                P: {item.presentCount}
-              </Text>
-
-              <Text className="text-amber-600">
-                L: {item.lateCount}
-              </Text>
-
-              <Text className="text-blue-600">
-                T: {item.attendedSessions}
-              </Text>
-
-              <Text className="text-red-500">
-                A: {item.absentCount}
-              </Text>
-
+              <Text className="text-emerald-600">P: {item.presentCount}</Text>
+              <Text className="text-amber-600">L: {item.lateCount}</Text>
+              <Text className="text-sky-700">T: {item.attendedSessions}</Text>
+              <Text className="text-red-500">A: {item.absentCount}</Text>
               <Text className="text-slate-700">
                 {item.percentagePresent.toFixed(1)}%
               </Text>
@@ -253,5 +280,3 @@ export default function StaffWeeklyReport() {
     </ScrollView>
   );
 }
-
-

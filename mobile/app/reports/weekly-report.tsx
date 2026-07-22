@@ -20,6 +20,7 @@ import { listStudents } from "../../src/services/students";
 import { exportWeeklyAttendancePdf } from "../../src/services/exports/exportWeeklyAttendancePdf";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
+import AttendanceTotalsCards from "../../components/AttendanceTotalsCards";
 import { listTerms } from "../../src/services/terms";
 
 
@@ -27,7 +28,7 @@ import { listTerms } from "../../src/services/terms";
  * Weekly report
  * - Uses auto-generated weeks
  * - All students OR filter by class
- * - Tap student → opens student detail with week range
+ * - Tap student - opens student detail with week range
  */
 
 export default function WeeklyReport() {
@@ -42,21 +43,21 @@ export default function WeeklyReport() {
   const [studentRows, setStudentRows] = useState<any[]>([]);
   const [exportingWeeklyPdf, setExportingWeeklyPdf] = useState(false);
 
-  /* ------------------------------------------------------------------ */
+  /* - */
 /* LOAD WEEKS + CLASSES + CURRENT TERM */
-/* ------------------------------------------------------------------ */
+/* - */
 useEffect(() => {
   (async () => {
     try {
       setLoading(true);
 
-      // 1️⃣ fetch terms and classes
+      // 1- fetch terms and classes
       const [terms, cls] = await Promise.all([
         listTerms().catch(() => []),
         listClasses().catch(() => []),
       ]);
 
-      // 2️⃣ find current term
+      // 2- find current term
       const nowIso = new Date().toISOString().slice(0, 10);
       const currentTerm =
         terms.find((t) => t.isCurrent) ??
@@ -74,13 +75,13 @@ useEffect(() => {
         return;
       }
 
-      // 3️⃣ fetch weeks only for current term
+      // 3- fetch weeks only for current term
       const w = await listWeeks(currentTerm.id).catch(() => []);
 
       setWeeks(w || []);
       setClasses(cls || []);
 
-      // 4️⃣ auto-select current week within this term
+      // 4- auto-select current week within this term
       const currentWeek =
   w.find((wk) => nowIso >= wk.startDate && nowIso <= wk.endDate) ??
   w[w.length - 1] ??
@@ -99,18 +100,18 @@ setSelectedWeek(null);
 }, []);
 
 
-  /* ------------------------------------------------------------------ */
+  /* - */
   /* SORT WEEKS */
-  /* ------------------------------------------------------------------ */
+  /* - */
   const sortedWeeks = useMemo(() => {
     return [...weeks].sort(
       (a, b) => (a.weekNumber ?? 0) - (b.weekNumber ?? 0)
     );
   }, [weeks]);
 
-  /* ------------------------------------------------------------------ */
+  /* - */
   /* LOAD WEEKLY DATA */
-  /* ------------------------------------------------------------------ */
+  /* - */
   useEffect(() => {
   if (!selectedWeek) {
     setStudentRows([]);
@@ -126,7 +127,7 @@ setSelectedWeek(null);
       let summaryWithNames: any[] = [];
 
       if (selectedClassKey) {
-        // ✅ Fetch only this class with names
+        // - Fetch only this class with names
         summaryWithNames = await getAttendanceSummary({
           fromIso,
           toIso,
@@ -134,7 +135,7 @@ setSelectedWeek(null);
           includeStudentName: true,
         });
       } else {
-        // ✅ All classes
+        // - All classes
         summaryWithNames = await getAttendanceSummary({
           fromIso,
           toIso,
@@ -154,9 +155,9 @@ setSelectedWeek(null);
 }, [selectedWeek, selectedClassKey]);
 
 
-  /* ------------------------------------------------------------------ */
+  /* - */
   /* LOADING STATE */
-  /* ------------------------------------------------------------------ */
+  /* - */
   if (adminLoading || !adminReady || (loading && !selectedWeek)) {
     return (
       <View className="flex-1 items-center justify-center bg-slate-50">
@@ -165,9 +166,9 @@ setSelectedWeek(null);
     );
   }
 
-  /* ------------------------------------------------------------------ */
+  /* - */
   /* UI */
-  /* ------------------------------------------------------------------ */
+  /* - */
   return (
     <ScrollView className="flex-1 bg-slate-300 p-3">
       <View className="flex-row items-center mb-2">
@@ -219,7 +220,7 @@ setSelectedWeek(null);
                   : "text-slate-500"
               }`}
             >
-              {w.startDate} → {w.endDate}
+              {w.startDate} - {w.endDate}
             </Text>
           </Pressable>
         ))}
@@ -276,7 +277,7 @@ setSelectedWeek(null);
         })}
       </ScrollView>
 
-      {/* -------- WEEKLY EXPORT (PDF ONLY) -------- */}
+      {/* - WEEKLY EXPORT (PDF ONLY) - */}
       <View className="mt-3">
         <Pressable
           disabled={!selectedWeek || exportingWeeklyPdf}
@@ -312,8 +313,9 @@ setSelectedWeek(null);
         Students ({studentRows.length})
       </Text>
 
+{studentRows.length > 0 ? <AttendanceTotalsCards rows={studentRows} label="Students" /> : null}
 <Text className="text-ml text-slate-700 mb-2">
-  P = Present • L = Late • T = Attended • A = Absent
+  P = Present - L = Late - T = Attended - A = Absent
 </Text>
       {studentRows.length === 0 ? (
         <Text className="text-slate-500">
@@ -371,5 +373,3 @@ setSelectedWeek(null);
     </ScrollView>
   );
 }
-
-

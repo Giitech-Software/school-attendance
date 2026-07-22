@@ -11,15 +11,25 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { listTerms, deleteTerm } from "../../src/services/terms";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
+import useCurrentUser from "../../src/hooks/useCurrentUser";
+import { allowsStudentAndParentFeatures } from "../../src/services/tenantScope";
 
 export default function TermsList() {
   const router = useRouter();
   const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
+  const { userDoc, loading: userLoading } = useCurrentUser();
+  const allowsSchoolFeatures = allowsStudentAndParentFeatures(userDoc);
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = async (isRefresh = false) => {
+    if (!allowsSchoolFeatures) {
+      setItems([]);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
     if (!isRefresh) setLoading(true);
     try {
       const d = await listTerms();
@@ -33,11 +43,11 @@ export default function TermsList() {
     }
   };
 
-  /** 🔁 Auto-refresh whenever screen gains focus */
+  /** ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Auto-refresh whenever screen gains focus */
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [])
+    }, [allowsSchoolFeatures])
   );
 
   const onRefresh = () => {
@@ -69,10 +79,19 @@ export default function TermsList() {
     }
   }
 
-  if (adminLoading || !adminReady || loading) {
+  if (adminLoading || userLoading || !adminReady || loading) {
     return (
       <View className="flex-1 items-center justify-center bg-slate-50">
         <ActivityIndicator />
+      </View>
+    );
+  }
+
+  if (!allowsSchoolFeatures) {
+    return (
+      <View className="flex-1 items-center justify-center bg-slate-50 p-6">
+        <Text className="text-lg font-bold text-slate-900">School feature unavailable</Text>
+        <Text className="mt-2 text-center text-sm text-slate-500">Terms are only available for school tenants.</Text>
       </View>
     );
   }
@@ -111,7 +130,7 @@ export default function TermsList() {
                 {item.name}
               </Text>
               <Text className="text-sm text-slate-500 mt-1">
-                {item.startDate} → {item.endDate}
+                {item.startDate} ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ {item.endDate}
               </Text>
             </View>
 

@@ -22,7 +22,7 @@ export function useIsAdmin() {
         const data = snap.data();
 
         setIsAdmin(
-          data?.role === "admin" ||
+          data?.role === "admin" || data?.role === "super_admin" ||
           data?.isAdmin === true
         );
       } catch {
@@ -37,3 +37,5 @@ export function useIsAdmin() {
 
   return { isAdmin, loading };
 }
+
+

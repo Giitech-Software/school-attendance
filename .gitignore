@@ -1,0 +1,68 @@
+# Dependencies
+**/node_modules/
+
+# Environment files and local secrets
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+**/serviceAccount*.json
+**/*service-account*.json
+**/credentials*.json
+*.pem
+*.key
+*.p8
+*.p12
+*.jks
+*.keystore
+*.mobileprovision
+
+# Build and test output
+**/dist/
+**/build/
+**/web-build/
+**/coverage/
+**/.nyc_output/
+web/deploy-dist/
+web/deploy-fresh/
+tmp-build-output/
+firebase.deploy-fresh.json
+web/vite.deploy.config.ts
+
+# Expo and generated native projects
+.expo/
+**/.expo/
+**/.expo-shared/
+mobile/android/
+mobile/ios/
+
+# Firebase local state and logs
+.firebase/
+**/.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+*.log
+
+# Tool and framework caches
+.agents/
+.codex/
+**/.cache/
+**/.parcel-cache/
+**/.vite-cache/
+**/*.tsbuildinfo
+
+# Editors and operating systems
+.vscode/
+!.vscode/extensions.json
+**/.vscode/
+!**/.vscode/extensions.json
+.idea/
+*.suo
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+Desktop.ini

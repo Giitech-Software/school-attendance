@@ -9,11 +9,13 @@ export async function handleStaffBiometricCheck({
   mode,
   biometricVerified,
   method,
+  movementReason,
 }: {
   staffId: string;
   mode: "in" | "out";
   biometricVerified: boolean;
   method: StaffBiometricMethod;
+  movementReason?: string | null;
 }) {
   /* ===============================
      VALIDATION
@@ -36,5 +38,6 @@ export async function handleStaffBiometricCheck({
     mode,
     method,
     biometric: true,
+    movementReason,
   });
 }

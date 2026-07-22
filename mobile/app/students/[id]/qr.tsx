@@ -46,7 +46,7 @@ export default function StudentQrScreen() {
   return (
     <View className="flex-1 bg-white p-6 items-center">
      <Text className="text-2xl font-semibold mb-4">
-  {getStudentLabel(student)}'s QR Code
+  QR Code for {getStudentLabel(student)}
 </Text>
 
 

@@ -1,7 +1,10 @@
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebase";
+import { scopedSettingsDocId } from "./tenantScope";
 
-const LOCATION_DOC = doc(db, "settings", "location");
+async function locationDoc() {
+  return doc(db, "settings", await scopedSettingsDocId("location"));
+}
 const CAMPUS_SERVER_TIMEOUT_MS = 2500;
 const CURRENT_LOCATION_TIMEOUT_MS = 8000;
 const MAX_ACCURACY_BUFFER_METERS = 120;
@@ -95,7 +98,7 @@ export type LocationValidationResult = {
 };
 
 async function getSchoolLocationSettings(): Promise<SchoolLocationSettings> {
-  const snap = await getDoc(LOCATION_DOC);
+  const snap = await getDoc(await locationDoc());
 
   if (!snap.exists()) {
     return {
@@ -189,7 +192,7 @@ export async function saveSchoolLocation(config: {
   setupAccuracyMeters?: number | null;
 }) {
   await setDoc(
-    LOCATION_DOC,
+    await locationDoc(),
     {
       latitude: config.latitude,
       longitude: config.longitude,
@@ -220,7 +223,7 @@ export async function setEmergencyGeofenceBypass({
   expiresAt?: string | null;
 }) {
   await setDoc(
-    LOCATION_DOC,
+    await locationDoc(),
     enabled
       ? {
           geofencingEnabled: false,
@@ -628,5 +631,7 @@ function getDistanceInMeters(
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return earthRadiusMeters * c;
 }
+
+
 
 

@@ -15,6 +15,7 @@ import { getMonthRange } from "../../src/utils/dateRanges";
 import { exportMonthlyAttendancePdf } from "../../src/services/exports/exportMonthlyAttendancePdf";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
+import AttendanceTotalsCards from "../../components/AttendanceTotalsCards";
 import { listTerms } from "../../src/services/terms";
 import { intersectRanges } from "../../src/utils/dateRanges";
 
@@ -68,7 +69,7 @@ const monthRange = useMemo(() => {
   const [exportingMonthlyPdf, setExportingMonthlyPdf] = useState(false);
 
 
-  /* ---------------- LOAD DATA ---------------- */
+  /* - LOAD DATA - */
   useEffect(() => {
     (async () => {
       try {
@@ -85,7 +86,7 @@ const monthRange = useMemo(() => {
     })();
   }, []);
 
-  /* ---------------- RESOLVE CURRENT TERM ---------------- */
+  /* - RESOLVE CURRENT TERM - */
 useEffect(() => {
   (async () => {
     const terms = await listTerms().catch(() => []);
@@ -102,7 +103,7 @@ useEffect(() => {
   })(); 
 }, []); 
  
-  /* -------- FILTER STUDENTS BY CLASS -------- */
+  /* - FILTER STUDENTS BY CLASS - */
   const filteredStudents = useMemo(() => {
     if (!selectedClassKey) return students;
     return students.filter(
@@ -112,7 +113,7 @@ useEffect(() => {
     );
   }, [students, selectedClassKey]);
 
- /* -------- COMPUTE MONTH SUMMARY -------- */
+ /* - COMPUTE MONTH SUMMARY - */
 useEffect(() => {
   (async () => {
     if (!monthRange || filteredStudents.length === 0) {
@@ -134,7 +135,7 @@ useEffect(() => {
       ...sum,
       studentId: s.id, // still needed internally for routing
       studentName: s.name ?? s.displayName ?? "Unknown Student",
-      displayId: s.studentId ?? s.rollNo ?? null, // <--- THIS FIXES THE DISPLAY
+      displayId: s.studentId ?? s.rollNo ?? null, // <- THIS FIXES THE DISPLAY
     };
   })
 );
@@ -179,7 +180,7 @@ useEffect(() => {
 
       <Text className="text-sm text-slate-500 mt-1">{label}</Text>
 
-      {/* -------- MONTH SELECT -------- */}
+      {/* - MONTH SELECT - */}
       <Text className="mt-3 mb-1.5 font-semibold">Select Month</Text>
     <ScrollView horizontal showsHorizontalScrollIndicator={true}>
   {MONTHS.map((m, i) => (
@@ -204,7 +205,7 @@ useEffect(() => {
 </ScrollView>
 
 
-      {/* -------- CLASS FILTER -------- */}
+      {/* - CLASS FILTER - */}
       <Text className="mt-3 mb-1.5 font-semibold">Filter by Class</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={true}>
         <Pressable
@@ -287,13 +288,14 @@ useEffect(() => {
 
 
 
-      {/* -------- RESULTS -------- */}
+      {/* - RESULTS - */}
       <Text className="mt-3 mb-1.5 font-semibold">
         Students ({summaries.length})
       </Text>
 
+{summaries.length > 0 ? <AttendanceTotalsCards rows={summaries} label="Students" /> : null}
 <Text className="text-ml text-slate-700 mb-2">
-  P = Present • L = Late • T = Attended • A = Absent
+  P = Present - L = Late - T = Attended - A = Absent
 </Text>
       {computing ? (
         <ActivityIndicator />
@@ -353,5 +355,3 @@ useEffect(() => {
     </ScrollView>
   );
 }
-
-

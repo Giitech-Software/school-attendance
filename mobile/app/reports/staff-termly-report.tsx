@@ -14,6 +14,7 @@ import { getStaffGlobalSummary } from "../../src/services/staffAttendanceSummary
 import { exportTermStaffAttendancePdf } from "../../src/services/exports/exportTermStaffAttendancePdf";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
+import AttendanceTotalsCards from "../../components/AttendanceTotalsCards";
 
 export default function StaffTermlyReport() {
   const router = useRouter();
@@ -116,7 +117,7 @@ export default function StaffTermlyReport() {
                   : "text-slate-500"
               }`}
             >
-              {t.startDate} → {t.endDate}
+              {t.startDate} - {t.endDate}
             </Text>
           </Pressable>
         ))}
@@ -159,8 +160,9 @@ export default function StaffTermlyReport() {
         Staff ({rows.length})
       </Text>
 
-      <Text className="text-ml text-slate-700 mb-2">
-        P = Present • L = Late • T = Attended • A = Absent
+      {rows.length > 0 ? <AttendanceTotalsCards rows={rows} label="Staff" /> : null}
+<Text className="text-ml text-slate-700 mb-2">
+        P = Present - L = Late - T = Attended - A = Absent
       </Text>
 
       {rows.length === 0 ? (
@@ -212,5 +214,3 @@ export default function StaffTermlyReport() {
     </ScrollView>
   );
 }
-
-

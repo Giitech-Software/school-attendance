@@ -1,6 +1,8 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { deleteUser, listUsers, type AppUser } from "../services/users";
+import useCurrentUser from "../hooks/useCurrentUser";
+import { allowsStudentAndParentFeatures } from "../services/tenantScope";
 
 function roleLabel(role?: string | null) {
   return role?.replaceAll("_", " ") ?? "-";
@@ -11,6 +13,8 @@ export default function Users() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { userDoc } = useCurrentUser();
+  const allowsSchoolFeatures = allowsStudentAndParentFeatures(userDoc);
 
   async function loadUsers() {
     setLoading(true);
@@ -37,9 +41,9 @@ export default function Users() {
   const counts = useMemo(
     () => ({
       total: users.length,
-      approved: users.filter((user) => user.role === "admin" || user.approved).length,
-      pending: users.filter((user) => user.role !== "admin" && !user.approved).length,
-      admins: users.filter((user) => user.role === "admin").length,
+      approved: users.filter((user) => user.role === "admin" || user.role === "super_admin" || user.approved).length,
+      pending: users.filter((user) => user.role !== "admin" && user.role !== "super_admin" && !user.approved).length,
+      admins: users.filter((user) => (user.role === "admin" || user.role === "super_admin")).length,
     }),
     [users]
   );
@@ -102,7 +106,7 @@ export default function Users() {
         ) : (
           <div className="grid gap-2">
             {filteredUsers.map((user) => {
-              const approved = user.role === "admin" || user.approved;
+              const approved = user.role === "admin" || user.role === "super_admin" || user.approved;
               return (
                 <div key={user.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                   <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
@@ -125,7 +129,7 @@ export default function Users() {
                       <Link to={`/users/${user.id}`} className="enterprise-button-secondary">
                         Edit
                       </Link>
-                      {user.role === "parent" ? (
+                      {allowsSchoolFeatures && user.role === "parent" ? (
                         <Link to={`/admin/parents/${user.id}`} className="rounded-lg bg-teal-100 px-3.5 py-2 text-sm font-semibold text-teal-800 shadow-sm hover:bg-teal-200">
                           Wards
                         </Link>
@@ -144,4 +148,6 @@ export default function Users() {
     </div>
   );
 }
+
+
 

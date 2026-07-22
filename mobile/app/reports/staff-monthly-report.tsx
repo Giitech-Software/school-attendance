@@ -12,6 +12,7 @@ import {
 import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
+import AttendanceTotalsCards from "../../components/AttendanceTotalsCards";
 
 import { getStaffGlobalSummary } from "../../src/services/staffAttendanceSummary";
 import { exportMonthlyStaffAttendance } from "../../src/services/exports/exportMonthlyStaffAttendance";
@@ -185,8 +186,9 @@ export default function StaffMonthlyReport() {
         Staff ({staffRows.length})
       </Text>
 
-      <Text className="text-sm text-slate-700 mb-2">
-        P = Present • L = Late • T = Attended • A = Absent
+      {staffRows.length > 0 ? <AttendanceTotalsCards rows={staffRows} label="Staff" /> : null}
+<Text className="text-sm text-slate-700 mb-2">
+        P = Present - L = Late - T = Attended - A = Absent
       </Text>
 
       {staffRows.length === 0 ? (
@@ -216,7 +218,7 @@ export default function StaffMonthlyReport() {
                   )
                     .toISOString()
                     .slice(0, 10),
-                  title: `Monthly Report – ${selectedMonth.label}`,
+                  title: `Monthly Report - ${selectedMonth.label}`,
                 },
               })
             }
@@ -250,5 +252,3 @@ export default function StaffMonthlyReport() {
     </ScrollView>
   );
 }
-
-

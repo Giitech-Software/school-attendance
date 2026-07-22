@@ -4,6 +4,7 @@ import landingHowItWorks from "../assets/landing-how-it-works.jpg";
 import useCurrentUser from "../hooks/useCurrentUser";
 import { useAssignedStudentClasses } from "../hooks/useAssignedStudentClasses";
 import { getAttendanceSettings } from "../services/attendanceSettings";
+import { allowsStudentAndParentFeatures } from "../services/tenantScope";
 
 function formatTime(time?: string) {
   if (!time) return "--";
@@ -36,7 +37,14 @@ type DashboardLink = {
   icon: IconName;
   iconTone: string;
   show: boolean;
+  group: "personal" | "attendance" | "management";
 };
+
+const dashboardGroupMeta = {
+  personal: { title: "My workspace", description: "Your attendance and personal records." },
+  attendance: { title: "Attendance operations", description: "Start and manage authorised attendance activities." },
+  management: { title: "Management", description: "Administration, reporting, and enrolment tools." },
+} as const;
 
 type FeatureBadge = {
   label: string;
@@ -166,7 +174,7 @@ export default function Home() {
   const [actor, setActor] = useState<"student" | "staff">("student");
   const [settings, setSettings] = useState({ lateAfter: "08:00", closeAfter: "16:00", timezone: "Africa/Accra" });
   const { hasAssignedClasses } = useAssignedStudentClasses(
-    userDoc?.approved === true || userDoc?.role === "admin" ? userDoc?.uid ?? userDoc?.id : null
+    userDoc?.approved === true || userDoc?.role === "admin" || userDoc?.role === "super_admin" ? userDoc?.uid ?? userDoc?.id : null
   );
 
   useEffect(() => {
@@ -182,14 +190,21 @@ export default function Home() {
     };
   }, []);
 
-  const isAdmin = userDoc?.role === "admin";
+  const isAdmin = userDoc?.role === "admin" || userDoc?.role === "super_admin";
   const isApproved = isAdmin || userDoc?.approved === true;
+  const allowsSchoolFeatures = allowsStudentAndParentFeatures(userDoc);
+  const personnelLabel = allowsSchoolFeatures ? "Staff" : userDoc?.tenantType === "company" ? "Employees" : "Personnel";
+  const personnelLabelLower = personnelLabel.toLowerCase();
   const canTakeStudentAttendance =
-    isAdmin ||
+    allowsSchoolFeatures && (
+      isAdmin ||
     (isApproved && userDoc?.canTakeStudentAttendance === true) ||
-    (isApproved && hasAssignedClasses);
+    (isApproved && hasAssignedClasses)
+    );
   const canTakeStaffAttendance = isAdmin || (isApproved && userDoc?.canTakeStaffAttendance === true);
-  const canTakeSelectedAttendance = actor === "staff" ? canTakeStaffAttendance : canTakeStudentAttendance;
+  const selectedActor = allowsSchoolFeatures ? actor : "staff";
+  const reportSubtitle = allowsSchoolFeatures ? "Daily • Weekly • Monthly • Termly • Yearly" : "Daily • Weekly • Monthly • Yearly";
+  const canTakeSelectedAttendance = selectedActor === "staff" ? canTakeStaffAttendance : canTakeStudentAttendance;
   const isStaffUser =
     userDoc?.role === "teacher" ||
     userDoc?.role === "staff" ||
@@ -206,6 +221,7 @@ export default function Home() {
         icon: "clipboardCheck",
         iconTone: "bg-emerald-500/10 text-emerald-700",
         show: canUseStaffSelfService,
+        group: "personal",
       },
       {
         title: "My Report",
@@ -214,6 +230,7 @@ export default function Home() {
         icon: "chart",
         iconTone: "bg-indigo-500/10 text-indigo-700",
         show: canUseStaffSelfService,
+        group: "personal",
       },
       {
         title: "Scan QR",
@@ -222,30 +239,34 @@ export default function Home() {
         icon: "scan",
         iconTone: "bg-primary/10 text-primary",
         show: canTakeStudentAttendance,
+        group: "attendance",
       },
       {
-        title: "Staff Check-In",
-        subtitle: "Staff attendance tracking",
+        title: `${personnelLabel} Check-In`,
+        subtitle: `${personnelLabel} attendance tracking`,
         href: "/attendance/checkin?actor=staff",
         icon: "staff",
         iconTone: "bg-blue-500/10 text-blue-700",
         show: canTakeStaffAttendance,
+        group: "attendance",
       },
       {
         title: "Reports",
-        subtitle: "Daily, weekly, monthly, termly",
-        href: `/reports?type=${actor}`,
+        subtitle: reportSubtitle,
+        href: `/reports?type=${selectedActor}`,
         icon: "report",
         iconTone: "bg-secondary/20 text-yellow-700",
         show: Boolean(isAdmin),
+        group: "management",
       },
       {
         title: "Admin",
-        subtitle: "Setup terms, classes & users",
+        subtitle: allowsSchoolFeatures ? "Setup terms, classes & users" : `Setup ${personnelLabelLower}, users & attendance`,
         href: "/admin",
         icon: "admin",
         iconTone: "bg-primary/10 text-primary",
         show: Boolean(isAdmin),
+        group: "management",
       },
       {
         title: "Add Student",
@@ -253,10 +274,11 @@ export default function Home() {
         href: "/students",
         icon: "studentPlus",
         iconTone: "bg-red/10 text-red-600",
-        show: Boolean(isAdmin),
+        show: Boolean(isAdmin && allowsSchoolFeatures),
+        group: "management",
       },
     ],
-    [actor, canTakeStaffAttendance, canTakeStudentAttendance, canUseStaffSelfService, isAdmin]
+    [allowsSchoolFeatures, canTakeStaffAttendance, canTakeStudentAttendance, canUseStaffSelfService, isAdmin, personnelLabel, personnelLabelLower, reportSubtitle, selectedActor]
   );
 
   const visibleLinks = dashboardLinks.filter((item) => item.show);
@@ -266,7 +288,7 @@ export default function Home() {
       alert("You are approved, but you have not been authorized to take attendance.");
       return;
     }
-    const nextActor = canTakeSelectedAttendance ? actor : canTakeStudentAttendance ? "student" : "staff";
+    const nextActor = canTakeSelectedAttendance ? selectedActor : canTakeStudentAttendance ? "student" : "staff";
     navigate(`/attendance/checkin?actor=${nextActor}`);
   }
 
@@ -308,24 +330,44 @@ export default function Home() {
         </div>
 
         <main className="space-y-5 px-4 py-4 sm:px-6">
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {visibleLinks.map((item) => (
-              <Link key={item.href} to={item.href} className="flex min-h-24 items-center rounded-2xl bg-white p-4 shadow transition hover:-translate-y-0.5 hover:shadow-lg">
-                <span className={`mr-3 flex h-12 w-12 shrink-0 items-center justify-center rounded-lg ${item.iconTone}`}>
-                  <Icon name={item.icon} className="h-6 w-6" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block truncate font-semibold text-dark">{item.title}</span>
-                  <span className="mt-1 block text-sm leading-5 text-neutral">{item.subtitle}</span>
-                </span>
-              </Link>
-            ))}
+          <section className="space-y-3" aria-label="Dashboard navigation">
+            {(Object.keys(dashboardGroupMeta) as Array<keyof typeof dashboardGroupMeta>).map((groupKey) => {
+              const links = visibleLinks.filter((item) => item.group === groupKey);
+              if (!links.length) return null;
+              const meta = dashboardGroupMeta[groupKey];
+
+              return (
+                <div key={groupKey} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-md shadow-blue-950/15">
+                  <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 sm:px-5">
+                    <h2 className="font-extrabold text-slate-950">{meta.title}</h2>
+                    <p className="mt-0.5 text-sm text-slate-500">{meta.description}</p>
+                  </div>
+                  <div className="grid gap-px bg-slate-200 sm:grid-cols-2 xl:grid-cols-4">
+                    {links.map((item) => (
+                      <Link key={item.href} to={item.href} className="group flex min-h-24 items-center gap-3 bg-white p-4 transition hover:bg-blue-50/70 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600">
+                        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset ring-black/5 ${item.iconTone}`}>
+                          <Icon name={item.icon} className="h-5 w-5" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center justify-between gap-2 font-bold text-slate-900 group-hover:text-blue-800">
+                            {item.title}
+                            <Icon name="arrowRight" className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-blue-700" />
+                          </span>
+                          <span className="mt-1 block text-sm leading-5 text-slate-500">{item.subtitle}</span>
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </section>
 
-          <section className="rounded-2xl bg-white p-4 shadow">
-            <h2 className="mb-3 text-lg font-semibold text-dark">Select Actor</h2>
+          {allowsSchoolFeatures ? <section className="rounded-2xl bg-white p-4 shadow">
+            <h2 className="mb-1 text-lg font-semibold text-dark">Attendance group</h2>
+            <p className="mb-3 text-sm text-slate-500">Choose whose attendance you are managing.</p>
             <div className="grid grid-cols-2 gap-3">
-              {(["student", "staff"] as const).map((value) => (
+              {(allowsSchoolFeatures ? (["student", "staff"] as const) : (["staff"] as const)).map((value) => (
                 <button
                   key={value}
                   type="button"
@@ -338,7 +380,7 @@ export default function Home() {
                 </button>
               ))}
             </div>
-          </section>
+          </section> : null}
 
           <section className="rounded-2xl bg-white p-4 shadow">
             <div className="mb-3 flex items-center justify-between">
@@ -349,39 +391,39 @@ export default function Home() {
             <div className="space-y-3">
               {canTakeSelectedAttendance ? (
                 <>
-                  <Link to={`/attendance/checkin?actor=${actor}&mode=in`} className="flex items-center justify-between gap-3 rounded-lg bg-primary/5 p-3 text-dark transition hover:bg-primary/10">
+                  <Link to={`/attendance/checkin?actor=${selectedActor}&mode=in`} className="flex items-center justify-between gap-3 rounded-lg bg-primary/5 p-3 text-dark transition hover:bg-primary/10">
                     <span className="flex min-w-0 items-center gap-3">
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                         <Icon name="login" className="h-4 w-4" />
                       </span>
-                      <span className="truncate">{actor === "student" ? "Start class check-in" : "Start staff check-in"}</span>
+                      <span className="truncate">{selectedActor === "student" ? "Start class check-in" : `Start ${personnelLabelLower} check-in`}</span>
                     </span>
                     <span className="shrink-0 text-sm text-neutral">- {formatTime(settings.lateAfter)}</span>
                   </Link>
 
-                  <Link to={`/attendance/checkin?actor=${actor}&mode=out`} className="flex items-center justify-between gap-3 rounded-lg bg-red/5 p-3 text-dark transition hover:bg-red/10">
+                  <Link to={`/attendance/checkin?actor=${selectedActor}&mode=out`} className="flex items-center justify-between gap-3 rounded-lg bg-red/5 p-3 text-dark transition hover:bg-red/10">
                     <span className="flex min-w-0 items-center gap-3">
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red/10 text-red-600">
                         <Icon name="logout" className="h-4 w-4" />
                       </span>
-                      <span className="truncate">{actor === "student" ? "End of class check-out" : "End of staff check-out"}</span>
+                      <span className="truncate">{selectedActor === "student" ? "End of class check-out" : `End of ${personnelLabelLower} check-out`}</span>
                     </span>
                     <span className="shrink-0 text-sm text-neutral">- {formatTime(settings.closeAfter)}</span>
                   </Link>
                 </>
               ) : (
-                <div className="rounded-lg bg-slate-50 p-3 text-sm text-neutral">Attendance access is not enabled for this actor.</div>
+                <div className="rounded-lg bg-slate-50 p-3 text-sm text-neutral">Attendance access is not enabled for this group.</div>
               )}
 
               {isAdmin ? (
-                <Link to={`/reports?type=${actor}`} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 p-3 text-dark transition hover:bg-slate-50">
+                <Link to={`/reports?type=${selectedActor}`} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 p-3 text-dark transition hover:bg-slate-50">
                   <span className="flex min-w-0 items-center gap-3">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-800">
                       <Icon name="report" className="h-4 w-4" />
                     </span>
                     <span className="truncate">View weekly report</span>
                   </span>
-                  <span className="shrink-0 text-sm text-neutral">- {actor === "student" ? 5 : 30} days</span>
+                  <span className="shrink-0 text-sm text-neutral">- {selectedActor === "student" ? 5 : 30} days</span>
                 </Link>
               ) : null}
             </div>
@@ -389,7 +431,7 @@ export default function Home() {
 
           <footer className="pb-4 text-center text-xs text-blue-100/90">
             <p>Developer - Solomon K. Aggrey</p>
-            <p>M'Salem Attendance - Web app</p>
+            <p>ASTEM Attendance - Web app</p>
             <p>Version 2.0</p>
           </footer>
         </main>

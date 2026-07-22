@@ -14,7 +14,7 @@ export function useAuthorization(uid?: string) {
     });
   }, [uid]);
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
   const isApproved = isAdmin || user?.approved === true; // admins always approved
 
   return {
@@ -27,3 +27,5 @@ export function useAuthorization(uid?: string) {
     canTakeStudentAttendance: isAdmin || (isApproved && user?.canTakeStudentAttendance === true),
   };
 } 
+
+

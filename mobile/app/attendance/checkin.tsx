@@ -18,19 +18,23 @@ import { registerAttendanceUnified } from "../../src/services/attendance";
 import { getStudentById } from "../../src/services/students";
 import { getStaffByStaffId } from "../../src/services/staff";
 import { registerStaffAttendance } from "../../src/services/staffAttendance";
+import { getAttendanceSettings } from "../../src/services/attendanceSettings";
+import { getMovementReasonRequirement } from "../../src/services/movementPolicy";
 import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../../app/firebase";
 import { handleStaffBiometricCheck } from "../../src/services/staffBiometricHandler";
 import { useRequireAttendanceAccess } from "../../src/hooks/useRouteAuthorization";
 import AppInput from "@/components/AppInput";
+import { useMovementReasonPrompt } from "@/components/MovementReasonPrompt";
+import { getTenantScope, tenantConstraints } from "../../src/services/tenantScope";
 
 /* ------------------------- Attendance Restrictions ------------------------- */
-function isAttendanceAllowed(): { allowed: boolean; reason?: string } {
+function isAttendanceAllowed(actor: "student" | "staff", allowStaffWeekendAttendance: boolean): { allowed: boolean; reason?: string } {
   const today = new Date();
   const day = today.getDay();
-  if (day === 0) return { allowed: false, reason: "Today is Sunday. Attendance is not allowed." };
-  if (day === 6) return { allowed: false, reason: "Today is Saturday. Attendance is not allowed." };
+  if (day === 0 && !(actor === "staff" && allowStaffWeekendAttendance)) return { allowed: false, reason: "Today is Sunday. Attendance is not allowed." };
+  if (day === 6 && !(actor === "staff" && allowStaffWeekendAttendance)) return { allowed: false, reason: "Today is Saturday. Attendance is not allowed." };
   const holidays = ["2026-01-01", "2026-04-15", "2026-12-25"];
   const todayISO = today.toISOString().slice(0, 10);
   if (holidays.includes(todayISO)) {
@@ -127,14 +131,41 @@ export default function CheckinScreen() {
   const [showBiometric, setShowBiometric] = useState(false);
   const [staffIdInput, setStaffIdInput] = useState("");
   const [staffIdSubmitting, setStaffIdSubmitting] = useState(false);
+  const [allowStaffWeekendAttendance, setAllowStaffWeekendAttendance] = useState(false);
+  const { promptMovementReason, movementReasonPrompt } = useMovementReasonPrompt();
 
   const canUseAllStudentClasses =
     userDoc?.role === "admin" || hasCapability;
+
+  useEffect(() => {
+    let mounted = true;
+
+    getAttendanceSettings()
+      .then((settings) => {
+        if (mounted) setAllowStaffWeekendAttendance(settings.allowStaffWeekendAttendance);
+      })
+      .catch((error) => {
+        console.warn("Failed to load attendance settings", error);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   function getSelectedClass() {
     return classes.find(
       (cls) => cls.classId === selectedClassId || cls.id === selectedClassId
     );
+  }
+
+  async function getMovementReasonFor(mode: "in" | "out") {
+    const settings = await getAttendanceSettings();
+    const requirement = getMovementReasonRequirement({ settings, mode });
+    if (!requirement) return undefined;
+    const reason = await promptMovementReason(requirement);
+    if (!reason) throw new Error("A movement book entry is required to complete this attendance action.");
+    return reason;
   }
 
   useEffect(() => { loadClasses(); }, [actor, authorizationReady, assignedStudentClasses.length]);
@@ -157,13 +188,27 @@ export default function CheckinScreen() {
       !canUseAllStudentClasses && selectedClass?.id
         ? selectedClass.id
         : selectedClassId;
-    const q = query(collection(db, "students"), where(classField, "==", classValue));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setStudents(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as StudentRecord[]);
-    }, (err) => {
-      Alert.alert("Failed to load students", err?.message ?? String(err));
-    });
-    return () => unsubscribe();
+    let active = true;
+    let unsubscribe: (() => void) | undefined;
+    getTenantScope()
+      .then((scope) => {
+        if (!active) return;
+        const q = query(
+          collection(db, "students"),
+          where(classField, "==", classValue),
+          ...tenantConstraints(scope)
+        );
+        unsubscribe = onSnapshot(q, (snapshot) => {
+          setStudents(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as StudentRecord[]);
+        }, (err) => {
+          Alert.alert("Failed to load students", err?.message ?? String(err));
+        });
+      })
+      .catch((err) => Alert.alert("Failed to load students", err?.message ?? String(err)));
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
   }, [selectedClassId, actor, classes]);
   async function loadClasses() {
     if (!authorizationReady) return;
@@ -197,7 +242,7 @@ export default function CheckinScreen() {
     return;
   }
 
-  const attendanceCheck = isAttendanceAllowed();
+  const attendanceCheck = isAttendanceAllowed(actor, allowStaffWeekendAttendance);
   if (!attendanceCheck.allowed) {
     Alert.alert("Attendance not allowed", attendanceCheck.reason);
     return;
@@ -208,9 +253,9 @@ export default function CheckinScreen() {
     return;
   }
 
-  setLoading(true);
-
   try {
+    const movementReason = await getMovementReasonFor(checkType);
+    setLoading(true);
     // 1️⃣ Biometric Hardware Check
     const hasHardware = await LocalAuthentication.hasHardwareAsync();
     const enrolledOnDevice = await LocalAuthentication.isEnrolledAsync();
@@ -247,6 +292,7 @@ export default function CheckinScreen() {
         biometric: true,
         method: "fingerprint",
         enforceClassAssignment: !canUseAllStudentClasses,
+        movementReason,
       });
 
       setConfirmation({
@@ -284,6 +330,7 @@ export default function CheckinScreen() {
         mode: checkType,
         biometricVerified: true,
         method: "fingerprint",
+        movementReason,
       });
 
       setConfirmation({
@@ -302,7 +349,7 @@ export default function CheckinScreen() {
 }
 
   function goToQR(mode?: "in" | "out") {
-    const attendanceCheck = isAttendanceAllowed();
+    const attendanceCheck = isAttendanceAllowed(actor, allowStaffWeekendAttendance);
     if (!attendanceCheck.allowed) return Alert.alert("Attendance not allowed", attendanceCheck.reason);
     if (actor === "student" && !selectedClassId) return Alert.alert("Select class first");
 
@@ -324,7 +371,7 @@ export default function CheckinScreen() {
   async function submitStaffIdAttendance(mode: "in" | "out") {
     if (actor !== "staff") return;
 
-    const attendanceCheck = isAttendanceAllowed();
+    const attendanceCheck = isAttendanceAllowed(actor, allowStaffWeekendAttendance);
     if (!attendanceCheck.allowed) {
       Alert.alert("Attendance not allowed", attendanceCheck.reason);
       return;
@@ -338,6 +385,7 @@ export default function CheckinScreen() {
 
     setStaffIdSubmitting(true);
     try {
+      const movementReason = await getMovementReasonFor(mode);
       const staff = await getStaffByStaffId(staffCode);
       if (!staff?.id) {
         Alert.alert("Staff not found", `No staff record found for ID: ${staffCode}`);
@@ -349,6 +397,7 @@ export default function CheckinScreen() {
         mode,
         method: "manual",
         biometric: false,
+        movementReason,
       });
 
       setConfirmation({
@@ -382,7 +431,7 @@ export default function CheckinScreen() {
   }
 
   function renderListHeader() {
-    const check = isAttendanceAllowed();
+    const check = isAttendanceAllowed(actor, allowStaffWeekendAttendance);
     return (
       <View>
         {!check.allowed ? (
@@ -621,6 +670,7 @@ export default function CheckinScreen() {
           </View>
         </View>      
       ) : null}
+      {movementReasonPrompt}
     </View>
   );
 }

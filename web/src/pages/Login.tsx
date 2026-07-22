@@ -1,7 +1,8 @@
-﻿import { useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signIn, signOutUser } from "../services/auth";
 import { getUserById } from "../services/users";
+import AuthBrandHeader from "../components/AuthBrandHeader";
 
 function friendlyAuthError(err: any) {
   const code = String(err?.code ?? "");
@@ -42,7 +43,7 @@ export default function Login() {
       const user = await getUserById(credential.user.uid);
       if (!user) throw new Error("User profile not found.");
 
-      if (user.role !== "admin" && user.approved !== true) {
+      if (user.role !== "admin" && user.role !== "super_admin" && user.approved !== true) {
         await signOutUser();
         setError("Your account is pending administrator approval.");
         return;
@@ -58,6 +59,7 @@ export default function Login() {
 
   return (
     <div className="auth-shell">
+      <AuthBrandHeader />
       <div className="auth-card">
         <h1 className="mb-4 text-center text-3xl font-bold text-slate-950">Sign In</h1>
 
@@ -96,4 +98,5 @@ export default function Login() {
     </div>
   );
 }
+
 

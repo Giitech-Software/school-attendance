@@ -29,7 +29,7 @@ export default function PostLogin() {
       }
 
       // ✅ Role-aware approval check (admin skips)
-      if (userDoc.role !== "admin" && userDoc.approved !== true) {
+      if (userDoc.role !== "admin" && userDoc.role !== "super_admin" && userDoc.approved !== true) {
         router.replace("/(auth)/pending-approval");
         return;
       }
@@ -61,3 +61,4 @@ export default function PostLogin() {
     </View>
   );
 }
+

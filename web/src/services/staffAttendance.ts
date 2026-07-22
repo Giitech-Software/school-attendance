@@ -3,11 +3,53 @@ import { db } from "../firebase";
 import type { AttendanceRecord } from "../types";
 import type { AppUser } from "./users";
 import { listUsersByRole } from "./users";
-import { assertAttendanceCheckInOpen } from "./attendanceSettings";
+import { assertAttendanceCheckInOpen, assertStaffAttendanceDayAllowed, getAttendanceSettings } from "./attendanceSettings";
 import { todayISO } from "./attendance";
 import { recordAttendance } from "./attendance";
+import { getTenantScope, tenantConstraints } from "./tenantScope";
 
 const attendanceCollection = collection(db, "attendance");
+type MovementReasonRequirement = {
+  kind: "late" | "early_checkout";
+  minutes: number;
+};
+
+const LATE_REASON_GRACE_MINUTES = 60;
+
+function parseTimeToMinutes(time?: string): number | null {
+  if (!time || !/^\d{2}:\d{2}$/.test(time)) return null;
+  const [hour, minute] = time.split(":").map(Number);
+  if (hour > 23 || minute > 59) return null;
+  return hour * 60 + minute;
+}
+
+function minutesInTimezone(date: Date, timezone: string) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(date);
+    const hour = Number(parts.find((part) => part.type === "hour")?.value);
+    const minute = Number(parts.find((part) => part.type === "minute")?.value);
+    if (Number.isFinite(hour) && Number.isFinite(minute)) return hour * 60 + minute;
+  } catch {}
+  return date.getHours() * 60 + date.getMinutes();
+}
+
+function getMovementReasonRequirement(settings: any, mode: "in" | "out", now = new Date()): MovementReasonRequirement | null {
+  const currentMinutes = minutesInTimezone(now, settings.timezone || "Africa/Accra");
+  if (mode === "in") {
+    const lateAfter = parseTimeToMinutes(settings.lateAfter);
+    if (lateAfter === null) return null;
+    const minutesLate = currentMinutes - lateAfter;
+    return minutesLate >= LATE_REASON_GRACE_MINUTES ? { kind: "late", minutes: minutesLate } : null;
+  }
+  const closeAfter = parseTimeToMinutes(settings.closeAfter);
+  if (closeAfter === null) return null;
+  const minutesEarly = closeAfter - currentMinutes;
+  return minutesEarly > 0 ? { kind: "early_checkout", minutes: minutesEarly } : null;
+}
+
+function cleanMovementReason(reason?: string | null) {
+  return (reason ?? "").trim();
+}
 
 export type StaffAttendanceSummary = {
   staffId: string;
@@ -31,7 +73,8 @@ export async function getStaffAttendanceRecords(
     attendanceCollection,
     where("subjectType", "==", "staff"),
     where("date", ">=", fromIso),
-    where("date", "<=", toIso)
+    where("date", "<=", toIso),
+    ...tenantConstraints(await getTenantScope())
   );
   const snap = await getDocs(q);
   return snap.docs
@@ -83,7 +126,8 @@ export async function findStaffAttendanceForDate(staffId: string, date: string):
     attendanceCollection,
     where("subjectType", "==", "staff"),
     where("subjectId", "==", staffId),
-    where("date", "==", date)
+    where("date", "==", date),
+    ...tenantConstraints(await getTenantScope())
   );
   const snap = await getDocs(q);
   if (snap.empty) return null;
@@ -95,19 +139,25 @@ export async function registerStaffAttendance({
   mode,
   method = "manual",
   biometric = false,
+  movementReason,
 }: {
   staffId: string;
   mode: "in" | "out";
   method?: "qr" | "fingerprint" | "face" | "manual";
   biometric?: boolean;
+  movementReason?: string | null;
 }): Promise<AttendanceRecord> {
   const date = todayISO();
   const existing = await findStaffAttendanceForDate(staffId, date);
+  await assertStaffAttendanceDayAllowed();
 
   if (mode === "in") {
     if (existing?.checkInTime) throw new Error("Staff already checked-in today.");
     const settings = await assertAttendanceCheckInOpen();
     const now = new Date().toISOString();
+    const movementRequirement = getMovementReasonRequirement(settings, "in", new Date(now));
+    const cleanedReason = cleanMovementReason(movementReason);
+    if (movementRequirement && !cleanedReason) throw new Error("A movement book entry is required for this late arrival.");
     return recordAttendance({
       subjectType: "staff",
       subjectId: staffId,
@@ -117,11 +167,18 @@ export async function registerStaffAttendance({
       method,
       biometric,
       status: isLate(now, settings.lateAfter) ? "late" : "present",
+      lateReason: movementRequirement?.kind === "late" ? cleanedReason : null,
+      lateMinutes: movementRequirement?.kind === "late" ? movementRequirement.minutes : null,
     } as any);
   }
 
   if (!existing) throw new Error("Staff must check-in before checking-out.");
   if (existing.checkOutTime) throw new Error("Staff already checked-out today.");
+
+  const settings = await getAttendanceSettings();
+  const movementRequirement = getMovementReasonRequirement(settings, "out");
+  const cleanedReason = cleanMovementReason(movementReason);
+  if (movementRequirement && !cleanedReason) throw new Error("A movement book entry is required for this early departure.");
 
   return recordAttendance({
     ...existing,
@@ -132,5 +189,8 @@ export async function registerStaffAttendance({
     type: "out",
     method: existing.method ?? method,
     biometric,
+    earlyCheckoutReason: movementRequirement?.kind === "early_checkout" ? cleanedReason : null,
+    earlyCheckoutMinutes: movementRequirement?.kind === "early_checkout" ? movementRequirement.minutes : null,
   } as any);
 }
+

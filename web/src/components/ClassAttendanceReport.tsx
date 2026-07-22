@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { listClasses, type SchoolClass } from "../services/classes";
 import { getAttendanceSummary, type AttendanceSummary } from "../services/attendanceSummary";
 import { exportReportCsv, openReportPdf } from "../services/reportExport";
+import AttendanceTotalsCards from "./AttendanceTotalsCards";
+import { autoMarkAbsentAllClasses } from "../services/autoMarkAbsent";
 
 interface ClassAttendanceReportProps {
   title: string;
@@ -99,6 +101,9 @@ export default function ClassAttendanceReport({
     setLoading(true);
 
     try {
+      if (from === to) {
+        await autoMarkAbsentAllClasses({ dateIso: to });
+      }
       const data = await getAttendanceSummary({
         fromIso: from,
         toIso: to,
@@ -190,6 +195,7 @@ export default function ClassAttendanceReport({
           ) : null}
         </div>
 
+        {results && results.length > 0 ? <AttendanceTotalsCards rows={results} subjectLabel="Students" groupLabel={selectedClassName} /> : null}
         {results && results.length === 0 ? <p className="report-empty">No attendance records were found for the selected date range.</p> : null}
         {!results && !loading ? <p className="report-empty">Generate a report to view student attendance counts.</p> : null}
         {loading ? <p className="report-empty">Loading report...</p> : null}
@@ -212,7 +218,7 @@ export default function ClassAttendanceReport({
                     <th>L</th>
                     <th>T</th>
                     <th>A</th>
-                    <th>% Present</th>
+                    <th>Attendance %</th>
                     <th></th>
                   </tr>
                 </thead>

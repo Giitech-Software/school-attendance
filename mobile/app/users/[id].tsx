@@ -8,19 +8,16 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import AppPicker from "@/components/AppPicker";
 import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
-
-const USER_ROLES = [
-  "parent",
-  "teacher",
-  "non_teaching_staff",
-  "general_staff",
-  "admin",
-] as const;
+import useCurrentUser from "../../src/hooks/useCurrentUser";
+import { allowsStudentAndParentFeatures } from "../../src/services/tenantScope";
 
 export default function UserDetail() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
+  const { userDoc: currentUserDoc } = useCurrentUser();
+  const allowsSchoolFeatures = allowsStudentAndParentFeatures(currentUserDoc);
+  const currentUserIsSuperAdmin = currentUserDoc?.role === "super_admin";
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -54,7 +51,7 @@ export default function UserDetail() {
           return;
         }
         const meDoc = await getUserById(meUid); // reuse service to read current user's doc
-        setCurrentUserIsAdmin(Boolean(meDoc?.role === "admin"));
+        setCurrentUserIsAdmin(Boolean(meDoc?.role === "admin" || meDoc?.role === "super_admin"));
       } catch (e) {
         console.warn("Failed to read current user doc", e);
         setCurrentUserIsAdmin(false);
@@ -83,7 +80,7 @@ export default function UserDetail() {
       user?.role === "non_teaching_staff" ||
       user?.role === "staff" ||
       user?.role === "general_staff" ||
-      user?.role === "admin"
+      user?.role === "admin" || user?.role === "super_admin"
     );
   }
 
@@ -165,11 +162,12 @@ export default function UserDetail() {
         selectedValue={user.role ?? "teacher"}
         onValueChange={(value) => setUser({ ...user, role: value })}
       >
-        <Picker.Item label="Parent" value="parent" />
+        {allowsSchoolFeatures ? <Picker.Item label="Parent" value="parent" /> : null}
         <Picker.Item label="Teacher" value="teacher" />
         <Picker.Item label="Non-Teaching Staff" value="non_teaching_staff" />
         <Picker.Item label="General Staff" value="general_staff" />
         <Picker.Item label="Administrator" value="admin" />
+        {currentUserIsSuperAdmin ? <Picker.Item label="Super Admin" value="super_admin" /> : null}
       </AppPicker>
     </View>
 
@@ -194,6 +192,7 @@ export default function UserDetail() {
 
     <Text className="text-ml text-neutral-600 mb-1 mt-2">Attendance Permissions</Text>
     <View className="mb-4 gap-2">
+      {allowsSchoolFeatures ? (
       <Pressable
         onPress={() =>
           setUser((prev) =>
@@ -215,6 +214,7 @@ export default function UserDetail() {
             : "Cannot take student attendance"}
         </Text>
       </Pressable>
+        ) : null}
 
       <Pressable
         onPress={() =>
@@ -256,7 +256,7 @@ export default function UserDetail() {
     ) : null}
 
     {/* Promote to Admin */}
-    {user.role !== "admin" && (
+    {user.role !== "admin" && user.role !== "super_admin" && (
       <Pressable
         onPress={handlePromoteToAdmin}
         className="mt-3 bg-red py-3 rounded"
@@ -264,7 +264,7 @@ export default function UserDetail() {
       >
         <View className="bg-green-300 rounded-lg px-4 py-2">
           <Text className="text-white text-center font-medium">
-            {promoting ? "Promoting…" : "Promote to Admin"}
+            {promoting ? "Promoting..." : "Promote to Admin"}
           </Text>
         </View>
       </Pressable>
@@ -278,8 +278,14 @@ export default function UserDetail() {
   className="bg-primary py-3 rounded"
   disabled={saving}
 >
-  <Text className="text-white text-center">{saving ? "Saving…" : "Save"}</Text>
+  <Text className="text-white text-center">{saving ? "Saving..." : "Save"}</Text>
 </Pressable>
     </View>
   );
 }
+
+
+
+
+
+

@@ -12,10 +12,12 @@ import { useRouter } from "expo-router";import { getStaffGlobalSummary } from ".
 import { exportDailyStaffAttendance } from "../../src/services/exports/exportDailyStaffAttendance";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
+import AttendanceTotalsCards from "../../components/AttendanceTotalsCards";
+import { autoMarkAbsentStaff } from "../../src/services/autoMarkAbsent";
 
-/* ------------------------------------------------------------------ */
+/* - */
 /* HELPERS */
-/* ------------------------------------------------------------------ */
+/* - */
 function getLastNSchoolDays(n: number) {
   const out: string[] = [];
   let cursor = new Date();
@@ -31,9 +33,9 @@ function getLastNSchoolDays(n: number) {
   return out.reverse();
 }
 
-/* ------------------------------------------------------------------ */
+/* - */
 /* COMPONENT */
-/* ------------------------------------------------------------------ */
+/* - */
 export default function StaffDailyReport() {
   const router = useRouter();
   const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
@@ -44,16 +46,16 @@ export default function StaffDailyReport() {
   const [exportingPdf, setExportingPdf] = useState(false);
   const [staffRows, setStaffRows] = useState<any[]>([]);
 
-  /* ------------------------------------------------------------------ */
+  /* - */
   /* LOAD DAYS */
-  /* ------------------------------------------------------------------ */
+  /* - */
   useEffect(() => {
     setDays(getLastNSchoolDays(5));
   }, []);
 
-  /* ------------------------------------------------------------------ */
+  /* - */
   /* LOAD DAILY STAFF ATTENDANCE */
-  /* ------------------------------------------------------------------ */
+  /* - */
   useEffect(() => {
     (async () => {
       if (!selectedDay) {
@@ -64,7 +66,8 @@ export default function StaffDailyReport() {
       try {
         setLoading(true);
 
-const rows = await getStaffGlobalSummary(selectedDay, selectedDay);
+        await autoMarkAbsentStaff({ dateIso: selectedDay });
+        const rows = await getStaffGlobalSummary(selectedDay, selectedDay);
 
 
         setStaffRows(rows || []);
@@ -77,9 +80,9 @@ const rows = await getStaffGlobalSummary(selectedDay, selectedDay);
     })();
   }, [selectedDay]);
 
-  /* ------------------------------------------------------------------ */
+  /* - */
   /* LOADING */
-  /* ------------------------------------------------------------------ */
+  /* - */
   if (adminLoading || !adminReady || loading) {
     return (
       <View className="flex-1 items-center justify-center bg-slate-50">
@@ -88,9 +91,9 @@ const rows = await getStaffGlobalSummary(selectedDay, selectedDay);
     );
   }
 
-  /* ------------------------------------------------------------------ */
+  /* - */
   /* UI */
-  /* ------------------------------------------------------------------ */
+  /* - */
   return (
     <ScrollView className="flex-1 bg-slate-300 p-3">
       <View className="flex-row items-center mb-2">
@@ -107,7 +110,7 @@ const rows = await getStaffGlobalSummary(selectedDay, selectedDay);
         </Text>
       </View>
 
-      {/* -------------------- DAY SELECT -------------------- */}
+      {/* - DAY SELECT - */}
       <Text className="text-sm text-slate-600 mb-2">Select day</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         {days.map((d) => (
@@ -136,7 +139,7 @@ const rows = await getStaffGlobalSummary(selectedDay, selectedDay);
         ))}
       </ScrollView>
 
-      {/* -------- DAILY EXPORT (PDF ONLY) -------- */}
+      {/* - DAILY EXPORT (PDF ONLY) - */}
       <View className="mt-3 mb-2">
         <Pressable
           disabled={!selectedDay || exportingPdf}
@@ -165,13 +168,14 @@ const rows = await getStaffGlobalSummary(selectedDay, selectedDay);
         </Pressable>
       </View>
 
-      {/* -------------------- STAFF ROWS -------------------- */}
+      {/* - STAFF ROWS - */}
       <Text className="text-lg font-semibold mt-3 mb-1.5">
         Staff ({staffRows.length})
       </Text>
 
-      <Text className="text-ml text-slate-700 mb-2">
-        P = Present • L = Late • A = Absent
+      {staffRows.length > 0 ? <AttendanceTotalsCards rows={staffRows} label="Staff" /> : null}
+<Text className="text-ml text-slate-700 mb-2">
+        P = Present - L = Late - T = Attended - A = Absent
       </Text>
 
       {staffRows.length === 0 ? (
@@ -189,7 +193,7 @@ const rows = await getStaffGlobalSummary(selectedDay, selectedDay);
                   id: item.staffId,
                   fromIso: selectedDay!,
                   toIso: selectedDay!,
-                  title: `Daily Report – ${selectedDay}`,
+                  title: `Daily Report - ${selectedDay}`,
                 },
               })
             }
@@ -202,6 +206,7 @@ const rows = await getStaffGlobalSummary(selectedDay, selectedDay);
             <View className="flex-row justify-between mt-1.5">
               <Text className="text-emerald-600">P: {item.presentCount}</Text>
               <Text className="text-amber-600">L: {item.lateCount}</Text>
+              <Text className="text-sky-700">T: {item.attendedSessions}</Text>
               <Text className="text-red-500">A: {item.absentCount}</Text>
               <Text className="text-slate-700">
                 {item.percentagePresent.toFixed(1)}%
@@ -213,5 +218,6 @@ const rows = await getStaffGlobalSummary(selectedDay, selectedDay);
     </ScrollView>
   );
 }
+
 
 

@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { createStaff, listStaff, STAFF_ROLE_OPTIONS, type StaffRoleType } from "../services/staff";
 import { getUserByEmail, upsertUser } from "../services/users";
@@ -161,7 +161,7 @@ export default function StaffBulkImport() {
               uid: linkedUser.uid ?? linkedUser.id,
               id: linkedUser.id,
               approved: true,
-              ...(linkedUser.role === "admin" ? {} : { role: row.roleType }),
+              ...(linkedUser.role === "admin" || linkedUser.role === "super_admin" ? {} : { role: row.roleType }),
             });
           }
 
@@ -247,5 +247,6 @@ export default function StaffBulkImport() {
     </div>
   );
 }
+
 
 

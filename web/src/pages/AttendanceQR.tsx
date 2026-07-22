@@ -1,14 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { collection, doc, getDoc, getDocs, limit, query, where } from "firebase/firestore";
+import { collection, getDocs, limit, query, where } from "firebase/firestore";
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { db } from "../firebase";
 import { listClasses, type ClassRecord } from "../services/classes";
-import type { Student } from "../services/students";
+import { getStudentById, type Student } from "../services/students";
 import { registerAttendanceUnified } from "../services/attendance";
 import { getStaffById, getStaffByStaffId } from "../services/staff";
 import { registerStaffAttendance } from "../services/staffAttendance";
+import { getAttendanceSettings } from "../services/attendanceSettings";
 import { useCurrentStaff } from "../hooks/useCurrentStaff";
+import { getTenantScope, tenantConstraints } from "../services/tenantScope";
 
 type ParsedQr = {
   studentId?: string;
@@ -44,18 +46,54 @@ async function validateSignedPayload(payload: ParsedQr) {
 
 async function findStudentByScannedId(scannedId: string): Promise<Student | null> {
   const studentsRef = collection(db, "students");
-  const byStudentId = await getDocs(query(studentsRef, where("studentId", "==", scannedId), limit(1)));
+  const scopeConstraints = tenantConstraints(await getTenantScope());
+  const byStudentId = await getDocs(query(studentsRef, where("studentId", "==", scannedId), ...scopeConstraints, limit(1)));
   if (!byStudentId.empty) return { id: byStudentId.docs[0].id, ...(byStudentId.docs[0].data() as any) } as Student;
 
-  const byRollNo = await getDocs(query(studentsRef, where("rollNo", "==", scannedId), limit(1)));
+  const byRollNo = await getDocs(query(studentsRef, where("rollNo", "==", scannedId), ...scopeConstraints, limit(1)));
   if (!byRollNo.empty) return { id: byRollNo.docs[0].id, ...(byRollNo.docs[0].data() as any) } as Student;
 
-  const direct = await getDoc(doc(db, "students", scannedId));
-  if (direct.exists()) return { id: direct.id, ...(direct.data() as any) } as Student;
-
-  return null;
+  return getStudentById(scannedId);
 }
 
+
+const LATE_REASON_GRACE_MINUTES = 60;
+const LATE_REASON_OPTIONS = ["Transport or traffic disruption", "Health or medical matter", "Family or personal emergency", "Authorised organisational duty", "Severe weather or road conditions"];
+const EARLY_CHECKOUT_REASON_OPTIONS = ["Authorised organisational assignment", "Medical appointment or health matter", "Family or personal emergency", "Approved early departure", "Transport or safety requirement"];
+function parseTimeToMinutes(time?: string) {
+  if (!time || !/^\d{2}:\d{2}$/.test(time)) return null;
+  const [hour, minute] = time.split(":").map(Number);
+  if (hour > 23 || minute > 59) return null;
+  return hour * 60 + minute;
+}
+function minutesInTimezone(date: Date, timezone: string) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(date);
+    const hour = Number(parts.find((part) => part.type === "hour")?.value);
+    const minute = Number(parts.find((part) => part.type === "minute")?.value);
+    if (Number.isFinite(hour) && Number.isFinite(minute)) return hour * 60 + minute;
+  } catch {}
+  return date.getHours() * 60 + date.getMinutes();
+}
+async function promptMovementReason(mode: "in" | "out") {
+  const settings = await getAttendanceSettings();
+  const currentMinutes = minutesInTimezone(new Date(), settings.timezone || "Africa/Accra");
+  const targetMinutes = parseTimeToMinutes(mode === "in" ? settings.lateAfter : settings.closeAfter);
+  if (targetMinutes === null) return undefined;
+  const minutes = mode === "in" ? currentMinutes - targetMinutes : targetMinutes - currentMinutes;
+  const required = mode === "in" ? minutes >= LATE_REASON_GRACE_MINUTES : minutes > 0;
+  if (!required) return undefined;
+  const options = mode === "in" ? LATE_REASON_OPTIONS : EARLY_CHECKOUT_REASON_OPTIONS;
+  const eventLabel = mode === "in" ? "late arrival" : "early departure";
+  const timing = mode === "in" ? `${minutes} minutes after the scheduled time` : `${minutes} minutes before the scheduled closing time`;
+  const answer = window.prompt(`Movement Book Entry — ${eventLabel}\n\nThis attendance event is ${timing}. Record an approved reason to complete the audit trail.\n\nApproved reason categories:\n${options.map((option, index) => `${index + 1}. ${option}`).join("\n")}\n\nEnter a category number or provide a clear authorised reason:`);
+  if (answer === null) throw new Error("A movement book entry is required to complete this attendance action.");
+  const trimmed = answer.trim();
+  const selected = options[Number(trimmed) - 1];
+  const reason = selected ?? trimmed;
+  if (!reason) throw new Error("A movement book entry is required to complete this attendance action.");
+  return reason;
+}
 function classValue(cls: ClassRecord) {
   return cls.classId ?? cls.id ?? "";
 }
@@ -67,7 +105,6 @@ export default function AttendanceQR() {
   const mode = searchParams.get("mode") === "out" ? "out" : "in";
   const isSelfServiceStaff = actor === "staff" && searchParams.get("self") === "1";
   const { staff: currentStaff } = useCurrentStaff();
-  const [qrCode, setQrCode] = useState("");
   const [classes, setClasses] = useState<ClassRecord[]>([]);
   const [selectedClassId, setSelectedClassId] = useState(searchParams.get("classId") ?? "");
   const [loading, setLoading] = useState(false);
@@ -153,6 +190,8 @@ export default function AttendanceQR() {
         if (!valid) throw new Error("Signature validation failed.");
       }
 
+      const movementReason = await promptMovementReason(mode);
+
       if (actor === "staff") {
         if (isSignedPayload && parsed.role !== "staff") throw new Error("This QR code is not for a staff member.");
         const scannedId = parsed.staffId ?? parsed.userId ?? parsed.studentId;
@@ -169,7 +208,7 @@ export default function AttendanceQR() {
           }
         }
 
-        await registerStaffAttendance({ staffId: staff.id, mode, method: "qr", biometric: false });
+        await registerStaffAttendance({ staffId: staff.id, mode, method: "qr", biometric: false, movementReason });
         setSuccess(`${staff.name ?? "Staff member"} checked ${mode === "in" ? "in" : "out"} successfully.`);
       } else {
         const scannedId = parsed.studentId ?? parsed.userId;
@@ -188,11 +227,11 @@ export default function AttendanceQR() {
           mode,
           method: "qr",
           biometric: false,
+          movementReason,
         });
         setSuccess(`${student.name ?? "Student"} checked ${mode === "in" ? "in" : "out"} successfully.`);
       }
 
-      setQrCode("");
     } catch (err: any) {
       console.error("process qr code", err);
       setError(err?.message ?? "Failed to process QR code.");
@@ -201,11 +240,6 @@ export default function AttendanceQR() {
       setLoading(false);
     }
   }, [actor, currentStaff?.id, currentStaff?.staffId, isSelfServiceStaff, mode, selectedClass?.id, selectedClassId]);
-
-  async function handleQRSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    await processQRCodeValue(qrCode);
-  }
 
   const startCameraScanner = useCallback(async () => {
     stopCameraScanner();
@@ -240,7 +274,6 @@ export default function AttendanceQR() {
         async (decodedText) => {
           if (scanLockedRef.current || loadingRef.current) return;
           scanLockedRef.current = true;
-          setQrCode(decodedText);
           setCameraStatus("QR detected. Processing attendance...");
           stopCameraScanner();
           await processQRCodeValue(decodedText);
@@ -269,7 +302,7 @@ export default function AttendanceQR() {
           <div>
             <h1 className="text-xl font-extrabold">{isSelfServiceStaff ? "Scan Your Staff QR" : actor === "staff" ? "Scan Staff QR" : "Scan Student QR"}</h1>
             <p className="mt-1 text-xs text-white/70">
-              Point your scanner at the {isSelfServiceStaff ? "QR code linked to your profile" : actor === "staff" ? "staff member's QR code" : "student's QR code"} or paste the payload below.
+              Point your scanner at the {isSelfServiceStaff ? "QR code linked to your profile" : actor === "staff" ? "staff member's QR code" : "student's QR code"}.
             </p>
           </div>
           <button type="button" onClick={() => navigate(`/attendance/checkin?actor=${actor}&mode=${mode}`)} className="rounded-lg border border-white/20 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10">
@@ -279,7 +312,7 @@ export default function AttendanceQR() {
       </section>
 
       <section className="grid gap-3 xl:grid-cols-[1fr_21rem]">
-        <form onSubmit={handleQRSubmit} className="enterprise-panel p-4">
+        <div className="enterprise-panel p-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <p className="auth-label mb-1.5">Subject</p>
@@ -348,35 +381,15 @@ export default function AttendanceQR() {
             {cameraError ? <div className="status-error mt-3">{cameraError}</div> : null}
           </div>
 
-          <label className="mt-3 block">
-            <span className="auth-label">QR Code Payload</span>
-            <textarea
-              value={qrCode}
-              onChange={(event) => setQrCode(event.target.value)}
-              placeholder={actor === "staff" ? `{"userId":"TCH-0001","role":"staff","ts":...,"sig":"..."}` : `{"studentId":"STU-001","classId":"grade-1a"} or STU-001`}
-              className="mt-1.5 min-h-40 w-full resize-y rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-blue-900/10"
-              autoFocus
-            />
-          </label>
-
           {error ? <div className="status-error mt-3">{error}</div> : null}
           {success ? <div className="status-success mt-3">{success}</div> : null}
 
-          <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
-            <button type="submit" disabled={loading} className="enterprise-button-primary">
-              {loading ? "Processing..." : `Submit QR ${mode === "in" ? "Check-in" : "Check-out"}`}
-            </button>
-            <button type="button" onClick={() => setQrCode("")} disabled={loading || !qrCode} className="enterprise-button-secondary">
-              Clear
-            </button>
-          </div>
-        </form>
+        </div>
 
         <aside className="enterprise-panel p-4">
           <h2 className="text-base font-bold text-slate-950">Scanner Notes</h2>
           <div className="mt-3 space-y-2 text-sm text-slate-600">
             <p className="rounded-lg bg-slate-50 p-3">Use Camera starts a secure browser camera scan on supported devices.</p>
-            <p className="rounded-lg bg-slate-50 p-3">If camera scanning is unavailable, the payload field remains available as a fallback.</p>
             <p className="rounded-lg bg-slate-50 p-3">Signed payloads are validated before staff attendance is recorded.</p>
             <p className="rounded-lg bg-slate-50 p-3">For student QR attendance, choose a class unless the payload includes classId.</p>
           </div>

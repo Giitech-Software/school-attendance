@@ -5,8 +5,8 @@ const { execFileSync } = require("child_process");
 const docsDir = __dirname;
 const sourcePath = path.join(docsDir, "ASTEM-Attendance-User-Manual.md");
 const buildDir = path.join(docsDir, ".docx-build");
-const zipPath = path.join(docsDir, "MSalem-Attendance-User-Manual.zip");
-const outputPath = path.join(docsDir, "MSalem-Attendance-User-Manual.docx");
+const zipPath = path.join(docsDir, "ASTEM-Attendance-User-Manual.zip");
+const outputPath = path.join(docsDir, "ASTEM-Attendance-User-Manual.docx");
 
 function xmlEscape(value) {
   return String(value)
@@ -356,9 +356,9 @@ function buildPackage() {
     "docProps/core.xml",
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <dc:title>M&apos;Salem Attendance Register User Manual</dc:title>
-  <dc:creator>M&apos;Salem Attendance Register</dc:creator>
-  <cp:lastModifiedBy>M&apos;Salem Attendance Register</cp:lastModifiedBy>
+  <dc:title>ASTEM Attendance Register User Manual</dc:title>
+  <dc:creator>ASTEM Attendance Register</dc:creator>
+  <cp:lastModifiedBy>ASTEM Attendance Register</cp:lastModifiedBy>
   <dcterms:created xsi:type="dcterms:W3CDTF">${now}</dcterms:created>
   <dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified>
 </cp:coreProperties>`
@@ -368,10 +368,10 @@ function buildPackage() {
     "docProps/app.xml",
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
-  <Application>M&apos;Salem Attendance Register</Application>
+  <Application>ASTEM Attendance Register</Application>
   <DocSecurity>0</DocSecurity>
   <ScaleCrop>false</ScaleCrop>
-  <Company>M&apos;Salem</Company>
+  <Company>ASTEM</Company>
 </Properties>`
   );
 
@@ -391,3 +391,4 @@ function buildPackage() {
 }
 
 buildPackage();
+

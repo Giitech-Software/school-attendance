@@ -7,37 +7,40 @@ import {
   Pressable,
   ScrollView,
   Alert,
-    Image,   // ✅ add this
+    Image,   // - add this
 } from "react-native";
 import { useRouter, useLocalSearchParams  } from "expo-router";
 import { getAttendanceSummary } from "../../src/services/attendanceSummary";
 import { MaterialIcons } from "@expo/vector-icons";
 import { getStaffGlobalSummary, } from "../../src/services/staffAttendanceSummary";
 import useCurrentUser from "../../src/hooks/useCurrentUser";
+import { allowsStudentAndParentFeatures } from "../../src/services/tenantScope";
 export default function ReportsDashboard() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
 const [globalSummary, setGlobalSummary] = useState<any[]>([]);
 const [previewLabel, setPreviewLabel] = useState("");
-const { type } = useLocalSearchParams();   // ✅ declare FIRST
+const { type } = useLocalSearchParams();   // - declare FIRST
 const { userDoc, loading: userLoading } = useCurrentUser();
+const allowsSchoolFeatures = allowsStudentAndParentFeatures(userDoc);
+const personnelLabel = allowsSchoolFeatures ? "Staff" : userDoc?.tenantType === "company" ? "Employee" : "Personnel";
 
 const [reportType, setReportType] = useState<"student" | "staff">("student");
 
-// Sync route param → state
+// Sync route param - state
 useEffect(() => {
-  if (type === "staff") {
+  if (!allowsSchoolFeatures || type === "staff") {
     setReportType("staff");
   } else {
     setReportType("student");
   }
-}, [type]);
-  /* ------------------------------------------------------------------ */
+}, [allowsSchoolFeatures, type]);
+  /* - */
 function getPreviewRange(type: "student" | "staff") {
   const today = new Date();
 
-  // ✅ STAFF → Last 30 calendar days
+  // - STAFF - Last 30 calendar days
   if (type === "staff") {
     const from = new Date();
     from.setDate(today.getDate() - 29);
@@ -49,7 +52,7 @@ function getPreviewRange(type: "student" | "staff") {
     };
   }
 
-  // ✅ STUDENTS → Last 5 working days
+  // - STUDENTS - Last 5 working days
   const dates: Date[] = [];
   const current = new Date();
 
@@ -95,9 +98,9 @@ setPreviewLabel(range.label);
     }
   })();
 }, [reportType]);
-  /* ------------------------------------------------------------------ */
+  /* - */
   /* AGGREGATE TOTALS */
-  /* ------------------------------------------------------------------ */
+  /* - */
  const totals = useMemo(() => {
   let present = 0, absent = 0, late = 0;
 
@@ -114,25 +117,27 @@ setPreviewLabel(range.label);
     present,
     late,
     absent,
-    attended, // ✅ NEW
+    attended, // - NEW
     pct: total === 0 ? 0 : (attended / total) * 100,
   };
 }, [globalSummary]);
 
-  /* ------------------------------------------------------------------ */
+  /* - */
   /* TILE COMPONENT */
-  /* ------------------------------------------------------------------ */
+  /* - */
   const Tile = ({
     title,
     subtitle,
     color,
     onPress,
+    hidden,
   }: {
     title: string;
     subtitle?: string;
     color: string;
     onPress?: () => void;
-  }) => (
+    hidden?: boolean;
+  }) => hidden ? null : (
     <Pressable
       onPress={onPress}
       className={`mb-6 p-5 rounded-2xl shadow-lg w-full ${color}`}
@@ -145,9 +150,9 @@ setPreviewLabel(range.label);
     </Pressable>
   );
 
-  /* ------------------------------------------------------------------ */
+  /* - */
   /* LOADING STATE */
-  /* ------------------------------------------------------------------ */
+  /* - */
   if (loading) {
   return (
     <View className="flex-1 items-center justify-center bg-slate-50">
@@ -156,7 +161,7 @@ setPreviewLabel(range.label);
   );
 }
 
-// 🔐 ROLE PROTECTION STARTS HERE
+// - ROLE PROTECTION STARTS HERE
 
 if (userLoading) {
   return (
@@ -166,7 +171,7 @@ if (userLoading) {
   );
 }
 
-if (userDoc?.role !== "admin") {
+if (userDoc?.role !== "admin" && userDoc?.role !== "super_admin") {
   return (
     <View className="flex-1 items-center justify-center bg-white">
       <Text className="text-lg font-bold text-red-600">
@@ -179,15 +184,15 @@ if (userDoc?.role !== "admin") {
   );
 }
 
-  /* ------------------------------------------------------------------ */
+  /* - */
   /* UI */
-  /* ------------------------------------------------------------------ */
+  /* - */
   return (
 
     <ScrollView
       className="flex-1 bg-slate-300"
       contentContainerStyle={{ padding: 16 }}
-      
+
     >
      <View className="flex-row items-center mb-2">
   <Pressable
@@ -216,10 +221,11 @@ if (userDoc?.role !== "admin") {
   />
 </View>
 <Text className="text-ml font-bold text-slate-800 py-4">
-  Quick previews — tap a tile to open detailed reports
+  Quick previews - tap a tile to open detailed reports
 </Text>
 
 <View className="flex-row mb-3">
+  {allowsSchoolFeatures ? (
   <Pressable
     onPress={() => setReportType("student")}
     className={`flex-1 py-2 rounded-l-xl ${
@@ -234,6 +240,7 @@ if (userDoc?.role !== "admin") {
       Student Reports
     </Text>
   </Pressable>
+  ) : null}
 
   <Pressable
     onPress={() => setReportType("staff")}
@@ -246,7 +253,7 @@ if (userDoc?.role !== "admin") {
         reportType === "staff" ? "text-white" : "text-slate-700"
       }`}
     >
-      Staff Reports
+      {personnelLabel} Reports
     </Text>
   </Pressable>
 </View>
@@ -254,7 +261,7 @@ if (userDoc?.role !== "admin") {
       <View className="mt-1.5">
         <Tile
           title="Daily Attendance"
-          subtitle="Preview by day • Last 5 school days"
+          subtitle={reportType === "student" ? "Preview by day - Last 5 school days" : `Preview by day - ${personnelLabel.toLowerCase()}`}
           color="bg-purple-500"
          onPress={() =>
   router.push(
@@ -267,7 +274,8 @@ if (userDoc?.role !== "admin") {
         />
         <Tile
           title="Weekly Reports"
-          subtitle="Attendance grouped by school week"
+          hidden={reportType === "student" && !allowsSchoolFeatures}
+          subtitle={reportType === "student" ? "Attendance grouped by school week" : "Staff attendance grouped by week"}
           color="bg-indigo-500"
        onPress={() =>
   router.push(
@@ -293,6 +301,7 @@ if (userDoc?.role !== "admin") {
         />
         <Tile
           title="Termly Reports"
+          hidden={!allowsSchoolFeatures}
           subtitle="Summaries by term"
           color="bg-rose-500"
          onPress={() =>
@@ -305,8 +314,20 @@ if (userDoc?.role !== "admin") {
 
         />
       </View>
+        <Tile
+          title="Yearly Reports"
+          subtitle="Full-year attendance summaries"
+          color="bg-orange-500"
+          onPress={() =>
+            router.push(
+              reportType === "student"
+                ? "/reports/yearly-report"
+                : "/reports/staff-yearly-report"
+            )
+          }
+        />
 
-      {/* -------------------- PREVIEW SUMMARY -------------------- */}
+      {/* - PREVIEW SUMMARY - */}
      <View className="mt-6 p-4 bg-white rounded-xl shadow-sm">
  <Text className="text-sm font-semibold text-slate-700">
   {previewLabel}
@@ -320,13 +341,13 @@ if (userDoc?.role !== "admin") {
       </Text>
     </View>
 
- {/* ✅ NEW — LATE SUMMARY */}
+ {/* - NEW - LATE SUMMARY */}
     <View>
       <Text className="text-xs text-slate-500">Late</Text>
       <Text className="text-lg font-bold text-amber-600">
         {totals.late}
       </Text>
-    </View> 
+    </View>
 <View>
   <Text className="text-xs text-slate-500">Attended</Text>
   <Text className="text-lg font-bold text-sky-600">
@@ -341,7 +362,7 @@ if (userDoc?.role !== "admin") {
       </Text>
     </View>
 
-   
+
 
     <View>
       <Text className="text-xs text-slate-500">Attendance %</Text>
@@ -354,5 +375,3 @@ if (userDoc?.role !== "admin") {
                                   </ScrollView>
                                 );
                               }
-
-

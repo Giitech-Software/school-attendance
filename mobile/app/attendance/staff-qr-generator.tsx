@@ -16,10 +16,8 @@ import * as Print from "expo-print";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { captureRef } from "react-native-view-shot";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
-import { db } from "../../app/firebase";
-
 import { generateQrPayload } from "../../src/services/qr";
+import { listStaff } from "../../src/services/staff";
 import AppInput from "@/components/AppInput";
 import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
 
@@ -52,9 +50,12 @@ export default function StaffQrGenerator() {
   useEffect(() => {
     (async () => {
       try {
-        const q = query(collection(db, "staff"), orderBy("name", "asc"));
-        const snap = await getDocs(q);
-        setStaffList(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        const rows = await listStaff();
+        setStaffList(
+          rows
+            .filter((item) => Boolean(item.id))
+            .sort((a, b) => (a.name ?? a.staffId ?? "").localeCompare(b.name ?? b.staffId ?? ""))
+        );
       } catch (err) {
         Alert.alert("Error", "Failed to load staff.");
       } finally {

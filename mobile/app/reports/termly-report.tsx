@@ -15,10 +15,11 @@ import { getAttendanceSummary } from "../../src/services/attendanceSummary";
 import { exportTermAttendancePdf } from "../../src/services/exports/exportTermAttendancePdf";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
+import AttendanceTotalsCards from "../../components/AttendanceTotalsCards";
 
 /**
  * Termly report
- * - Term → Class → Students
+ * - Term - Class - Students
  * - PDF export only
  */
 
@@ -40,9 +41,9 @@ export default function TermlyReport() {
   const [rows, setRows] = useState<any[]>([]);
   const [exportingTermPdf, setExportingTermPdf] = useState(false);
 
-  /* ------------------------------------------------------------------ */
+  /* - */
   /* LOAD TERMS + CLASSES */
-  /* ------------------------------------------------------------------ */
+  /* - */
   useEffect(() => {
     (async () => {
       try {
@@ -62,9 +63,9 @@ export default function TermlyReport() {
     })();
   }, []);
 
-  /* ------------------------------------------------------------------ */
+  /* - */
   /* LOAD TERMLY DATA */
-  /* ------------------------------------------------------------------ */
+  /* - */
   useEffect(() => {
     (async () => {
       if (!selectedTerm) {
@@ -104,9 +105,9 @@ export default function TermlyReport() {
     );
   }
 
-  /* ------------------------------------------------------------------ */
+  /* - */
   /* UI */
-  /* ------------------------------------------------------------------ */
+  /* - */
   return (
     <ScrollView className="flex-1 bg-slate-300 p-3">
      <View className="flex-row items-center mb-2">
@@ -157,7 +158,7 @@ export default function TermlyReport() {
                   : "text-slate-500"
               }`}
             >
-              {t.startDate} → {t.endDate}
+              {t.startDate} - {t.endDate}
             </Text>
           </Pressable>
         ))}
@@ -214,7 +215,7 @@ export default function TermlyReport() {
         })}
       </ScrollView>
 
-      {/* -------- TERM EXPORT (PDF ONLY) -------- */}
+      {/* - TERM EXPORT (PDF ONLY) - */}
       <View className="mt-3">
         <Pressable
           disabled={!selectedTerm || exportingTermPdf}
@@ -247,8 +248,9 @@ export default function TermlyReport() {
       <Text className="text-lg font-semibold mt-3 mb-1.5">
         Students ({rows.length})
       </Text>
+{rows.length > 0 ? <AttendanceTotalsCards rows={rows} label="Students" /> : null}
 <Text className="text-ml text-slate-700 mb-2">
-  P = Present • L = Late • T = Attended • A = Absent
+  P = Present - L = Late - T = Attended - A = Absent
 </Text>
 
       {rows.length === 0 ? (
@@ -307,5 +309,3 @@ export default function TermlyReport() {
     </ScrollView>
   );
 }
-
-

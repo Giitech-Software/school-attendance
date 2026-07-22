@@ -20,6 +20,8 @@ export type Student = {
 
   createdAt?: any;
   updatedAt?: any;
+  tenantId?: string | null;
+  tenantName?: string | null;
 };
 
 export type AttendanceRecord = {
@@ -36,6 +38,10 @@ export type AttendanceRecord = {
   checkOutTime?: string | null;
 
   status?: "present" | "absent" | "late" | "excused";
+  lateReason?: string | null;
+  lateMinutes?: number | null;
+  earlyCheckoutReason?: string | null;
+  earlyCheckoutMinutes?: number | null;
 
   // ✅ FIXED + COMPLETE
   method?: "qr" | "fingerprint" | "face" | "manual";
@@ -81,6 +87,8 @@ export type Term = {
 
   createdAt?: any;
   updatedAt?: any;
+  tenantId?: string | null;
+  tenantName?: string | null;
 };
 
 export type AdminLog = {
@@ -112,3 +120,4 @@ export interface Staff {
   createdAt?: any;
   updatedAt?: any;
 }
+

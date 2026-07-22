@@ -14,8 +14,10 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { belongsToTenant, getTenantScope, tenantConstraints, withTenantScope } from "./tenantScope";
 
 export type UserRole =
+  | "super_admin"
   | "admin"
   | "teacher"
   | "parent"
@@ -35,6 +37,10 @@ export type AppUser = {
   approved?: boolean;
   canTakeStaffAttendance?: boolean;
   canTakeStudentAttendance?: boolean;
+  tenantId?: string | null;
+  tenantName?: string | null;
+  tenantType?: string | null;
+  tenantInviteCode?: string | null;
   createdAt?: any;
 };
 
@@ -52,6 +58,10 @@ function normalizeUser(id: string, data: any): AppUser {
     approved: Boolean(data.approved),
     canTakeStaffAttendance: Boolean(data.canTakeStaffAttendance),
     canTakeStudentAttendance: Boolean(data.canTakeStudentAttendance),
+    tenantId: data.tenantId ?? null,
+    tenantName: data.tenantName ?? null,
+    tenantType: data.tenantType ?? null,
+    tenantInviteCode: data.tenantInviteCode ?? null,
   };
 }
 
@@ -63,6 +73,7 @@ export async function upsertUser(profile: Partial<AppUser> & { uid: string }) {
     await setDoc(
       ref,
       {
+        ...withTenantScope({
         uid: profile.uid,
         ...(profile.displayName !== undefined && { displayName: profile.displayName }),
         ...(profile.email !== undefined && { email: profile.email }),
@@ -74,8 +85,13 @@ export async function upsertUser(profile: Partial<AppUser> & { uid: string }) {
         ...(profile.canTakeStudentAttendance !== undefined && {
           canTakeStudentAttendance: profile.canTakeStudentAttendance,
         }),
+        ...(profile.tenantId !== undefined && { tenantId: profile.tenantId }),
+        ...(profile.tenantName !== undefined && { tenantName: profile.tenantName }),
+        ...(profile.tenantType !== undefined && { tenantType: profile.tenantType }),
+        ...(profile.tenantInviteCode !== undefined && { tenantInviteCode: profile.tenantInviteCode }),
         ...(profile.wards !== undefined && { wards: profile.wards }),
         createdAt: profile.createdAt ?? serverTimestamp(),
+        }, await getTenantScope()),
       },
       { merge: true }
     );
@@ -88,10 +104,10 @@ export async function upsertUser(profile: Partial<AppUser> & { uid: string }) {
 
 export async function createUser(data: Omit<AppUser, "id" | "createdAt">): Promise<AppUser> {
   try {
-    const ref = await addDoc(usersCollection, {
+    const ref = await addDoc(usersCollection, withTenantScope({
       ...data,
       createdAt: new Date(),
-    });
+    }, await getTenantScope()));
     return { id: ref.id, ...data } as AppUser;
   } catch (err: any) {
     console.error("createUser error:", err.code ?? err);
@@ -101,8 +117,13 @@ export async function createUser(data: Omit<AppUser, "id" | "createdAt">): Promi
 
 export async function listUsers(): Promise<AppUser[]> {
   try {
-    const snap = await getDocs(query(usersCollection, orderBy("createdAt", "desc")));
-    return snap.docs.map((d) => normalizeUser(d.id, d.data()));
+    const scope = await getTenantScope();
+    const q = scope.isScoped
+      ? query(usersCollection, ...tenantConstraints(scope))
+      : query(usersCollection, orderBy("createdAt", "desc"));
+    const snap = await getDocs(q);
+    const rows = snap.docs.map((d) => normalizeUser(d.id, d.data()));
+    return rows.sort((a, b) => createdAtMillis(b.createdAt) - createdAtMillis(a.createdAt));
   } catch (err: any) {
     console.error("listUsers error:", err.code ?? err);
     throw err;
@@ -126,8 +147,9 @@ export async function getUserByUid(uid: string): Promise<AppUser | null> {
 
 export async function getUserById(id: string): Promise<AppUser | null> {
   try {
+    const scope = await getTenantScope();
     const d = await getDoc(doc(db, "users", id));
-    if (!d.exists()) return null;
+    if (!d.exists() || !belongsToTenant(d.data(), scope)) return null;
     return normalizeUser(d.id, d.data());
   } catch (err: any) {
     console.error("getUserById error:", err.code ?? err);
@@ -137,7 +159,8 @@ export async function getUserById(id: string): Promise<AppUser | null> {
 
 export async function getUserByEmail(email: string): Promise<AppUser | null> {
   try {
-    const snap = await getDocs(query(usersCollection, where("email", "==", email)));
+    const scope = await getTenantScope();
+    const snap = await getDocs(query(usersCollection, where("email", "==", email), ...tenantConstraints(scope)));
     if (snap.empty) return null;
     const d = snap.docs[0];
     return normalizeUser(d.id, d.data());
@@ -149,7 +172,8 @@ export async function getUserByEmail(email: string): Promise<AppUser | null> {
 
 export async function listUsersByRole(role: AppUser["role"]): Promise<AppUser[]> {
   try {
-    const snap = await getDocs(query(usersCollection, where("role", "==", role)));
+    const scope = await getTenantScope();
+    const snap = await getDocs(query(usersCollection, where("role", "==", role), ...tenantConstraints(scope)));
     return snap.docs.map((d) => normalizeUser(d.id, d.data()));
   } catch (err: any) {
     console.error("listUsersByRole error:", err.code ?? err);
@@ -164,3 +188,19 @@ export async function updateUserApproval(uid: string, approved: boolean) {
 export async function deleteUser(id: string): Promise<void> {
   await deleteDoc(doc(db, "users", id));
 }
+
+
+
+
+function createdAtMillis(value: any): number {
+  if (!value) return 0;
+  if (typeof value?.toMillis === "function") return value.toMillis();
+  if (typeof value?.toDate === "function") return value.toDate().getTime();
+  if (typeof value === "number") return value;
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+
+
+

@@ -1,22 +1,26 @@
 import { useEffect, useState } from "react";
-import { listStaff, type Staff } from "../services/staff";
+import { useNavigate } from "react-router-dom";
 import { getStaffGlobalSummary, type StaffAttendanceSummary } from "../services/staffAttendanceSummary";
 import { exportReportCsv, openReportPdf } from "../services/reportExport";
+import AttendanceTotalsCards from "./AttendanceTotalsCards";
+import { autoMarkAbsentStaff } from "../services/autoMarkAbsent";
 
 interface StaffAttendanceReportProps {
   title: string;
   description: string;
   initialFrom: string;
   initialTo: string;
-  selectedStaffId?: string;
 }
 
-export default function StaffAttendanceReport({ title, description, initialFrom, initialTo, selectedStaffId }: StaffAttendanceReportProps) {
-  const [staffList, setStaffList] = useState<Staff[]>([]);
-  const [staffId, setStaffId] = useState<string>(selectedStaffId ?? "");
+function rangeLabel(from: string, to: string) {
+  return from === to ? from : `${from} to ${to}`;
+}
+
+export default function StaffAttendanceReport({ title, description, initialFrom, initialTo }: StaffAttendanceReportProps) {
+  const navigate = useNavigate();
   const [from, setFrom] = useState(initialFrom);
   const [to, setTo] = useState(initialTo);
-  const [results, setResults] = useState<StaffAttendanceSummary | null>(null);
+  const [results, setResults] = useState<StaffAttendanceSummary[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,29 +29,9 @@ export default function StaffAttendanceReport({ title, description, initialFrom,
     setTo(initialTo);
   }, [initialFrom, initialTo]);
 
-  useEffect(() => {
-    let active = true;
-
-    (async () => {
-      try {
-        const staffUsers = await listStaff();
-        if (!active) return;
-        setStaffList(staffUsers);
-        if (!selectedStaffId && staffUsers.length > 0) setStaffId(staffUsers[0].id ?? "");
-      } catch (err) {
-        console.error("load staff list", err);
-        setError("Failed to load staff users");
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [selectedStaffId]);
-
   async function onGenerate() {
-    if (!staffId) {
-      setError("Please select a staff member.");
+    if (!from || !to) {
+      setError("Select a valid date range before generating a report.");
       return;
     }
 
@@ -56,9 +40,11 @@ export default function StaffAttendanceReport({ title, description, initialFrom,
     setLoading(true);
 
     try {
+      if (from === to) {
+        await autoMarkAbsentStaff({ dateIso: to });
+      }
       const rows = await getStaffGlobalSummary(from, to);
-      const summary = rows.find((row) => row.staffId === staffId) ?? null;
-      setResults(summary);
+      setResults(rows);
     } catch (err: any) {
       console.error("generate staff report", err);
       setError(err?.message ?? "Failed to generate staff report");
@@ -66,6 +52,9 @@ export default function StaffAttendanceReport({ title, description, initialFrom,
       setLoading(false);
     }
   }
+
+  const exportSubtitle = rangeLabel(from, to);
+  const exportFilename = `${title}-${from}-${to}`.replace(/\s+/g, "-");
 
   return (
     <div className="space-y-3">
@@ -75,19 +64,7 @@ export default function StaffAttendanceReport({ title, description, initialFrom,
           <p className="mt-1 text-xs text-white/70">{description}</p>
         </div>
 
-        <div className="grid gap-3 p-3 lg:grid-cols-[minmax(220px,1fr)_12rem_12rem_auto] lg:items-end">
-          <label className="block">
-            <span className="auth-label">Staff</span>
-            <select value={staffId} onChange={(event) => setStaffId(event.target.value)} className="enterprise-input mt-1.5">
-              <option value="">Select a staff member</option>
-              {staffList.map((staff) => (
-                <option key={staff.id} value={staff.id}>
-                  {staff.name ?? staff.email ?? staff.staffId ?? staff.id}
-                </option>
-              ))}
-            </select>
-          </label>
-
+        <div className="grid gap-3 p-3 lg:grid-cols-[12rem_12rem_auto] lg:items-end">
           <label className="block">
             <span className="auth-label">From</span>
             <input type="date" value={from} onChange={(event) => setFrom(event.target.value)} className="enterprise-input mt-1.5" />
@@ -107,44 +84,93 @@ export default function StaffAttendanceReport({ title, description, initialFrom,
       {error ? <div className="status-error">{error}</div> : null}
 
       <section className="enterprise-panel p-3">
-        {results ? (
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-base font-extrabold text-slate-950">Staff ({results?.length ?? 0})</h2>
+          <div className="text-sm text-slate-600">P = Present, L = Late, T = Attended, A = Absent</div>
+        </div>
+
+        {results && results.length > 0 ? (
           <>
-            <div className="flex flex-wrap gap-2 border-b border-slate-100 pb-3">
-              <button type="button" onClick={() => openReportPdf({ title, subtitle: `${from} to ${to}`, filename: `${title}-${from}-${to}`.replace(/\s+/g, "-"), subjectLabel: "Staff", rows: [results] })} className="enterprise-button-secondary">
+            <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+              <button type="button" onClick={() => openReportPdf({ title, subtitle: exportSubtitle, filename: exportFilename, subjectLabel: "Staff", rows: results })} className="enterprise-button-secondary">
                 Print / PDF
               </button>
-              <button type="button" onClick={() => exportReportCsv({ title, subtitle: `${from} to ${to}`, filename: `${title}-${from}-${to}`.replace(/\s+/g, "-"), subjectLabel: "Staff", rows: [results] })} className="enterprise-button-secondary">
+              <button type="button" onClick={() => exportReportCsv({ title, subtitle: exportSubtitle, filename: exportFilename, subjectLabel: "Staff", rows: results })} className="enterprise-button-secondary">
                 Export CSV
               </button>
             </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                <div className="text-sm text-slate-500">Present</div>
-                <div className="mt-2 text-2xl font-semibold text-emerald-700">{results.presentCount}</div>
-              </div>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                <div className="text-sm text-slate-500">Late</div>
-                <div className="mt-2 text-2xl font-semibold text-amber-700">{results.lateCount}</div>
-              </div>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                <div className="text-sm text-slate-500">Absent</div>
-                <div className="mt-2 text-2xl font-semibold text-red-600">{results.absentCount}</div>
-              </div>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                <div className="text-sm text-slate-500">Attended</div>
-                <div className="mt-2 text-2xl font-semibold text-blue-700">{results.attendedSessions}</div>
-              </div>
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                <div className="text-sm text-slate-500">% Present</div>
-                <div className="mt-2 text-2xl font-semibold text-slate-900">{results.percentagePresent.toFixed(2)}%</div>
-              </div>
+            <AttendanceTotalsCards rows={results} subjectLabel="Staff" groupLabel="All staff" />
+
+            <div className="mt-3 grid gap-3 md:hidden">
+              {results.map((row) => (
+                <div key={row.staffId} className="report-mobile-row">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate font-bold text-slate-950">{row.staffName || "Staff"}</div>
+                      <div className="mt-0.5 text-xs text-slate-500">{row.displayId || row.staffId}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/reports/staff/${row.staffId}?fromIso=${from}&toIso=${to}&title=${encodeURIComponent(title)}`)}
+                      className="shrink-0 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+                    >
+                      Open
+                    </button>
+                  </div>
+                  <div className="mt-3 grid grid-cols-5 gap-2 text-center">
+                    <span className="report-stat-pill bg-emerald-50 text-emerald-700">P {row.presentCount}</span>
+                    <span className="report-stat-pill bg-amber-50 text-amber-700">L {row.lateCount}</span>
+                    <span className="report-stat-pill bg-sky-50 text-sky-700">T {row.attendedSessions}</span>
+                    <span className="report-stat-pill bg-red-50 text-red-600">A {row.absentCount}</span>
+                    <span className="report-stat-pill bg-slate-100 text-slate-700">{row.percentagePresent.toFixed(1)}%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 hidden overflow-x-auto md:block">
+              <table className="report-table">
+                <thead>
+                  <tr>
+                    <th>Staff</th>
+                    <th>Staff ID</th>
+                    <th>P</th>
+                    <th>L</th>
+                    <th>T</th>
+                    <th>A</th>
+                    <th>Attendance %</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {results.map((row) => (
+                    <tr key={row.staffId}>
+                      <td className="font-semibold text-slate-900">{row.staffName || "Staff"}</td>
+                      <td className="text-slate-600">{row.displayId || row.staffId}</td>
+                      <td className="font-semibold text-emerald-700">{row.presentCount}</td>
+                      <td className="font-semibold text-amber-700">{row.lateCount}</td>
+                      <td className="font-semibold text-blue-700">{row.attendedSessions}</td>
+                      <td className="font-semibold text-red-600">{row.absentCount}</td>
+                      <td className="font-semibold text-slate-700">{row.percentagePresent.toFixed(1)}%</td>
+                      <td className="text-right">
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/reports/staff/${row.staffId}?fromIso=${from}&toIso=${to}&title=${encodeURIComponent(title)}`)}
+                          className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                        >
+                          Open
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </>
-        ) : !loading ? (
-          <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-500">Generate a staff report to see summary data.</p>
-        ) : (
-          <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-500">Loading report...</p>
-        )}
+        ) : null}
+        {results && results.length === 0 ? <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-500">No staff attendance records were found for the selected date range.</p> : null}
+        {!results && !loading ? <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-500">Generate a staff report to see all staff attendance counts.</p> : null}
+        {loading ? <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-500">Loading report...</p> : null}
       </section>
     </div>
   );

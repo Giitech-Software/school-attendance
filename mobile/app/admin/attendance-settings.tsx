@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
+  Switch,
 } from "react-native";
 import { useRouter } from "expo-router";
 
@@ -58,6 +59,7 @@ export default function AttendanceSettingsAdmin() {
   const [lateAfter, setLateAfter] = useState("08:00");
   const [closeAfter, setCloseAfter] = useState("16:00");
   const [timezone, setTimezone] = useState("Africa/Accra");
+  const [allowStaffWeekendAttendance, setAllowStaffWeekendAttendance] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -92,6 +94,7 @@ export default function AttendanceSettingsAdmin() {
         setLateAfter(settings.lateAfter ?? "08:00");
         setCloseAfter(settings.closeAfter ?? "16:00");
         setTimezone(settings.timezone ?? "Africa/Accra");
+        setAllowStaffWeekendAttendance(settings.allowStaffWeekendAttendance ?? false);
       } catch (e) {
         console.error("load attendance settings", e);
         Alert.alert("Failed to load attendance settings");
@@ -128,6 +131,7 @@ export default function AttendanceSettingsAdmin() {
         lateAfter,
         closeAfter,
         timezone,
+        allowStaffWeekendAttendance,
       });
       Alert.alert("Saved", "Attendance settings updated");
     } catch (e) {
@@ -229,6 +233,21 @@ export default function AttendanceSettingsAdmin() {
 
 
 
+        <View className="bg-white rounded-2xl p-4 shadow mb-6 flex-row items-center justify-between">
+          <View className="flex-1 pr-4">
+            <Text className="font-semibold text-lg mb-2">
+              Staff Weekend Attendance
+            </Text>
+            <Text className="text-slate-600 text-sm">
+              Allow staff check-in and check-out on Saturdays and Sundays. Student attendance remains blocked.
+            </Text>
+          </View>
+          <Switch
+            value={allowStaffWeekendAttendance}
+            onValueChange={setAllowStaffWeekendAttendance}
+          />
+        </View>
+
         {/* Save */}
         <Pressable
           disabled={saving}
@@ -249,4 +268,3 @@ export default function AttendanceSettingsAdmin() {
     </KeyboardAwareScreen>
   );
 }
- 

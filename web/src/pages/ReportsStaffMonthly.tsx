@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getStaffGlobalSummary, type StaffAttendanceSummary } from "../services/staffAttendanceSummary";
 import { exportReportCsv, openReportPdf } from "../services/reportExport";
+import AttendanceTotalsCards from "../components/AttendanceTotalsCards";
 
 function monthsForYear(year: number) {
   return Array.from({ length: 12 }, (_, month) => {
@@ -100,6 +101,7 @@ export default function ReportsStaffMonthly() {
           </div>
         ) : null}
 
+        {rows.length > 0 ? <AttendanceTotalsCards rows={rows} subjectLabel="Staff" groupLabel="All staff" /> : null}
         {loading && <div className="mt-4 text-slate-500">Loading report...</div>}
         {!loading && !selectedMonth && <div className="mt-4 text-slate-500">Select a month to view report data.</div>}
         {!loading && selectedMonth && rows.length === 0 && <div className="mt-4 text-slate-500">No data for selected month.</div>}
@@ -114,7 +116,7 @@ export default function ReportsStaffMonthly() {
                   <th className="px-2 py-1">L</th>
                   <th className="px-2 py-1">T</th>
                   <th className="px-2 py-1">A</th>
-                  <th className="px-2 py-1">% Present</th>
+                  <th className="px-2 py-1">Attendance %</th>
                   <th className="px-2 py-1"></th>
                 </tr>
               </thead>
@@ -152,10 +154,3 @@ export default function ReportsStaffMonthly() {
     </div>
   );
 }
-
-
-
-
-
-
-

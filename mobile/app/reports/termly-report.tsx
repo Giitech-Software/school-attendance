@@ -248,7 +248,7 @@ export default function TermlyReport() {
       <Text className="text-lg font-semibold mt-3 mb-1.5">
         Students ({rows.length})
       </Text>
-{rows.length > 0 ? <AttendanceTotalsCards rows={rows} label="Students" /> : null}
+{rows.length > 0 ? <AttendanceTotalsCards rows={rows} label="Students" periodFrom={selectedTerm?.startDate} periodTo={selectedTerm?.endDate} /> : null}
 <Text className="text-ml text-slate-700 mb-2">
   P = Present - L = Late - T = Attended - A = Absent
 </Text>

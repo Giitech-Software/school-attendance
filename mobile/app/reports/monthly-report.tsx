@@ -293,7 +293,7 @@ useEffect(() => {
         Students ({summaries.length})
       </Text>
 
-{summaries.length > 0 ? <AttendanceTotalsCards rows={summaries} label="Students" /> : null}
+{summaries.length > 0 ? <AttendanceTotalsCards rows={summaries} label="Students" periodFrom={range?.fromIso} periodTo={range?.toIso} /> : null}
 <Text className="text-ml text-slate-700 mb-2">
   P = Present - L = Late - T = Attended - A = Absent
 </Text>

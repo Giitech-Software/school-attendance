@@ -12,6 +12,7 @@ const mainLinks = [
   { to: "/students", label: "Students", adminOnly: true, schoolOnly: true },
   { to: "/staff", label: "Staff", adminOnly: true },
   { to: "/admin", label: "Administration", adminOnly: true },
+  { to: "/messages", label: "Messages", adminOnly: true },
   { to: "/super-admin", label: "Renting", superAdminOnly: true },
 ];
 

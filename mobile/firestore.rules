@@ -422,6 +422,24 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // -------------------- ADMIN COMMUNICATION --------------------
+    match /messages/{messageId} {
+      allow create: if isAdmin()
+        && request.resource.data.senderUid == request.auth.uid
+        && request.resource.data.subject is string
+        && request.resource.data.body is string
+        && request.resource.data.recipient is string;
+      allow read: if isAdmin()
+        && (isSuperAdmin()
+          || resource.data.tenantId == callerUser().tenantId
+          || resource.data.recipient == 'super_admin'
+          || resource.data.recipient == 'all_tenants'
+          || resource.data.recipientTenantId == callerUser().tenantId);
+      allow update: if isAdmin()
+        && (isSuperAdmin() || resource.data.tenantId == callerUser().tenantId);
+      allow delete: if false;
+    }
+
     // -------------------- WEEKS --------------------
     match /weeks/{weekId} {
       allow read: if isApproved() && sameTenantResource();

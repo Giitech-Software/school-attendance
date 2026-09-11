@@ -5,6 +5,8 @@ import { getAttendanceSummary, type AttendanceSummary } from "../services/attend
 import { listTerms, type Term } from "../services/terms";
 import { exportReportCsv, openReportPdf } from "../services/reportExport";
 import AttendanceTotalsCards from "../components/AttendanceTotalsCards";
+import AttendancePieChart from "../components/AttendancePieChart";
+import AttendanceAuditPanel from "../components/AttendanceAuditPanel";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -192,7 +194,7 @@ export default function ReportsMonthly() {
           </div>
         ) : null}
 
-        {rows.length > 0 ? <AttendanceTotalsCards rows={rows} subjectLabel="Students" groupLabel={selectedClassKey ? "Selected class" : "All classes"} /> : null}
+        {rows.length > 0 ? <><AttendanceTotalsCards rows={rows} subjectLabel="Students" groupLabel={selectedClassKey ? "Selected class" : "All classes"} /><AttendancePieChart present={rows.reduce((n, r) => n + r.presentCount, 0)} late={rows.reduce((n, r) => n + r.lateCount, 0)} absent={rows.reduce((n, r) => n + r.absentCount, 0)} /><AttendanceAuditPanel periodFrom={selectedRange?.fromIso} periodTo={selectedRange?.toIso} /></> : null}
         {loading && <div className="report-empty">Loading report...</div>}
         {!loading && !selectedRange && <div className="report-empty">Select a month in the current term to view report data.</div>}
         {!loading && selectedRange && rows.length === 0 && <div className="report-empty">No data for selected month or class.</div>}

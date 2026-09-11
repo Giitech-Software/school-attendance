@@ -173,7 +173,7 @@ export default function StaffDailyReport() {
         Staff ({staffRows.length})
       </Text>
 
-      {staffRows.length > 0 ? <AttendanceTotalsCards rows={staffRows} label="Staff" /> : null}
+{staffRows.length > 0 ? <AttendanceTotalsCards rows={staffRows} label="Staff" periodFrom={selectedDay ?? undefined} periodTo={selectedDay ?? undefined} /> : null}
 <Text className="text-ml text-slate-700 mb-2">
         P = Present - L = Late - T = Attended - A = Absent
       </Text>

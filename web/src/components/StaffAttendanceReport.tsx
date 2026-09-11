@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { getStaffGlobalSummary, type StaffAttendanceSummary } from "../services/staffAttendanceSummary";
 import { exportReportCsv, openReportPdf } from "../services/reportExport";
 import AttendanceTotalsCards from "./AttendanceTotalsCards";
+import AttendancePieChart from "./AttendancePieChart";
+import AttendanceAuditPanel from "./AttendanceAuditPanel";
 import { autoMarkAbsentStaff } from "../services/autoMarkAbsent";
 import { listStaffGroups, type StaffGroup } from "../services/staffGroups";
 
@@ -105,7 +107,7 @@ export default function StaffAttendanceReport({ title, description, initialFrom,
                 Export CSV
               </button>
             </div>
-            <AttendanceTotalsCards rows={visibleResults} subjectLabel="Staff" groupLabel="Selected staff group" />
+            <><AttendanceTotalsCards rows={visibleResults} subjectLabel="Staff" groupLabel="Selected staff group" /><AttendancePieChart present={visibleResults.reduce((n, r) => n + r.presentCount, 0)} late={visibleResults.reduce((n, r) => n + r.lateCount, 0)} absent={visibleResults.reduce((n, r) => n + r.absentCount, 0)} /><AttendanceAuditPanel periodFrom={from} periodTo={to} /></>
             <div className="mt-3 rounded-lg border border-sky-100 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-800">Early departures: {visibleResults.reduce((total, row) => total + (row.earlyDepartureCount ?? 0), 0)}</div>
 
             <div className="mt-3 grid gap-3 md:hidden">

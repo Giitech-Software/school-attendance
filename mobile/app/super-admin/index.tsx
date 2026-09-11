@@ -48,6 +48,7 @@ export default function SuperAdminDashboard() {
   const [adminEmailByTenant, setAdminEmailByTenant] = useState<Record<string, string>>({});
   const [legacyStaff, setLegacyStaff] = useState<Staff[]>([]);
   const [migrationTenant, setMigrationTenant] = useState("");
+  const [selectedLegacyStaff, setSelectedLegacyStaff] = useState<string[]>([]);
 
   const [name, setName] = useState("");
   const [type, setType] = useState<TenantType>("school");
@@ -163,7 +164,7 @@ export default function SuperAdminDashboard() {
     } catch (error: any) { Alert.alert("Invite failed", error?.message ?? String(error)); }
   }
 
-  async function handleMigrateStaff(staff: Staff) { const tenant = tenants.find((item) => item.id === migrationTenant); if (!tenant || !staff.id) return; try { await migrateLegacyStaffToTenant(staff.id, tenant); setLegacyStaff((rows) => rows.filter((row) => row.id !== staff.id)); Alert.alert("Staff migrated", `${staff.name} is now assigned to ${tenant.name}.`); } catch (error: any) { Alert.alert("Migration failed", error?.message ?? String(error)); } }
+  async function handleMigrateSelected() { const tenant = tenants.find((item) => item.id === migrationTenant); const selected = legacyStaff.filter((staff) => staff.id && selectedLegacyStaff.includes(staff.id)); if (!tenant || !selected.length) return; try { await Promise.all(selected.map((staff) => migrateLegacyStaffToTenant(staff.id!, tenant))); setLegacyStaff((rows) => rows.filter((row) => !selectedLegacyStaff.includes(row.id!))); setSelectedLegacyStaff([]); Alert.alert("Staff migrated", `${selected.length} staff migrated to ${tenant.name}.`); } catch (error: any) { Alert.alert("Migration failed", error?.message ?? String(error)); } }
 
 
   if (authLoading || !ready || loading) {
@@ -323,8 +324,8 @@ export default function SuperAdminDashboard() {
       <View className="mb-5 rounded-2xl border border-blue-200 bg-blue-50 p-4">
         <Text className="text-lg font-extrabold text-slate-900">Migrate legacy staff</Text>
         <Text className="mt-1 text-sm text-slate-700">Assign pre-tenancy staff without changing IDs, face registration, biometrics, or attendance history.</Text>
-        <View className="mt-3 rounded-xl bg-white"><Picker selectedValue={migrationTenant} onValueChange={setMigrationTenant}><Picker.Item label="Select destination tenant" value="" />{tenants.map((tenant) => <Picker.Item key={tenant.id} label={tenant.name} value={tenant.id} />)}</Picker></View>
-        {legacyStaff.length ? legacyStaff.map((staff) => <View key={staff.id} className="mt-2 flex-row items-center justify-between rounded-xl bg-white p-3"><View className="flex-1"><Text className="font-semibold text-slate-900">{staff.name}</Text><Text className="text-sm text-slate-700">{staff.staffId || "No Staff ID"}</Text></View><Pressable disabled={!migrationTenant} onPress={() => handleMigrateStaff(staff)} className="rounded-lg bg-blue-700 px-3 py-2"><Text className="font-semibold text-white">Migrate</Text></Pressable></View>) : <Text className="mt-3 text-sm text-slate-700">No legacy staff records found.</Text>}
+        <View className="mt-3 rounded-xl bg-white"><Picker selectedValue={migrationTenant} onValueChange={setMigrationTenant}><Picker.Item label="Select destination tenant" value="" />{tenants.map((tenant) => <Picker.Item key={tenant.id} label={tenant.name} value={tenant.id} />)}</Picker></View><Pressable disabled={!migrationTenant || !selectedLegacyStaff.length} onPress={handleMigrateSelected} className="mt-2 rounded-xl bg-blue-700 p-3"><Text className="text-center font-bold text-white">Migrate selected ({selectedLegacyStaff.length})</Text></Pressable>
+        {legacyStaff.length ? <View className="mt-3">{legacyStaff.map((staff) => <Pressable key={staff.id} onPress={() => setSelectedLegacyStaff((ids) => ids.includes(staff.id!) ? ids.filter((id) => id !== staff.id) : [...ids, staff.id!])} className="mt-2 flex-row items-center rounded-xl bg-white p-3"><Text className="mr-3 text-xl">{selectedLegacyStaff.includes(staff.id!) ? "☑" : "☐"}</Text><View><Text className="font-semibold text-slate-900">{staff.name}</Text><Text className="text-sm text-slate-700">{staff.staffId || "No Staff ID"}</Text></View></Pressable>)}</View> : <Text className="mt-3 text-sm text-slate-700">No legacy staff records found.</Text>}
       </View>
       <Text className="font-bold text-slate-900 mb-2">Tenants</Text>
       {tenants.length === 0 ? (

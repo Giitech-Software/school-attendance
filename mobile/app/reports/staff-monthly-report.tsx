@@ -186,7 +186,7 @@ export default function StaffMonthlyReport() {
         Staff ({staffRows.length})
       </Text>
 
-      {staffRows.length > 0 ? <AttendanceTotalsCards rows={staffRows} label="Staff" /> : null}
+{staffRows.length > 0 ? <AttendanceTotalsCards rows={staffRows} label="Staff" periodFrom={selectedMonth?.fromIso} periodTo={selectedMonth?.toIso} /> : null}
 <Text className="text-sm text-slate-700 mb-2">
         P = Present - L = Late - T = Attended - A = Absent
       </Text>

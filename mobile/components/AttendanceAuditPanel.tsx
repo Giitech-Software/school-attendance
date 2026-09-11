@@ -1,57 +1,8 @@
 import { useEffect, useState } from "react";
-import { View, Text } from "react-native";
+import { View, Text, TextInput } from "react-native";
 import { getAttendanceAudit, type AttendanceAuditRow } from "../src/services/attendanceAudit";
 import { listStaff } from "../src/services/staff";
 import { listStudents } from "../src/services/students";
 
-function fromDate() {
-  const date = new Date();
-  date.setDate(date.getDate() - 30);
-  return date.toISOString().slice(0, 10);
-}
-
-type AuditGroup = [string, AttendanceAuditRow[], string, "late" | "early" | "missingSignOut"];
-
-export default function AttendanceAuditPanel() {
-  const [rows, setRows] = useState<AttendanceAuditRow[]>([]);
-
-  useEffect(() => {
-    void Promise.all([
-      getAttendanceAudit(fromDate(), new Date().toISOString().slice(0, 10)),
-      listStaff(),
-      listStudents(),
-    ]).then(([audit, staff, students]) => {
-      const labels = new Map<string, string>();
-      staff.forEach((item: any) => labels.set(item.id, item.staffId || item.staffCode || item.employeeId || item.name || "Staff member"));
-      students.forEach((item: any) => labels.set(item.id, item.studentId || item.rollNo || item.name || "Student"));
-      setRows(audit.map((row) => ({ ...row, displayId: labels.get(row.personId) })));
-    }).catch(() => setRows([]));
-  }, []);
-
-  const groups: AuditGroup[] = [
-    ["Habitual late", rows.filter((row) => row.late >= 3), "text-amber-800", "late"],
-    ["Early departures", rows.filter((row) => row.early > 0), "text-sky-800", "early"],
-    ["Missing sign-outs", rows.filter((row) => row.missingSignOut > 0), "text-red-800", "missingSignOut"],
-  ];
-
-  return (
-    <View className="mt-5 rounded-3xl bg-white p-5">
-      <Text className="text-xl font-extrabold text-slate-900">Attendance audit</Text>
-      <Text className="mt-1 text-base font-medium text-slate-700">Last 30 days · admin follow-up indicators</Text>
-      {!rows.length ? <Text className="mt-4 text-base text-emerald-700">No attendance follow-up indicators found.</Text> : groups.map(([title, items, color, key]) => (
-        <View key={title} className="mt-4 rounded-2xl bg-slate-50 p-4">
-          <View className="flex-row justify-between">
-            <Text className={`text-base font-extrabold ${color}`}>{title}</Text>
-            <Text className="text-xl font-black text-slate-900">{items.length}</Text>
-          </View>
-          {items.slice(0, 5).map((row) => (
-            <View key={row.personId} className="mt-2 flex-row justify-between">
-              <Text className="flex-1 text-base font-semibold text-slate-700">{row.displayId || "Person"}</Text>
-              <Text className="font-black text-slate-900">{row[key]}</Text>
-            </View>
-          ))}
-        </View>
-      ))}
-    </View>
-  );
-}
+function fromDate() { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().slice(0, 10); }
+export default function AttendanceAuditPanel({ periodFrom, periodTo }: { periodFrom?: string; periodTo?: string }) { const [rows, setRows] = useState<AttendanceAuditRow[]>([]); const [from, setFrom] = useState(periodFrom || fromDate()); const [to, setTo] = useState(periodTo || new Date().toISOString().slice(0, 10)); useEffect(() => { if (periodFrom) setFrom(periodFrom); if (periodTo) setTo(periodTo); }, [periodFrom, periodTo]); useEffect(() => { void Promise.all([getAttendanceAudit(from, to), listStaff(), listStudents()]).then(([audit, staff, students]) => { const labels = new Map<string, string>(); staff.forEach((x: any) => labels.set(x.id, x.staffId || x.staffCode || x.employeeId || x.name || "Staff member")); students.forEach((x: any) => labels.set(x.id, x.studentId || x.rollNo || x.name || "Student")); setRows(audit.map((x) => ({ ...x, displayId: labels.get(x.personId) }))); }).catch(() => setRows([])); }, [from, to]); const groups = [["Habitual late", rows.filter(r => r.late >= 3), "text-amber-800", "late"], ["Early departures", rows.filter(r => r.early > 0), "text-sky-800", "early"], ["Missing sign-outs", rows.filter(r => r.missingSignOut > 0), "text-red-800", "missingSignOut"]] as const; return <View className="mt-5 rounded-3xl bg-white p-5"><Text className="text-xl font-extrabold text-slate-900">Attendance audit</Text><Text className="mt-1 text-base text-slate-700">Review late arrivals, early departures, and missing sign-outs.</Text>{periodFrom && periodTo ? <Text className="mt-2 text-sm font-semibold text-slate-600">Period: {periodFrom} to {periodTo}</Text> : <View className="mt-3 flex-row gap-2"><View className="flex-1"><Text className="text-sm font-semibold text-slate-700">From</Text><TextInput value={from} onChangeText={setFrom} placeholder="YYYY-MM-DD" className="mt-1 rounded-xl border border-slate-200 p-3" /></View><View className="flex-1"><Text className="text-sm font-semibold text-slate-700">To</Text><TextInput value={to} onChangeText={setTo} placeholder="YYYY-MM-DD" className="mt-1 rounded-xl border border-slate-200 p-3" /></View></View>}{groups.map(([title, items, color, key]) => <View key={title} className="mt-4 rounded-2xl bg-slate-50 p-4"><View className="flex-row justify-between"><Text className={`text-base font-extrabold ${color}`}>{title}</Text><Text className="text-xl font-black text-slate-900">{items.length}</Text></View>{items.slice(0, 5).map(row => <View key={row.personId} className="mt-2 flex-row justify-between"><Text className="flex-1 text-base font-semibold text-slate-700">{row.displayId || "Person"}</Text><Text className="font-black text-slate-900">{row[key]}</Text></View>)}</View>)}</View>; }

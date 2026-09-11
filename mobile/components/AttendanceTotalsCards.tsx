@@ -1,5 +1,7 @@
 import React from "react";
 import { View, Text } from "react-native";
+import AttendancePieChart from "./AttendancePieChart";
+import AttendanceAuditPanel from "./AttendanceAuditPanel";
 
 type AttendanceTotalRow = {
   presentCount?: number;
@@ -28,7 +30,7 @@ export function getAttendanceTotals(rows: AttendanceTotalRow[]) {
   };
 }
 
-export default function AttendanceTotalsCards({ rows, label }: { rows: AttendanceTotalRow[]; label: string }) {
+export default function AttendanceTotalsCards({ rows, label, periodFrom, periodTo }: { rows: AttendanceTotalRow[]; label: string; periodFrom?: string; periodTo?: string }) {
   const totals = getAttendanceTotals(rows);
 
   const cards = [
@@ -41,13 +43,13 @@ export default function AttendanceTotalsCards({ rows, label }: { rows: Attendanc
   ];
 
   return (
-    <View className="mt-4 mb-3 flex-row flex-wrap justify-between">
+    <View><AttendancePieChart present={totals.present} late={totals.late} absent={totals.absent} /><View className="mt-4 mb-3 flex-row flex-wrap justify-between">
       {cards.map((card) => (
         <View key={card.title} className={`mb-3 w-[48%] min-h-[82px] rounded-xl border border-slate-200 border-l-4 p-3 shadow-sm ${card.bg} ${card.accent}`}>
           <Text className="text-sm font-semibold text-slate-500">{card.title}</Text>
           <Text className={`mt-1 text-2xl font-extrabold ${card.color}`}>{card.value}</Text>
         </View>
       ))}
-    </View>
+    </View>{periodFrom && periodTo ? <AttendanceAuditPanel periodFrom={periodFrom} periodTo={periodTo} /> : null}</View>
   );
 }

@@ -7,6 +7,8 @@ import { listWeeks } from "../services/weeks";
 import type { Week } from "../types";
 import { exportReportCsv, openReportPdf } from "../services/reportExport";
 import AttendanceTotalsCards from "../components/AttendanceTotalsCards";
+import AttendancePieChart from "../components/AttendancePieChart";
+import AttendanceAuditPanel from "../components/AttendanceAuditPanel";
 
 function classKey(cls: SchoolClass) {
   return cls.classId ?? cls.id ?? "";
@@ -171,7 +173,7 @@ export default function ReportsWeekly() {
           ) : null}
         </div>
 
-        {rows.length > 0 ? <AttendanceTotalsCards rows={rows} subjectLabel="Students" groupLabel={selectedClassKey ? "Selected class" : "All classes"} /> : null}
+        {rows.length > 0 ? <><AttendanceTotalsCards rows={rows} subjectLabel="Students" groupLabel={selectedClassKey ? "Selected class" : "All classes"} /><AttendancePieChart present={rows.reduce((n, r) => n + r.presentCount, 0)} late={rows.reduce((n, r) => n + r.lateCount, 0)} absent={rows.reduce((n, r) => n + r.absentCount, 0)} /><AttendanceAuditPanel periodFrom={selectedWeek?.startDate} periodTo={selectedWeek?.endDate} /></> : null}
         {loading && <div className="report-empty">Loading report...</div>}
         {!loading && !selectedWeek && <div className="report-empty">Select a week to view report data.</div>}
         {!loading && selectedWeek && rows.length === 0 && <div className="report-empty">No data for selected week or class.</div>}

@@ -16,6 +16,7 @@ import {
 
 import { db } from "../../app/firebase";
 import type { Staff } from "./types";
+export type { Staff } from "./types";
 import { logAdminAction } from "./adminLogs";
 import { deleteFace } from "./faceService";
 import { belongsToTenant, getTenantScope, requireAdminTenantScope, sortByCreatedAtDesc, tenantConstraints, withTenantScope } from "./tenantScope";

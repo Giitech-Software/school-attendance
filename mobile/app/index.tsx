@@ -223,6 +223,7 @@ useFocusEffect(
     ? [
         { title: "Reports", subtitle: allowsSchoolFeatures ? "Daily • Weekly • Monthly • Termly • Yearly" : "Daily • Weekly • Monthly • Yearly", icon: "bar-chart", iconBackground: "#FEF3C7", iconColor: "#A16207", onPress: () => router.push({ pathname: "/reports", params: { type: selectedActor } }) },
         { title: "Administration", subtitle: allowsSchoolFeatures ? "Terms, classes, people, and attendance" : `${personnelLabel}, users, and attendance`, icon: "verified-user", iconBackground: "#DBEAFE", iconColor: "#1E3A8A", onPress: () => router.push("/admin") },
+        { title: "Messages", subtitle: "Communicate with administrators", icon: "mail", iconBackground: "#E0F2FE", iconColor: "#0369A1", onPress: () => router.push("/messages" as any) },
         ...(allowsSchoolFeatures
           ? [{ title: "Add Student", subtitle: "Enroll and assign a new student", icon: "person-add" as const, iconBackground: "#FEE2E2", iconColor: "#B91C1C", onPress: () => router.push("/students") }]
           : []),

@@ -6,6 +6,8 @@ import { listWeeks } from "../services/weeks";
 import type { Week } from "../types";
 import { exportReportCsv, openReportPdf } from "../services/reportExport";
 import AttendanceTotalsCards from "../components/AttendanceTotalsCards";
+import AttendancePieChart from "../components/AttendancePieChart";
+import AttendanceAuditPanel from "../components/AttendanceAuditPanel";
 import useCurrentUser from "../hooks/useCurrentUser";
 import { allowsStudentAndParentFeatures } from "../services/tenantScope";
 
@@ -182,7 +184,7 @@ export default function ReportsStaffWeekly() {
           </div>
         ) : null}
 
-        {rows.length > 0 ? <AttendanceTotalsCards rows={rows} subjectLabel="Staff" groupLabel="All staff" /> : null}
+        {rows.length > 0 ? <><AttendanceTotalsCards rows={rows} subjectLabel="Staff" groupLabel="All staff" /><AttendancePieChart present={rows.reduce((n, r) => n + r.presentCount, 0)} late={rows.reduce((n, r) => n + r.lateCount, 0)} absent={rows.reduce((n, r) => n + r.absentCount, 0)} /><AttendanceAuditPanel periodFrom={selectedWeek?.startDate} periodTo={selectedWeek?.endDate} /></> : null}
         {loading && <div className="mt-4 text-slate-500">Loading report...</div>}
         {!loading && !selectedWeek && <div className="mt-4 text-slate-500">Select a week to view report data.</div>}
         {!loading && selectedWeek && rows.length === 0 && <div className="mt-4 text-slate-500">No data for selected week.</div>}

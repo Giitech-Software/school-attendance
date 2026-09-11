@@ -114,6 +114,9 @@ export interface Staff {
   role?: string;        // teacher, admin, non-teaching, etc
   roleType?: string;
   staffGroupId?: string;
+  tenantId?: string | null;
+  tenantName?: string | null;
+  tenantType?: string | null;
   fingerprintId?: string;
     faceImageUrl?: string;
     faceId?: string;   // ✅ ADD THIS

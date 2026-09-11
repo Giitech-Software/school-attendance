@@ -56,6 +56,7 @@ import AdminSetupSchoolLocation from "./pages/AdminSetupSchoolLocation";
 import AdminUserManual from "./pages/AdminUserManual";
 import StaffGroups from "./pages/StaffGroups";
 import SuperAdminTenants from "./pages/SuperAdminTenants";
+import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
 import useCurrentUser from "./hooks/useCurrentUser";
 import { allowsStudentAndParentFeatures } from "./services/tenantScope";
@@ -163,6 +164,7 @@ export default function App() {
           </Route>
 
           <Route path="super-admin" element={<SuperAdminTenants />} />
+          <Route path="messages" element={<AdminOnlyPage><Messages /></AdminOnlyPage>} />
           <Route path="admin">
             <Route index element={<AdminIndex />} />
             <Route path="classes" element={<SchoolOnlyPage><AdminClasses /></SchoolOnlyPage>} />

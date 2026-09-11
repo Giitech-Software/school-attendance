@@ -272,7 +272,7 @@ export default function DailyReport() {
         Students ({studentRows.length})
       </Text>
 
-{studentRows.length > 0 ? <AttendanceTotalsCards rows={studentRows} label="Students" /> : null}
+{studentRows.length > 0 ? <AttendanceTotalsCards rows={studentRows} label="Students" periodFrom={selectedDay ?? undefined} periodTo={selectedDay ?? undefined} /> : null}
 <Text className="text-ml text-slate-700 mb-2">
   P = Present - L = Late - T = Attended - A = Absent
 </Text>

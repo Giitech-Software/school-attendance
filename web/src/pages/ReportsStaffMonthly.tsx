@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { getStaffGlobalSummary, type StaffAttendanceSummary } from "../services/staffAttendanceSummary";
 import { exportReportCsv, openReportPdf } from "../services/reportExport";
 import AttendanceTotalsCards from "../components/AttendanceTotalsCards";
+import AttendancePieChart from "../components/AttendancePieChart";
+import AttendanceAuditPanel from "../components/AttendanceAuditPanel";
 
 function monthsForYear(year: number) {
   return Array.from({ length: 12 }, (_, month) => {
@@ -101,7 +103,7 @@ export default function ReportsStaffMonthly() {
           </div>
         ) : null}
 
-        {rows.length > 0 ? <AttendanceTotalsCards rows={rows} subjectLabel="Staff" groupLabel="All staff" /> : null}
+        {rows.length > 0 ? <><AttendanceTotalsCards rows={rows} subjectLabel="Staff" groupLabel="All staff" /><AttendancePieChart present={rows.reduce((n, r) => n + r.presentCount, 0)} late={rows.reduce((n, r) => n + r.lateCount, 0)} absent={rows.reduce((n, r) => n + r.absentCount, 0)} /><AttendanceAuditPanel periodFrom={selectedMonth?.fromIso} periodTo={selectedMonth?.toIso} /></> : null}
         {loading && <div className="mt-4 text-slate-500">Loading report...</div>}
         {!loading && !selectedMonth && <div className="mt-4 text-slate-500">Select a month to view report data.</div>}
         {!loading && selectedMonth && rows.length === 0 && <div className="mt-4 text-slate-500">No data for selected month.</div>}

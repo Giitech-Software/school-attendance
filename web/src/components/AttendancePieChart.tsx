@@ -1,0 +1,5 @@
+type Props = { present: number; late: number; absent: number; title?: string };
+export default function AttendancePieChart({ present, late, absent, title = "Attendance distribution" }: Props) {
+  const total = Math.max(1, present + late + absent); const p = present / total * 360; const l = (present + late) / total * 360;
+  return <section className="enterprise-panel p-4" aria-label={title}><h3 className="text-base font-extrabold text-slate-900">{title}</h3><div className="mt-3 flex flex-wrap items-center gap-5"><div className="h-32 w-32 rounded-full" style={{ background: `conic-gradient(#10b981 0deg ${p}deg, #f59e0b ${p}deg ${l}deg, #ef4444 ${l}deg 360deg)` }} role="img" aria-label={`${present} present, ${late} late, ${absent} absent`} /><div className="space-y-2 text-sm font-semibold text-slate-700"><div><span className="mr-2 inline-block h-3 w-3 rounded-full bg-emerald-500" />Present: {present}</div><div><span className="mr-2 inline-block h-3 w-3 rounded-full bg-amber-500" />Late: {late}</div><div><span className="mr-2 inline-block h-3 w-3 rounded-full bg-red-500" />Absent: {absent}</div></div></div></section>;
+}

@@ -53,6 +53,7 @@ export default function SuperAdminTenants() {
   const [message, setMessage] = useState<string | null>(null);
   const [legacyStaff, setLegacyStaff] = useState<Staff[]>([]);
   const [migrationTenant, setMigrationTenant] = useState("");
+  const [selectedLegacyStaff, setSelectedLegacyStaff] = useState<string[]>([]);
 
   const [name, setName] = useState("");
   const [type, setType] = useState<TenantType>("school");
@@ -149,12 +150,7 @@ export default function SuperAdminTenants() {
     } catch (err: any) { setError(err?.message ?? "Failed to generate invite code."); }
   }
 
-  async function handleMigrateStaff(staff: Staff) {
-    const tenant = tenants.find((item) => item.id === migrationTenant);
-    if (!tenant || !staff.id) return;
-    try { await migrateLegacyStaffToTenant(staff.id, tenant); setLegacyStaff((rows) => rows.filter((row) => row.id !== staff.id)); setMessage(`${staff.name} migrated to ${tenant.name}.`); }
-    catch (err: any) { setError(err?.message ?? "Failed to migrate staff."); }
-  }
+  async function handleMigrateSelected() { const tenant = tenants.find((item) => item.id === migrationTenant); const selected = legacyStaff.filter((staff) => staff.id && selectedLegacyStaff.includes(staff.id)); if (!tenant || !selected.length) return; try { await Promise.all(selected.map((staff) => migrateLegacyStaffToTenant(staff.id!, tenant))); setLegacyStaff((rows) => rows.filter((row) => !selectedLegacyStaff.includes(row.id!))); setSelectedLegacyStaff([]); setMessage(`${selected.length} staff migrated to ${tenant.name}.`); } catch (err: any) { setError(err?.message ?? "Failed to migrate selected staff."); } }
 
   if (authLoading || loading) {
     return <div className="enterprise-panel px-5 py-4 text-sm font-semibold text-slate-600">Loading tenants...</div>;
@@ -282,8 +278,8 @@ export default function SuperAdminTenants() {
           <section className="mb-5 rounded-lg border border-blue-200 bg-blue-50 p-4">
             <h2 className="text-lg font-extrabold text-slate-900">Migrate legacy staff</h2>
             <p className="mt-1 text-sm text-slate-700">Assign staff created before tenancy to a tenant without changing their Staff ID, face registration, biometric data, or attendance history.</p>
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row"><select value={migrationTenant} onChange={(event) => setMigrationTenant(event.target.value)} className="enterprise-input"><option value="">Select destination tenant</option>{tenants.map((tenant) => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select></div>
-            {legacyStaff.length ? <div className="mt-3 space-y-2">{legacyStaff.map((staff) => <div key={staff.id} className="flex items-center justify-between gap-3 rounded-lg bg-white p-3"><div className="min-w-0"><p className="truncate font-semibold text-slate-900">{staff.name}</p><p className="text-sm text-slate-700">{staff.staffId || "No Staff ID"}</p></div><button type="button" disabled={!migrationTenant} onClick={() => handleMigrateStaff(staff)} className="enterprise-button-primary shrink-0">Migrate</button></div>)}</div> : <p className="mt-3 text-sm text-slate-700">No legacy staff records found.</p>}
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row"><select value={migrationTenant} onChange={(event) => setMigrationTenant(event.target.value)} className="enterprise-input"><option value="">Select destination tenant</option>{tenants.map((tenant) => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select><button type="button" disabled={!migrationTenant || !selectedLegacyStaff.length} onClick={handleMigrateSelected} className="enterprise-button-primary">Migrate selected ({selectedLegacyStaff.length})</button></div>
+            {legacyStaff.length ? <div className="mt-3 space-y-2"><label className="flex items-center gap-2 text-sm font-semibold text-slate-700"><input type="checkbox" checked={legacyStaff.length > 0 && selectedLegacyStaff.length === legacyStaff.length} onChange={(event) => setSelectedLegacyStaff(event.target.checked ? legacyStaff.map((staff) => staff.id!).filter(Boolean) : [])} /> Select all legacy staff</label>{legacyStaff.map((staff) => <label key={staff.id} className="flex items-center gap-3 rounded-lg bg-white p-3"><input type="checkbox" checked={selectedLegacyStaff.includes(staff.id!)} onChange={() => setSelectedLegacyStaff((ids) => ids.includes(staff.id!) ? ids.filter((id) => id !== staff.id) : [...ids, staff.id!])} /><div className="min-w-0"><p className="truncate font-semibold text-slate-900">{staff.name}</p><p className="text-sm text-slate-700">{staff.staffId || "No Staff ID"}</p></div></label>)}</div> : <p className="mt-3 text-sm text-slate-700">No legacy staff records found.</p>}
           </section>
 
           <div className="space-y-3">

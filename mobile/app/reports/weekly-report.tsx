@@ -313,7 +313,7 @@ setSelectedWeek(null);
         Students ({studentRows.length})
       </Text>
 
-{studentRows.length > 0 ? <AttendanceTotalsCards rows={studentRows} label="Students" /> : null}
+{studentRows.length > 0 ? <AttendanceTotalsCards rows={studentRows} label="Students" periodFrom={selectedWeek?.startDate} periodTo={selectedWeek?.endDate} /> : null}
 <Text className="text-ml text-slate-700 mb-2">
   P = Present - L = Late - T = Attended - A = Absent
 </Text>

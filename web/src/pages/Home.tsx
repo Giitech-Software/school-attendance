@@ -302,7 +302,7 @@ export default function Home() {
         <section className="bg-slate-800 px-4 py-3 text-white sm:px-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="min-w-0 flex-1">
-              <h1 className="text-lg font-semibold leading-tight sm:text-xl">Manage check-in, check-out, reports</h1>
+              <h1 className="text-lg font-semibold leading-tight sm:text-xl">Manage check-in, check-out, and reports</h1>
             </div>
 
             <button
@@ -340,20 +340,20 @@ export default function Home() {
                 <div key={groupKey} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-md shadow-blue-950/15">
                   <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 sm:px-5">
                     <h2 className="font-extrabold text-slate-950">{meta.title}</h2>
-                    <p className="mt-0.5 text-sm text-slate-500">{meta.description}</p>
+                    <p className="mt-0.5 text-sm text-slate-700">{meta.description}</p>
                   </div>
-                  <div className="grid gap-px bg-slate-200 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-3 bg-slate-100 p-3 lg:grid-cols-3 xl:grid-cols-4">
                     {links.map((item) => (
-                      <Link key={item.href} to={item.href} className="group flex min-h-24 items-center gap-3 bg-white p-4 transition hover:bg-blue-50/70 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600">
-                        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset ring-black/5 ${item.iconTone}`}>
+                      <Link key={item.href} to={item.href} style={{ borderLeftColor: item.group === "personal" ? "#10B981" : item.group === "attendance" ? "#2563EB" : "#F59E0B" }} className="group flex min-h-32 flex-col items-start justify-between rounded-xl border border-slate-200 border-l-4 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 sm:min-h-28 sm:flex-row sm:items-center sm:gap-3 sm:p-4">
+                        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset ring-black/5 ${item.iconTone}`}>
                           <Icon name={item.icon} className="h-5 w-5" />
                         </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="flex items-center justify-between gap-2 font-bold text-slate-900 group-hover:text-blue-800">
+                        <span className="mt-3 min-w-0 flex-1 sm:mt-0">
+                            <span className="flex items-center justify-between gap-2 text-base font-extrabold leading-tight text-slate-900 group-hover:text-blue-800 sm:text-lg">
                             {item.title}
                             <Icon name="arrowRight" className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-blue-700" />
                           </span>
-                          <span className="mt-1 block text-sm leading-5 text-slate-500">{item.subtitle}</span>
+                          <span className="mt-1.5 block text-xs leading-5 text-slate-600 sm:text-sm">{item.subtitle}</span>
                         </span>
                       </Link>
                     ))}
@@ -430,7 +430,6 @@ export default function Home() {
           </section>
 
           <footer className="pb-4 text-center text-xs text-blue-100/90">
-            <p>Developer - Solomon K. Aggrey</p>
             <p>ASTEM Attendance - Web app</p>
             <p>Version 2.0</p>
           </footer>

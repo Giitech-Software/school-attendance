@@ -1,4 +1,8 @@
 {
+  "firestore": {
+    "rules": "mobile/firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
   "hosting": {
     "site": "astem-register",
     "public": "web/dist",

@@ -102,6 +102,14 @@ async function createTenantInvite(input: { tenantId: string; tenantName: string;
   return code;
 }
 
+/** Backfills onboarding for legacy tenants without changing existing invite codes. */
+export async function ensureTenantInvite(tenant: Tenant): Promise<string> {
+  if (tenant.inviteCode) return tenant.inviteCode;
+  const code = await createTenantInvite({ tenantId: tenant.id, tenantName: tenant.name, tenantType: tenant.type });
+  await updateDoc(doc(db, TENANTS_COLLECTION, tenant.id), { inviteCode: code, updatedAt: serverTimestamp() });
+  return code;
+}
+
 export async function getTenantInviteByCode(code: string): Promise<TenantInvite | null> {
   const normalizedCode = normalizeInviteCode(code);
   if (!normalizedCode) return null;
@@ -167,7 +175,10 @@ export async function createTenant(input: {
   await setDoc(doc(db, TENANTS_COLLECTION, tenantId), tenant);
 
   if (tenant.adminEmail) {
-    await assignTenantAdminByEmail(tenantId, tenant.name, tenant.adminEmail, tenant.type);
+    const registeredAdmin = await getUserByEmail(tenant.adminEmail);
+    if (registeredAdmin?.id) {
+      await assignTenantAdminByEmail(tenantId, tenant.name, tenant.adminEmail, tenant.type);
+    }
   }
 
   return {

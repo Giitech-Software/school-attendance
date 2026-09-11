@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { getStudentById } from "../services/students";
-import { computeAttendanceSummaryForStudent, type AttendanceSummary } from "../services/attendanceSummary";
+import { computeAttendanceSummaryForStudent, getAttendanceForStudentInRange, type AttendanceSummary } from "../services/attendanceSummary";
+import type { AttendanceRecord } from "../types";
 import { getCurrentTerm } from "../services/terms";
 import { exportReportCsv, openReportPdf } from "../services/reportExport";
 
@@ -18,8 +19,10 @@ export default function ReportsStudentDetail() {
   const [displayId, setDisplayId] = useState<string | null>(null);
   const [range, setRange] = useState<{ fromIso: string; toIso: string; title: string } | null>(null);
   const [summary, setSummary] = useState<AttendanceSummary | null>(null);
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -45,9 +48,13 @@ export default function ReportsStudentDetail() {
         setDisplayId(student?.studentId ?? student?.rollNo ?? null);
         setRange({ fromIso, toIso, title });
 
-        const result = await computeAttendanceSummaryForStudent(id, fromIso, toIso);
+        const [result, timeline] = await Promise.all([
+          computeAttendanceSummaryForStudent(id, fromIso, toIso),
+          getAttendanceForStudentInRange(id, fromIso, toIso),
+        ]);
         if (!active) return;
         setSummary(result);
+        setRecords(timeline);
       } catch (err: any) {
         console.error("load student report", err);
         if (active) setError(err?.message ?? "Failed to load student report.");
@@ -60,6 +67,16 @@ export default function ReportsStudentDetail() {
       active = false;
     };
   }, [id, params]);
+
+  async function handlePdf() {
+    if (!summary || !range) return;
+    setGeneratingPdf(true);
+    setError(null);
+    try {
+      await openReportPdf({ title: range.title, subtitle: `${studentName ?? "Student"}${displayId ? ` (${displayId})` : ""} - ${range.fromIso} to ${range.toIso}`, filename: `${range.title}-${studentName ?? id}`.replace(/\s+/g, "-"), subjectLabel: "Student", rows: [{ ...summary, studentName: studentName ?? "Student", displayId: displayId ?? summary.displayId }], detailRecords: records });
+    } catch (err: any) { setError(err?.message ?? "Unable to generate PDF."); }
+    finally { setGeneratingPdf(false); }
+  }
 
   return (
     <div className="space-y-3">
@@ -80,8 +97,8 @@ export default function ReportsStudentDetail() {
           <div className="flex flex-wrap gap-2">
             {summary && range ? (
               <>
-                <button type="button" onClick={() => openReportPdf({ title: range.title, subtitle: `${studentName ?? "Student"}${displayId ? ` (${displayId})` : ""} - ${range.fromIso} to ${range.toIso}`, filename: `${range.title}-${studentName ?? id}`.replace(/\s+/g, "-"), subjectLabel: "Student", rows: [{ ...summary, studentName: studentName ?? "Student", displayId: displayId ?? summary.displayId }] })} className="enterprise-button-secondary">
-                  Print / PDF
+                <button type="button" onClick={handlePdf} disabled={generatingPdf} className="enterprise-button-secondary">
+                  {generatingPdf ? "Generating PDF..." : "Print / PDF"}
                 </button>
                 <button type="button" onClick={() => exportReportCsv({ title: range.title, subtitle: `${studentName ?? "Student"}${displayId ? ` (${displayId})` : ""} - ${range.fromIso} to ${range.toIso}`, filename: `${range.title}-${studentName ?? id}`.replace(/\s+/g, "-"), subjectLabel: "Student", rows: [{ ...summary, studentName: studentName ?? "Student", displayId: displayId ?? summary.displayId }] })} className="enterprise-button-secondary">
                   Export CSV
@@ -99,7 +116,7 @@ export default function ReportsStudentDetail() {
         ) : error ? (
           <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>
         ) : summary ? (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
               <div className="text-sm text-slate-500">Present</div>
               <div className="mt-2 text-2xl font-semibold text-emerald-700">{summary.presentCount}</div>

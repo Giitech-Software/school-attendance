@@ -96,7 +96,7 @@ export default function StudentsList() {
   });
 
   return (
-    <View className="flex-1 bg-slate-300 p-4">
+    <View className="flex-1 bg-slate-100 p-4">
       <View className="flex-row items-center justify-between mb-4">
         <View className="flex-row items-center mb-2">
           <Pressable onPress={() => router.back()} className="p-1 mr-2" hitSlop={8}>
@@ -138,7 +138,7 @@ export default function StudentsList() {
           const isDeleting = deletingId === item.id;
 
           return (
-            <View className="bg-white rounded-2xl p-4 mb-3 flex-row items-center justify-between">
+            <View className="bg-white rounded-2xl p-4 mb-3 flex-row items-center justify-between border border-slate-200 shadow-sm">
               <View className="flex-1 pr-3">
                 <Text className="font-semibold text-dark">{item.name}</Text>
                 <Text className="text-sm text-neutral mt-1">

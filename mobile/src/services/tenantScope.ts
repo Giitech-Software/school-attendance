@@ -9,9 +9,10 @@ export type TenantScope = {
   tenantType: TenantTypeValue | null;
   isSuperAdmin: boolean;
   isScoped: boolean;
+  role: string | null;
 };
 
-const emptyScope: TenantScope = { tenantId: null, tenantName: null, tenantType: null, isSuperAdmin: false, isScoped: false };
+const emptyScope: TenantScope = { tenantId: null, tenantName: null, tenantType: null, isSuperAdmin: false, isScoped: false, role: null };
 
 function normalizeTenantType(value: any): TenantTypeValue | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -32,11 +33,24 @@ export async function getTenantScope(): Promise<TenantScope> {
   const snap = await getDoc(doc(db, "users", uid));
   const data = snap.exists() ? snap.data() : null;
   const isSuperAdmin = data?.role === "super_admin";
+  const role = typeof data?.role === "string" ? data.role : null;
   const tenantId = typeof data?.tenantId === "string" && data.tenantId.trim() ? data.tenantId : null;
   const tenantName = typeof data?.tenantName === "string" && data.tenantName.trim() ? data.tenantName : null;
   const tenantType = await resolveTenantType(tenantId, data?.tenantType);
 
-  return { tenantId, tenantName, tenantType, isSuperAdmin, isScoped: Boolean(tenantId && !isSuperAdmin) };
+  return { tenantId, tenantName, tenantType, isSuperAdmin, isScoped: Boolean(tenantId && !isSuperAdmin), role };
+}
+
+export async function requireAdminTenantScope(): Promise<TenantScope> {
+  if (!auth.currentUser?.uid) throw new Error("Your session has expired. Please sign in again.");
+  const scope = await getTenantScope();
+  if (scope.role !== "admin" && scope.role !== "super_admin") {
+    throw new Error("Administrator permission is required. Ask your organisation administrator to verify your user role.");
+  }
+  if (!scope.isSuperAdmin && !scope.tenantId) {
+    throw new Error("Your administrator account is not assigned to an organisation. Add the correct tenantId to your user profile.");
+  }
+  return scope;
 }
 
 export function tenantConstraints(scope: TenantScope): QueryConstraint[] {

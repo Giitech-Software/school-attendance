@@ -113,6 +113,7 @@ export interface Staff {
   email: string;
   role?: string;        // teacher, admin, non-teaching, etc
   roleType?: string;
+  staffGroupId?: string;
   fingerprintId?: string;
     faceImageUrl?: string;
     faceId?: string;   // ✅ ADD THIS

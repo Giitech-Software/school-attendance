@@ -1,5 +1,14 @@
 ﻿{
   "projects": {
     "default": "astem-student-register"
+  },
+  "targets": {
+    "astem-student-register": {
+      "hosting": {
+        "astem-register": [
+          "astem-register"
+        ]
+      }
+    }
   }
 }

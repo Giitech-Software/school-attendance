@@ -1,12 +1,13 @@
 // mobile/app/staff/index.tsx
 import React, { useState } from "react";
-import { View, Text, FlatList, Pressable, Alert, ActivityIndicator } from "react-native";
+import { View, Text, SectionList, Pressable, Alert, ActivityIndicator } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { listStaff, deleteStaff } from "../../src/services/staff";
 import type { Staff } from "../../src/services/types";
 import { MaterialIcons } from "@expo/vector-icons";
 import AppInput from "@/components/AppInput";
 import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
+import { listStaffGroups, type StaffGroup } from "../../src/services/staffGroups";
 
 export default function StaffList() {
   const router = useRouter();
@@ -15,6 +16,7 @@ export default function StaffList() {
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 const [search, setSearch] = useState("");
+  const [groups, setGroups] = useState<StaffGroup[]>([]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -28,6 +30,7 @@ const [search, setSearch] = useState("");
       };
     }, [])
   );
+  useFocusEffect(React.useCallback(() => { listStaffGroups().then(setGroups).catch(console.error); }, []));
 
   async function loadStaff() {
     setLoading(true);
@@ -85,7 +88,7 @@ const filteredStaff = staffList.filter((s) => {
   );
 });
   return (
-    <View className="flex-1 bg-slate-300 p-4">
+    <View className="flex-1 bg-slate-100 p-4">
       {/* Header */}
       <View className="flex-row items-center justify-between mb-4">
         <View className="flex-row items-center">
@@ -98,6 +101,7 @@ const filteredStaff = staffList.filter((s) => {
         </View>
 
         <View className="flex-row gap-2">
+          <Pressable onPress={() => router.push("/staff/groups" as any)} className="bg-white border border-slate-300 py-2 px-3 rounded-xl"><Text className="text-slate-800 font-medium">Groups</Text></Pressable>
           <Pressable
             onPress={() => router.push("/staff/bulk-import" as any)}
             className="bg-slate-700 py-2 px-3 rounded-xl"
@@ -119,8 +123,10 @@ const filteredStaff = staffList.filter((s) => {
   className="border p-3 rounded-xl mb-3 bg-white"
 />
       {/* Staff List */}
-      <FlatList
-        data={filteredStaff}
+      <SectionList
+        sections={Array.from(filteredStaff.reduce((map, item) => { const key = item.staffGroupId ?? "__unassigned"; map.set(key, [...(map.get(key) ?? []), item]); return map; }, new Map<string, Staff[]>()).entries()).map(([key, data]) => ({ title: key === "__unassigned" ? "Unassigned" : (groups.find(g => g.id === key)?.name ?? "Unknown group"), data }))}
+        stickySectionHeadersEnabled={false}
+        renderSectionHeader={({ section }) => <Text className="font-bold text-slate-700 mt-2 mb-2">{section.title} ({section.data.length})</Text>}
         keyExtractor={(item) => item.id!}
         renderItem={({ item }) => {
           // Biometric status
@@ -141,7 +147,7 @@ const filteredStaff = staffList.filter((s) => {
 
           return (
             <View
-              className="rounded-2xl p-4 mb-3 flex-row items-center justify-between"
+              className="rounded-2xl p-4 mb-3 flex-row items-center justify-between border shadow-sm"
               style={{
                 backgroundColor: cardColor,
                 borderWidth: 1,

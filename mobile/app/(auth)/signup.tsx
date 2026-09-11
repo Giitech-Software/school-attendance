@@ -90,11 +90,10 @@ const safeRole: UserRole =
 
       // Create Firestore user profile
      
-try {
-  if (typeof upsertUser === "function") {
-   await upsertUser({
+await upsertUser({
   id: credential.user.uid,
-  email: email.trim(),
+  uid: credential.user.uid,
+  email: email.trim().toLowerCase(),
   role: safeRole,                 // role is informational only
   displayName: fullName.trim(),
 
@@ -112,11 +111,6 @@ try {
 
   createdAt: new Date(),
 });
-
-  }
-} catch (e) {
-  console.warn("upsertUser failed:", e);
-}
       try {
         await sendEmailVerificationToCurrentUser();
       } catch (e) {

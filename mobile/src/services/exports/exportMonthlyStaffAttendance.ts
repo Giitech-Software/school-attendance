@@ -4,6 +4,7 @@ import { Platform } from "react-native";
 
 import { getStaffGlobalSummary } from "../staffAttendanceSummary";
 import { attendanceTableStyles } from "./generateAttendanceRows";
+import { buildMobileAggregateReport } from "./enterpriseAttendanceReport";
 
 import { exportStaffAttendancePdf } from "./exportStaffAttendancePdf";
 
@@ -106,7 +107,7 @@ export async function exportMonthlyStaffAttendance(
 
   const rowsHtml = generateStaffRows(summaries);
 
-  const html = `
+  const legacyHtml = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -161,6 +162,7 @@ export async function exportMonthlyStaffAttendance(
 </html>
 `;
 
+  const html = await buildMobileAggregateReport({ title, subjectLabel: "Staff", fromIso, toIso, periodLabel: label, rows: summaries });
   const result = await Print.printToFileAsync({ html });
 
   if (!result?.uri) {

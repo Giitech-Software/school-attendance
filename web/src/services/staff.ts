@@ -1,6 +1,7 @@
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { db } from "../firebase";
-import { belongsToTenant, getTenantScope, sortByCreatedAtDesc, tenantConstraints, withTenantScope } from "./tenantScope";
+import { belongsToTenant, getTenantScope, requireAdminTenantScope, sortByCreatedAtDesc, tenantConstraints, withTenantScope } from "./tenantScope";
+import { deleteFace } from "./faceService";
 
 export type Staff = {
   id?: string;
@@ -10,6 +11,7 @@ export type Staff = {
   email?: string;
   role?: string;
   roleType?: string;
+  staffGroupId?: string;
   fingerprintId?: string;
   faceImageUrl?: string;
   faceId?: string;
@@ -47,6 +49,24 @@ export async function listStaff(): Promise<Staff[]> {
   const scope = await getTenantScope();
   const snap = await getDocs(query(collection(db, STAFF_COLLECTION), ...tenantConstraints(scope)));
   return sortByCreatedAtDesc(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) } as Staff)));
+}
+
+export async function listLegacyStaff(): Promise<Staff[]> {
+  const scope = await getTenantScope();
+  if (!scope.isSuperAdmin) throw new Error("Super Admin permission is required.");
+  const snap = await getDocs(collection(db, STAFF_COLLECTION));
+  return sortByCreatedAtDesc(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) } as Staff)).filter((staff) => !staff.tenantId));
+}
+
+export async function migrateLegacyStaffToTenant(staffId: string, tenant: { id: string; name: string; type: string }): Promise<void> {
+  const scope = await getTenantScope();
+  if (!scope.isSuperAdmin) throw new Error("Super Admin permission is required.");
+  const ref = doc(db, STAFF_COLLECTION, staffId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error("Staff record not found.");
+  const data = snap.data() as Staff;
+  if (data.tenantId) throw new Error("This staff member is already assigned to a tenant.");
+  await updateDoc(ref, { tenantId: tenant.id, tenantName: tenant.name, tenantType: tenant.type, updatedAt: serverTimestamp() });
 }
 
 export async function getStaffById(id: string): Promise<Staff | null> {
@@ -93,12 +113,13 @@ async function generateStaffId(roleType: string): Promise<string> {
 }
 
 export async function createStaff(data: Omit<Staff, "id" | "createdAt">): Promise<Staff> {
+  const scope = await requireAdminTenantScope();
   const roleType = data.roleType ?? data.role ?? "staff";
   const staffId = data.staffId?.trim() || (await generateStaffId(roleType));
 
   if (data.staffId?.trim()) await ensureStaffIdIsAvailable(staffId);
 
-  const payload = withoutUndefined(withTenantScope({ ...data, staffId, roleType, createdAt: serverTimestamp() }, await getTenantScope()));
+  const payload = withoutUndefined(withTenantScope({ ...data, staffId, roleType, createdAt: serverTimestamp() }, scope));
   const ref = await addDoc(collection(db, STAFF_COLLECTION), payload);
   return { id: ref.id, ...payload, staffId, roleType } as Staff;
 }
@@ -110,5 +131,8 @@ export async function upsertStaff(staff: Staff): Promise<void> {
 }
 
 export async function deleteStaff(id: string): Promise<void> {
+  const staffSnap = await getDoc(doc(db, STAFF_COLLECTION, id));
+  const faceId = staffSnap.exists() ? (staffSnap.data() as Staff).faceId : undefined;
+  if (faceId) await deleteFace(faceId);
   await deleteDoc(doc(db, STAFF_COLLECTION, id));
 }

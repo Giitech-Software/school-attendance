@@ -30,7 +30,7 @@ export default function ReportsStaffDashboard() {
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
         {visibleLinks.map((link) => (
           <Link key={link.href} to={link.href} className="enterprise-panel p-4 transition hover:border-primary hover:bg-slate-50">
             <div className="flex items-start justify-between gap-3">

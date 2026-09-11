@@ -135,6 +135,18 @@ export async function getAttendanceForStudentInRange(
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) } as AttendanceRecord));
 }
 
+export async function getAllStudentAttendanceInRange(fromIso: string, toIso: string): Promise<AttendanceRecord[]> {
+  const snap = await getDocs(query(
+    attendanceCollection,
+    where("date", ">=", normalizeIsoDate(fromIso)),
+    where("date", "<=", normalizeIsoDate(toIso)),
+    ...tenantConstraints(await getTenantScope())
+  ));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...(d.data() as any) } as AttendanceRecord))
+    .filter((record) => record.subjectType !== "staff" && Boolean(record.studentId || record.subjectId));
+}
+
 export async function computeAttendanceSummaryForStudent(
   studentId: string,
   fromIso: string,

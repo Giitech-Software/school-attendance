@@ -159,7 +159,7 @@ useEffect(() => {
   }
 
   return (
-    <ScrollView className="flex-1 bg-slate-300 p-3">
+    <ScrollView className="flex-1 bg-slate-100 p-3">
       <View className="flex-row items-center mb-2">
   <Pressable
     onPress={() => router.back()}

@@ -8,6 +8,7 @@ import {
   generateAttendanceRows,
   attendanceTableStyles,
 } from "./generateAttendanceRows";
+import { buildMobileAggregateReport } from "./enterpriseAttendanceReport";
 
 type ExportTermStaffPdfOptions = {
   fromIso: string;
@@ -50,7 +51,7 @@ export async function exportTermStaffAttendancePdf(
 
   const rowsHtml = generateAttendanceRows(formatted);
 
-  const html = `
+  const legacyHtml = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -105,6 +106,7 @@ export async function exportTermStaffAttendancePdf(
 </html>
 `;
 
+  const html = await buildMobileAggregateReport({ title: "Term Staff Attendance Report", subjectLabel: "Staff", fromIso, toIso, periodLabel: label, rows: summaries });
   const result = await Print.printToFileAsync({ html });
   if (!result?.uri) {
     throw new Error("Failed to generate PDF");

@@ -303,7 +303,7 @@ export default function Checkin() {
           </div>
         </div>
 
-        <div className="grid gap-0 lg:grid-cols-[1fr_18rem]">
+        <div className="grid gap-0">
           <div className="p-3 sm:p-4">
             <div className="grid gap-2 sm:grid-cols-2">
               <button type="button" onClick={() => changeActor("student")} className={`rounded-xl border px-3 py-2 text-sm font-semibold ${actor === "student" ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-dark hover:bg-slate-50"}`}>
@@ -317,7 +317,7 @@ export default function Checkin() {
           <img
             src="/how-it-works.jpg"
             alt={`${actor === "student" ? "Student" : "Staff"} attendance workflow`}
-            className="h-[180px] w-full object-fill sm:h-[220px] lg:h-[240px]"
+            className="h-[190px] w-full object-fill sm:h-[240px] lg:h-[300px]"
           />
         </div>
       </section>

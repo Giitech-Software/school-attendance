@@ -8,8 +8,8 @@ import {
   getStaffGlobalSummary,
 } from "../staffAttendanceSummary";
 
-import { staffAttendancePdfTemplate } from "./staffAttendancePdfTemplate";
 import { buildAttendancePdf } from "./buildAttendancePdf";
+import { buildMobileDetailReport } from "./enterpriseAttendanceReport";
 
 export type ExportStaffPdfOptions = {
   staffId: string;
@@ -64,18 +64,11 @@ export async function exportStaffAttendancePdf(
   /* ---------------------------------------------
      Build HTML
   ---------------------------------------------- */
-  const html = staffAttendancePdfTemplate({
-    title: title ?? "Staff Attendance Report",
-    staffName,
-    fromIso,
-    toIso,
-    summary: {
-      presentCount: summary?.presentCount ?? 0,
-      absentCount: summary?.absentCount ?? 0,
-      lateCount: summary?.lateCount ?? 0,
-      percentagePresent: summary?.percentagePresent ?? 0,
-    },
-    records,
+  const html = await buildMobileDetailReport({
+    title: title ?? "Staff Attendance Report", subjectLabel: "Staff", fromIso, toIso,
+    periodLabel: `${staffName} · ${fromIso} to ${toIso}`,
+    rows: [{ staffName, ...(summary || {}) }],
+    detailRows: records.map((record: any) => ({ date: record.date, status: record.status, checkInTime: record.checkInTime, checkOutTime: record.checkOutTime, movementEntry: [record.lateReason, record.earlyCheckoutReason].filter(Boolean).join(" / ") || null })),
   });
 
   /* ---------------------------------------------

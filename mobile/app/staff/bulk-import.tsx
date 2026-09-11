@@ -20,6 +20,7 @@ import {
 import { listStaff } from "../../src/services/staff";
 import { getUserByEmail, upsertUser } from "../../src/services/users";
 import { parseCsvRows, pickCsvValue } from "../../src/utils/csvImport";
+import { listStaffGroups, type StaffGroup } from "../../src/services/staffGroups";
 
 const SAMPLE = `name,email,role,staffId
 Ama Teacher,ama@example.com,teacher,TCH-0008
@@ -32,6 +33,7 @@ type StaffImportRow = {
   email: string;
   roleType: StaffRoleType;
   staffId?: string;
+  groupName?: string;
 };
 
 function normalizeRole(role?: string): StaffRoleType {
@@ -46,6 +48,7 @@ function getRows(csvText: string): StaffImportRow[] {
       email: pickCsvValue(row, ["email", "emailAddress"]).toLowerCase(),
       roleType: normalizeRole(pickCsvValue(row, ["role", "roleType", "staffRole"])),
       staffId: pickCsvValue(row, ["staffId", "staffCode", "id"]) || undefined,
+      groupName: pickCsvValue(row, ["group", "department", "staffGroup"]) || undefined,
     }))
     .filter((row) => row.name || row.email || row.staffId);
 }
@@ -56,6 +59,8 @@ export default function StaffBulkImport() {
   const [csvText, setCsvText] = useState(SAMPLE);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const [groups, setGroups] = useState<StaffGroup[]>([]);
+  React.useEffect(() => { listStaffGroups().then(setGroups).catch(console.error); }, []);
 
   const rows = useMemo(() => getRows(csvText), [csvText]);
   const validRows = rows.filter((row) => row.name.trim() && row.email.trim());
@@ -109,6 +114,7 @@ export default function StaffBulkImport() {
             staffId: staffId || undefined,
             role: row.roleType,
             roleType: row.roleType,
+            staffGroupId: row.groupName ? groups.find(g => g.name.toLowerCase() === row.groupName!.toLowerCase())?.id : undefined,
             userUid: linkedUser?.id,
           });
 

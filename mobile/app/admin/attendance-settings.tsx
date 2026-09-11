@@ -147,7 +147,7 @@ export default function AttendanceSettingsAdmin() {
   --------------------------- */
   return (
     <KeyboardAwareScreen>
-      <View className="flex-1 bg-slate-300 p-4">
+      <View className="flex-1 bg-slate-100 p-4">
         {/* Header */}
         <View className="flex-row items-center mb-2">
           <Pressable
@@ -166,7 +166,7 @@ export default function AttendanceSettingsAdmin() {
         </View>
 
         {/* Late time */}
-        <View className="bg-white rounded-2xl p-4 shadow mb-4">
+        <View className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm mb-4">
           <Text className="font-semibold text-lg mb-2">
             Late Check-In Time
           </Text>
@@ -191,7 +191,7 @@ export default function AttendanceSettingsAdmin() {
         </View>
 
         {/* Close time */}
-        <View className="bg-white rounded-2xl p-4 shadow mb-4">
+        <View className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm mb-4">
           <Text className="font-semibold text-lg mb-2">
             Attendance Close Time
           </Text>
@@ -216,7 +216,7 @@ export default function AttendanceSettingsAdmin() {
         </View>
 
         {/* Timezone */}
-        <View className="bg-white rounded-2xl p-4 shadow mb-6">
+        <View className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm mb-6">
           <Text className="font-semibold text-lg mb-2">
             Timezone
           </Text>
@@ -233,7 +233,7 @@ export default function AttendanceSettingsAdmin() {
 
 
 
-        <View className="bg-white rounded-2xl p-4 shadow mb-6 flex-row items-center justify-between">
+        <View className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm mb-6 flex-row items-center justify-between">
           <View className="flex-1 pr-4">
             <Text className="font-semibold text-lg mb-2">
               Staff Weekend Attendance

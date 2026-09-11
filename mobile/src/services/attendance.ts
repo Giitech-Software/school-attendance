@@ -24,6 +24,21 @@ import {
 import { getTenantScope, tenantConstraints, withTenantScope } from "./tenantScope";
 
 const attendanceCollection = collection(db, "attendance");
+const attendanceOperationLocks = new Map<string, Promise<unknown>>();
+
+async function withAttendanceOperationLock<T>(key: string, operation: () => Promise<T>): Promise<T> {
+  const previous = attendanceOperationLocks.get(key) ?? Promise.resolve();
+  let release!: () => void;
+  const current = new Promise<void>((resolve) => { release = resolve; });
+  const tail = previous.then(() => current);
+  attendanceOperationLocks.set(key, tail);
+  await previous;
+  try { return await operation(); }
+  finally {
+    release();
+    if (attendanceOperationLocks.get(key) === tail) attendanceOperationLocks.delete(key);
+  }
+}
 
 /** Utility: today's date (YYYY-MM-DD) */
 export function todayISO() {
@@ -178,7 +193,20 @@ export async function findAttendance(
 /**
  * Unified attendance registration
  */
-export async function registerAttendanceUnified({
+export async function registerAttendanceUnified(args: {
+  studentId: string;
+  classId: string;
+  classDocId?: string;
+  mode: "in" | "out";
+  biometric?: boolean;
+  method?: "qr" | "fingerprint" | "face" | "manual";
+  enforceClassAssignment?: boolean;
+  movementReason?: string | null;
+}): Promise<AttendanceRecord | void> {
+  return withAttendanceOperationLock(`${args.studentId}:${todayISO()}`, () => registerAttendanceUnifiedUnsafe(args));
+}
+
+async function registerAttendanceUnifiedUnsafe({
   studentId,
   classId,
   classDocId,

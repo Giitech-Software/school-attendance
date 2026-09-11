@@ -6,6 +6,7 @@ import { Platform } from "react-native";
 import { getAttendanceSummary } from "../attendanceSummary";
 import { listClasses } from "../classes";
 import { generateAttendanceRows, attendanceTableStyles } from "./generateAttendanceRows";
+import { buildMobileAggregateReport } from "./enterpriseAttendanceReport";
 
 /* ---------------------------------------------
    Daily Attendance PDF Export
@@ -70,7 +71,7 @@ export async function exportDailyAttendancePdf(opts: ExportDailyPdfOptions) {
   /* ---------------------------------------------
      HTML Template
   ---------------------------------------------- */
-  const html = `
+  const legacyHtml = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -108,6 +109,7 @@ export async function exportDailyAttendancePdf(opts: ExportDailyPdfOptions) {
   /* ---------------------------------------------
      Generate PDF & Share
   ---------------------------------------------- */
+  const html = await buildMobileAggregateReport({ title: "Daily Attendance Report", subjectLabel: "Student", fromIso, toIso, periodLabel: `${classLabel} · ${dateIso}`, rows: summaries });
   const result = await Print.printToFileAsync({ html });
 
   if (!result?.uri) {

@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { createStaff, listStaff, STAFF_ROLE_OPTIONS, type StaffRoleType } from "../services/staff";
 import { getUserByEmail, upsertUser } from "../services/users";
+import { listStaffGroups, type StaffGroup } from "../services/staffGroups";
 
 const SAMPLE = `name,email,role,staffId
 Ama Teacher,ama@example.com,teacher,TCH-0008
@@ -16,6 +17,7 @@ type StaffImportRow = {
   email: string;
   roleType: StaffRoleType;
   staffId?: string;
+  groupName?: string;
 };
 
 function parseCsvLine(line: string): string[] {
@@ -93,13 +95,16 @@ function getRows(csvText: string): StaffImportRow[] {
       name: pickCsvValue(row, ["name", "fullName", "staffName"]),
       email: pickCsvValue(row, ["email", "emailAddress"]).toLowerCase(),
       roleType: normalizeRole(pickCsvValue(row, ["role", "roleType", "staffRole"])),
-      staffId: pickCsvValue(row, ["staffId", "staffCode", "id"]) || undefined,
+    staffId: pickCsvValue(row, ["staffId", "staffCode", "id"]) || undefined,
+    groupName: pickCsvValue(row, ["group", "department", "staffGroup"]) || undefined,
     }))
     .filter((row) => row.name || row.email || row.staffId);
 }
 
 export default function StaffBulkImport() {
   const [csvText, setCsvText] = useState(SAMPLE);
+  const [groups, setGroups] = useState<StaffGroup[]>([]);
+  useEffect(() => { listStaffGroups().then(setGroups).catch(console.error); }, []);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
@@ -153,6 +158,7 @@ export default function StaffBulkImport() {
             staffId: staffId || undefined,
             role: row.roleType,
             roleType: row.roleType,
+            staffGroupId: row.groupName ? groups.find(g => g.name.toLowerCase() === row.groupName!.toLowerCase())?.id : undefined,
             userUid: linkedUser?.id,
           });
 

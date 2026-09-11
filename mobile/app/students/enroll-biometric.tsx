@@ -173,8 +173,8 @@ if (!indexList.includes(studentId)) {
   }
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16 }} className="flex-1 bg-slate-300">
-      <View className="bg-white rounded-2xl p-4 mb-4 shadow">
+    <ScrollView contentContainerStyle={{ padding: 16 }} className="flex-1 bg-slate-100">
+      <View className="bg-white rounded-2xl border border-slate-200 p-4 mb-4 shadow-sm">
         <View className="flex-row items-center mb-2">
   <Pressable
     onPress={() => router.back()}
@@ -199,7 +199,7 @@ if (!indexList.includes(studentId)) {
 
       </View>
 
-      <View className="bg-white rounded-2xl p-4 mb-4 shadow">
+      <View className="bg-white rounded-2xl border border-slate-200 p-4 mb-4 shadow-sm">
         <Text className="text-m text-neutral mb-3">
           This enrollment links the device to the student’s biometric mapping. It stores a private token on the student
           and a secure entry on this device. No raw biometric data is stored.

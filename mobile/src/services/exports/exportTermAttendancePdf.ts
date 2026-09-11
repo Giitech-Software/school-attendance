@@ -8,6 +8,7 @@ import { getTerm } from "../terms";
 import { listWeeks } from "../weeks";
 import { listClasses } from "../classes";
 import { generateAttendanceRows, attendanceTableStyles } from "./generateAttendanceRows";
+import { buildMobileAggregateReport } from "./enterpriseAttendanceReport";
 
 /* ---------------------------------------------
    Term Attendance PDF Export
@@ -41,6 +42,14 @@ export async function exportTermAttendancePdf(opts: ExportTermPdfOptions) {
 
   const title = "Term Attendance Report";
   const subtitle = `${term.name} (${term.startDate} → ${term.endDate})`;
+
+  const termSummaries = await getAttendanceSummary({ fromIso: term.startDate, toIso: term.endDate, classId: opts.classId, includeStudentName: true, scope: "termly" });
+  if (!termSummaries?.length) throw new Error("No attendance data available for this term");
+  const enterpriseHtml = await buildMobileAggregateReport({ title, subjectLabel: "Student", fromIso: term.startDate, toIso: term.endDate, periodLabel: `${classLabel} · ${term.name}`, rows: termSummaries });
+  const enterpriseResult = await Print.printToFileAsync({ html: enterpriseHtml });
+  if (!enterpriseResult?.uri) throw new Error("Failed to generate PDF file");
+  await Sharing.shareAsync(enterpriseResult.uri, { mimeType: "application/pdf", dialogTitle: "Export Term Attendance PDF", UTI: "com.adobe.pdf" });
+  return;
 
   // Load weeks for term
   const weeks = await listWeeks(term.id);

@@ -1,5 +1,6 @@
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
-import { auth, db } from "../firebase";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import app, { auth, db } from "../firebase";
 import { scopedSettingsDocId } from "./tenantScope";
 
 async function locationDoc() {
@@ -8,6 +9,7 @@ async function locationDoc() {
 const CAMPUS_SERVER_TIMEOUT_MS = 2500;
 const CURRENT_LOCATION_TIMEOUT_MS = 8000;
 const MAX_ACCURACY_BUFFER_METERS = 120;
+const MIN_REASONABLE_ACCURACY_METERS = 80;
 
 export type PresenceVerificationMode =
   | "gps"
@@ -306,20 +308,22 @@ export async function validateAttendancePresence(): Promise<LocationValidationRe
     settings.longitude
   );
   const accuracyBuffer = Math.min(
-    Math.max(current.accuracy ?? 0, 0),
+    Math.max(current.accuracy ?? MIN_REASONABLE_ACCURACY_METERS, 0),
     MAX_ACCURACY_BUFFER_METERS
   );
   const allowedDistance = settings.radiusMeters + accuracyBuffer;
 
-  if (distance > allowedDistance) {
+  // Reject only when the entire accuracy circle is outside the campus.
+  // A reading whose accuracy overlaps the boundary is treated as present;
+  // this avoids false rejections caused by indoor GPS drift.
+  const confidentlyOutside = distance - accuracyBuffer > settings.radiusMeters;
+  if (confidentlyOutside) {
     throw new Error(
-      `You are outside the school premises (${Math.round(
-        distance
-      )}m away; allowed ${settings.radiusMeters}m).`
+      `You appear to be outside the school premises (${Math.round(distance)}m away; GPS accuracy +/-${Math.round(accuracyBuffer)}m). Move to an open area and try again.`
     );
   }
 
-  return {
+  const localResult: LocationValidationResult = {
     verificationMethod: "gps",
     campusNetworkVerified: false,
     latitude: current.latitude,
@@ -330,6 +334,23 @@ export async function validateAttendancePresence(): Promise<LocationValidationRe
     radiusMeters: settings.radiusMeters,
     geofencingBypassed: false,
   };
+  return mergeServerPresenceVerification(localResult);
+}
+
+async function mergeServerPresenceVerification(localResult: LocationValidationResult) {
+  if (localResult.verificationMethod !== "gps") return localResult;
+  try {
+    const verify = httpsCallable(getFunctions(app), "verifyAttendancePresence");
+    const response = await verify({
+      latitude: localResult.latitude,
+      longitude: localResult.longitude,
+      accuracyMeters: localResult.accuracyMeters,
+    });
+    return { ...localResult, ...(response.data as Partial<LocationValidationResult>) };
+  } catch (error: any) {
+    if (error?.code === "functions/permission-denied" || error?.code === "functions/failed-precondition") throw error;
+    return localResult;
+  }
 }
 
 export async function pairCampusServer({

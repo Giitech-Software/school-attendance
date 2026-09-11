@@ -52,26 +52,29 @@ function LandingActionGroup({ title, description, actions }: { title: string; de
   return (
     <View className="mb-3 overflow-hidden rounded-xl border border-slate-200 bg-white">
       <View className="border-b border-slate-200 bg-slate-50 px-4 py-3">
-        <Text className="font-extrabold text-slate-900">{title}</Text>
-        <Text className="mt-0.5 text-sm text-slate-500">{description}</Text>
+        <Text className="text-xl font-extrabold leading-7 text-slate-900">{title}</Text>
+        <Text className="mt-1 text-[13px] leading-5 text-slate-700">{description}</Text>
       </View>
-      {actions.map((action, index) => (
+      <View className="bg-slate-100 p-3">
+      {actions.map((action) => (
         <Pressable
           key={action.title}
           onPress={action.onPress}
           android_ripple={{ color: "#DBEAFE" }}
-          className={`flex-row items-center px-4 py-3.5 ${index === actions.length - 1 ? "" : "border-b border-slate-200"}`}
+          style={{ borderLeftColor: action.iconColor }}
+          className="mb-2 flex-row items-center rounded-xl border border-slate-200 border-l-4 bg-white px-3 py-3 shadow-sm last:mb-0"
         >
-          <View className="h-11 w-11 items-center justify-center rounded-xl" style={{ backgroundColor: action.iconBackground }}>
+          <View className="h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: action.iconBackground }}>
             <MaterialIcons name={action.icon} size={22} color={action.iconColor} />
           </View>
           <View className="ml-3 flex-1" style={{ minWidth: 0 }}>
-            <Text className="font-bold text-slate-900">{action.title}</Text>
-            <Text className="mt-0.5 text-sm text-slate-500">{action.subtitle}</Text>
+            <Text className="text-[17px] font-extrabold leading-6 text-slate-900">{action.title}</Text>
+            <Text className="mt-1 text-[13px] font-medium leading-5 text-slate-700">{action.subtitle}</Text>
           </View>
-          <MaterialIcons name="chevron-right" size={22} color="#94A3B8" />
+          <MaterialIcons name="chevron-right" size={20} color="#94A3B8" />
         </Pressable>
       ))}
+      </View>
     </View>
   );
 }
@@ -415,7 +418,7 @@ useFocusEffect(
   <Text className="font-semibold text-dark mb-3 text-lg">
     Attendance group
   </Text>
-  <Text className="mb-3 text-sm text-slate-500">Choose whose attendance you are managing.</Text>
+  <Text className="mb-3 text-sm font-medium text-slate-700">Choose whose attendance you are managing.</Text>
 
   {/* Buttons */}
   <View className="flex-row space-x-3">
@@ -546,9 +549,6 @@ useFocusEffect(
 
         {/* Footer */}
         <View className="mt-6 items-center">
-          <Text className="text-xs text-neutral">
-            Developer: Solomon K. Aggrey
-          </Text>
           <Text className="text-xs text-neutral">
             ASTEM Attendance - Mobile app
           </Text>

@@ -15,8 +15,6 @@
     "**/*.ts",
     "**/*.tsx",
     "nativewind-env.d.ts",
-    "../shared/**/*.ts",
-    "../shared/**/*.tsx",
     "src/utils/logAdminAction.ts.bak",
     "app/index.tsx.bak",
     ".expo/types/**/*.ts",

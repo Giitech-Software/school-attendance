@@ -15,7 +15,7 @@ import {
 import { db } from "../firebase";
 import type { Student } from "../types";
 import { getClassById } from "./classes";
-import { belongsToTenant, getTenantScope, sortByCreatedAtDesc, tenantConstraints, withTenantScope } from "./tenantScope";
+import { belongsToTenant, getTenantScope, requireAdminTenantScope, sortByCreatedAtDesc, tenantConstraints, withTenantScope } from "./tenantScope";
 
 export type { Student };
 
@@ -58,7 +58,7 @@ async function nextStudentId() {
 
 export async function createStudent(data: Omit<Student, "id" | "createdAt">): Promise<Student> {
   try {
-    const scope = await getTenantScope();
+    const scope = await requireAdminTenantScope();
     const payload: any = withTenantScope({
       ...data,
       createdAt: serverTimestamp(),

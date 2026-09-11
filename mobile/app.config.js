@@ -75,8 +75,12 @@ export default ({ config }) => ({
   plugins: [
     "expo-web-browser",
     "expo-router",
+    "expo-font",
     "@react-native-community/datetimepicker",
     "expo-location",
+     "expo-image",
+      "expo-sharing",
+      "expo-status-bar",
 
     // ❌ REMOVE vision camera unless absolutely needed
     // (major APK size increase)

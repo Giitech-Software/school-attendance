@@ -143,7 +143,7 @@ function ActionRow({ item, onPress, isLast }: { item: ActionItem; onPress: () =>
       </View>
       <View className="ml-3 flex-1" style={{ minWidth: 0 }}>
         <Text className="font-bold text-slate-900">{item.label}</Text>
-        <Text className="mt-0.5 text-sm text-slate-500">{item.description}</Text>
+        <Text className="mt-0.5 text-sm text-slate-700">{item.description}</Text>
       </View>
       <MaterialIcons name="chevron-right" size={22} color="#94A3B8" />
     </Pressable>
@@ -309,7 +309,7 @@ export default function AdminIndex() {
             <View key={group.title} className="mb-3 overflow-hidden rounded-xl border border-slate-200 bg-white">
               <View className="border-b border-slate-200 bg-slate-50 px-4 py-3">
                 <Text className="font-extrabold text-slate-900">{group.title}</Text>
-                <Text className="mt-0.5 text-sm text-slate-500">{group.description}</Text>
+                <Text className="mt-0.5 text-sm text-slate-700">{group.description}</Text>
               </View>
               {items.map((item, index) => {
                 const displayItem = item.route === "/staff" && !allowsSchoolFeatures

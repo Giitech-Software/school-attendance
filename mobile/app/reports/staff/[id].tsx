@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   FlatList,
   Pressable,
+  Alert,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { doc, getDoc } from "firebase/firestore";
@@ -54,6 +55,7 @@ export default function StaffDetail() {
   const [summary, setSummary] = useState<any>(null);
   const [daily, setDaily] = useState<any[]>([]);
   const [staffName, setStaffName] = useState<string>("");
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   const [range, setRange] = useState<{
     fromIso: string;
@@ -147,6 +149,14 @@ export default function StaffDetail() {
     (safeSummary.presentCount ?? 0) +
     (safeSummary.lateCount ?? 0);
 
+  async function handleExportPdf() {
+    if (!range || !staffId || exportingPdf) return;
+    setExportingPdf(true);
+    try { await exportStaffAttendancePdf({ staffId, fromIso: range.fromIso, toIso: range.toIso, title: titleParam ?? "Staff Attendance Report" }); }
+    catch (err) { Alert.alert("Export failed", err instanceof Error ? err.message : "Unable to generate PDF."); }
+    finally { setExportingPdf(false); }
+  }
+
   /* ------------------------------------------------------------------ */
   /* UI */
   /* ------------------------------------------------------------------ */
@@ -177,20 +187,11 @@ export default function StaffDetail() {
 
       {/* ---------- EXPORT ---------- */}
       <Pressable
-        onPress={() =>
-          range &&
-          exportStaffAttendancePdf({
-            staffId,
-            fromIso: range.fromIso,
-            toIso: range.toIso,
-            title: titleParam ?? "Staff Attendance Report",
-          })
-        }
+        onPress={handleExportPdf}
+        disabled={exportingPdf}
         className="bg-indigo-600 py-2 px-3 rounded-lg mb-4"
       >
-        <Text className="text-white font-semibold text-center">
-          Export PDF
-        </Text>
+        {exportingPdf ? <View className="flex-row justify-center items-center"><ActivityIndicator color="#fff" /><Text className="text-white font-semibold ml-2">Generating PDF...</Text></View> : <Text className="text-white font-semibold text-center">Export PDF</Text>}
       </Pressable>
 
       {/* ---------- SUMMARY ---------- */}

@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { useRouter, Link } from "expo-router";
 import { signIn, signOutUser } from "@/src/services/auth";
-import { getUserById} from "@/src/services/users";
+import { getUserById, upsertUser } from "@/src/services/users";
 import { getFriendlyAuthErrorMessage } from "@/src/utils/friendlyError";
 
 export default function Login() {
@@ -36,8 +36,6 @@ export default function Login() {
     const cred = await signIn(email.trim(), password);
 
     if (!cred.user.emailVerified) {
-      await signOutUser();
-
       Alert.alert(
         "Email not verified",
         "Please verify your email before logging in.",
@@ -51,15 +49,25 @@ export default function Login() {
       return;
     }
 
-    const user = await getUserById(cred.user.uid);
-    if (!user) throw new Error("User profile not found");
+    let user = await getUserById(cred.user.uid);
+    if (!user) {
+      await upsertUser({
+        id: cred.user.uid,
+        uid: cred.user.uid,
+        email: cred.user.email?.toLowerCase() ?? null,
+        displayName: cred.user.displayName ?? null,
+        role: "teacher",
+        approved: false,
+        canTakeStaffAttendance: false,
+        canTakeStudentAttendance: false,
+        wards: [],
+      });
+      user = await getUserById(cred.user.uid);
+    }
+    if (!user) throw new Error("User profile could not be created");
 
   // 🔐 Approval gate (role-aware)
-if (user.role !== "admin" && user.approved !== true) {
-  router.replace("/(auth)/pending-approval");
-  return;
-}
-if (user.role !== "admin" && user.approved !== true) {
+if (user.role !== "admin" && user.role !== "super_admin" && user.approved !== true) {
   await signOutUser();
   router.replace("/(auth)/pending-approval");
   return;

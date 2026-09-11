@@ -441,7 +441,7 @@ export default function CheckinScreen() {
         ) : null}
 
         <View className="bg-white -mx-4">
-          <Image source={require("../../assets/images/how-it-works.jpg")} style={{ width: "100%", height: 130 }} resizeMode="stretch" />
+          <Image source={require("../../assets/images/how-it-works.jpg")} style={{ width: "100%", height: 220 }} resizeMode="stretch" />
         </View>
 
         {actor === "student" ? (
@@ -454,7 +454,7 @@ export default function CheckinScreen() {
         ) : null}
 
         {actor === "student" ? (
-        <Pressable onPress={() => setShowBiometric(!showBiometric)} className="bg-white rounded-2xl p-5 shadow flex-row items-center mb-5 mt-2">
+        <Pressable onPress={() => setShowBiometric(!showBiometric)} className="bg-white rounded-2xl border border-blue-100 p-5 shadow-sm flex-row items-center mb-5 mt-2">
           <View className="p-4 bg-primary/10 rounded-xl mr-4">
             <MaterialCommunityIcons name="fingerprint" size={28} color="#2563EB" />
           </View>
@@ -469,7 +469,7 @@ export default function CheckinScreen() {
         ) : null}
 
         {actor === "staff" ? (
-          <View className="bg-white rounded-2xl p-5 shadow mb-5 mt-2">
+          <View className="bg-white rounded-2xl border border-emerald-100 p-5 shadow-sm mb-5 mt-2">
             <View className="flex-row items-center mb-3">
               <View className="p-4 bg-emerald-100 rounded-xl mr-4">
                 <MaterialIcons name="badge" size={28} color="#047857" />
@@ -517,7 +517,7 @@ export default function CheckinScreen() {
           </View>
         ) : null}
 
-        <Pressable onPress={() => goToQR("in")} className="bg-white rounded-2xl p-5 shadow flex-row items-center mb-5">
+        <Pressable onPress={() => goToQR("in")} className="bg-white rounded-2xl border border-blue-100 p-5 shadow-sm flex-row items-center mb-5">
           <View className="p-4 bg-primary/10 rounded-xl mr-4">
             <MaterialIcons name="qr-code-scanner" size={28} color="#1E3A8A" />
           </View>
@@ -528,7 +528,7 @@ export default function CheckinScreen() {
           <MaterialIcons name="arrow-forward-ios" size={16} color="#64748B" />
         </Pressable>
 
-        <Pressable onPress={() => goToQR("out")} className="bg-white rounded-2xl p-5 shadow flex-row items-center mb-5">
+        <Pressable onPress={() => goToQR("out")} className="bg-white rounded-2xl border border-sky-100 p-5 shadow-sm flex-row items-center mb-5">
           <View className="p-4 bg-accent1/10 rounded-xl mr-4">
             <MaterialIcons name="qr-code-scanner" size={28} color="#0EA5E9" />
           </View>
@@ -549,7 +549,7 @@ export default function CheckinScreen() {
                   params: { mode: "in" },
                 })
               }
-              className="bg-white rounded-2xl p-5 shadow flex-row items-center mb-5"
+              className="bg-white rounded-2xl border border-indigo-100 p-5 shadow-sm flex-row items-center mb-5"
             >
               <View className="p-4 bg-indigo-100 rounded-xl mr-4">
                 <MaterialCommunityIcons name="face-man-profile" size={28} color="#4F46E5" />
@@ -572,7 +572,7 @@ export default function CheckinScreen() {
                   params: { mode: "out" },
                 })
               }
-              className="bg-white rounded-2xl p-5 shadow flex-row items-center mb-5"
+              className="bg-white rounded-2xl border border-violet-100 p-5 shadow-sm flex-row items-center mb-5"
             >
               <View className="p-4 bg-violet-100 rounded-xl mr-4">
                 <MaterialCommunityIcons name="face-recognition" size={28} color="#7C3AED" />
@@ -590,7 +590,7 @@ export default function CheckinScreen() {
           </>
         ) : null}
         {!showBiometric ? (
-          <View className="mt-4 bg-white rounded-2xl p-4 shadow">
+          <View className="mt-4 bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
             <Text className="font-semibold text-dark text-base mb-2">How it works</Text>
             <View className="flex-row items-center mb-2">
               <MaterialIcons name="check-circle" size={20} color="#10B981" /><Text className="ml-3 text-neutral">{actor === "staff" ? "Scan QR or use face recognition for check-in." : "Scan QR or fingerprint for check-in."}</Text>
@@ -607,7 +607,7 @@ export default function CheckinScreen() {
 
   if (authorizationLoading || !authorizationReady) {
     return (
-      <View className="flex-1 justify-center items-center bg-slate-300">
+      <View className="flex-1 justify-center items-center bg-slate-100">
         <ActivityIndicator size="large" color="#2563EB" />
         <Text className="mt-4 text-dark font-semibold">Checking access...</Text>
       </View>
@@ -615,7 +615,7 @@ export default function CheckinScreen() {
   }
 
   return (
-    <View className="flex-1 bg-slate-300">
+    <View className="flex-1 bg-slate-100">
       <View className="bg-[#0B1C33] px-6 pt-2 pb-4 border-b border-blue-900/40 shadow-md">
         <View className="flex-row items-center mb-2">
           <Pressable onPress={() => router.back()} className="p-1 mr-2" hitSlop={8}>

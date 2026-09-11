@@ -77,7 +77,7 @@ export default function StaffTermlyReport() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-slate-300 p-3">
+    <ScrollView className="flex-1 bg-slate-100 p-3">
       <View className="flex-row items-center mb-2">
         <Pressable onPress={() => router.back()} className="p-1 mr-2">
           <MaterialIcons name="arrow-back" size={24} color="#0f172a" />
@@ -188,7 +188,7 @@ export default function StaffTermlyReport() {
           >
             <Text className="font-semibold">
               {item.staffName}
-              {item.displayId ? ` (${item.displayId})` : ""}
+              {item.displayId && item.displayId !== item.staffId ? ` (${item.displayId})` : ""}
             </Text>
 
             <View className="flex-row justify-between mt-1.5">

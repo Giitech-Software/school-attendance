@@ -177,9 +177,6 @@ export default function AttendanceFace() {
         </div>
       </section>
 
-      {error ? <div className="status-error">{error}</div> : null}
-      {success ? <div className="status-success">{success}</div> : null}
-
       <section className="grid gap-3 lg:grid-cols-[1fr_20rem]">
         <div className="enterprise-panel p-4">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -221,6 +218,9 @@ export default function AttendanceFace() {
               </select>
             </label>
           ) : null}
+
+          {error ? <div role="alert" className="status-error mt-3 text-base shadow-sm">{error}</div> : null}
+          {success ? <div role="status" className="status-success mt-3 text-base shadow-sm">{success}</div> : null}
 
           <div className="mt-3">
             <FaceCameraCapture disabled={disabled} captureLabel={processing ? "Verifying..." : `Face ${mode === "in" ? "Check-in" : "Check-out"}`} onCapture={handleCapture} />

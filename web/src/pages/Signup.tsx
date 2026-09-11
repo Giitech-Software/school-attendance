@@ -76,7 +76,8 @@ export default function Signup() {
         }
       }
 
-      const credential = await signUp(email.trim(), password);
+      const normalizedEmail = email.trim().toLowerCase();
+      const credential = await signUp(normalizedEmail, password);
 
       try {
         await updateProfile(credential.user, { displayName: fullName.trim() || undefined });
@@ -88,7 +89,7 @@ export default function Signup() {
       await upsertUser({
         id: credential.user.uid,
         uid: credential.user.uid,
-        email: email.trim(),
+        email: normalizedEmail,
         role: safeRole,
         displayName: fullName.trim(),
         approved: false,

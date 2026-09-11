@@ -12,6 +12,7 @@ import {
 import { getCurrentTerm } from "../services/terms";
 import useCurrentUser from "../hooks/useCurrentUser";
 import { allowsStudentAndParentFeatures } from "../services/tenantScope";
+import { Html5Qrcode } from "html5-qrcode";
 
 type BypassDuration = "day" | "week" | "month" | "term" | "year";
 
@@ -230,6 +231,27 @@ export default function AdminSetupSchoolLocation() {
     }
   }
 
+  async function handlePairingQrFile(file?: File) {
+    if (!file) return;
+    setError(null);
+    const scanner = new Html5Qrcode("campus-pairing-qr-reader");
+    try {
+      const raw = await scanner.scanFile(file, true);
+      if (raw.length > 4096) throw new Error("Pairing QR payload is too large.");
+      const value = JSON.parse(raw);
+      if (value?.v !== 1 || value?.type !== "astem-campus-pairing") throw new Error("This is not an ASTEM campus pairing QR code.");
+      if (typeof value.baseUrl !== "string" || !/^https?:\/\//i.test(value.baseUrl)) throw new Error("The pairing QR has an invalid server URL.");
+      setCampusBaseUrl(value.baseUrl);
+      if (typeof value.tokenEndpoint === "string") setCampusTokenEndpoint(value.tokenEndpoint);
+      if (typeof value.pairEndpoint === "string") setCampusPairEndpoint(value.pairEndpoint);
+      if (typeof value.institutionId === "string") setCampusInstitutionId(value.institutionId);
+      if (typeof value.serverName === "string") setCampusServerName(value.serverName);
+      if (typeof value.setupCode === "string") setCampusSetupCode(value.setupCode);
+      setStatus("Pairing details loaded. Review them, then pair the server explicitly.");
+    } catch (err: any) { setError(err?.message ?? "Unable to read the pairing QR code."); }
+    finally { try { scanner.clear(); } catch {} }
+  }
+
   async function handleEnableEmergencyMode() {
     setError(null);
     setStatus(null);
@@ -374,7 +396,7 @@ export default function AdminSetupSchoolLocation() {
               </label>
               <label className="admin-field-card block">
                 <span className="auth-label">Setup code</span>
-                <input value={campusSetupCode} onChange={(event) => setCampusSetupCode(event.target.value)} className="enterprise-input mt-2" placeholder="One-time code" />
+                <input type="password" value={campusSetupCode} onChange={(event) => setCampusSetupCode(event.target.value)} className="enterprise-input mt-2" placeholder="One-time code" autoComplete="off" />
               </label>
               <label className="admin-field-card block md:col-span-2">
                 <span className="auth-label">Institution WiFi BSSID</span>
@@ -407,6 +429,11 @@ export default function AdminSetupSchoolLocation() {
             </div>
 
             <div className="flex flex-col gap-3 md:flex-row md:items-center">
+              <label className="enterprise-button-secondary cursor-pointer">
+                Scan pairing QR
+                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(event) => handlePairingQrFile(event.target.files?.[0])} />
+              </label>
+              <div id="campus-pairing-qr-reader" className="hidden" />
               <button type="button" onClick={handleSave} disabled={saving} className="enterprise-button-primary">
                 {saving ? "Saving..." : "Save settings"}
               </button>

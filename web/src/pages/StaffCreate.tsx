@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { createStaff, STAFF_ROLE_OPTIONS, type StaffRoleType } from "../services/staff";
 import { getUserByEmail, upsertUser } from "../services/users";
+import { listStaffGroups, type StaffGroup } from "../services/staffGroups";
 
 type StaffIdMode = "auto" | "manual";
 
@@ -13,6 +14,9 @@ export default function StaffCreate() {
   const [roleType, setRoleType] = useState<StaffRoleType>("teacher");
   const [staffIdMode, setStaffIdMode] = useState<StaffIdMode>("auto");
   const [saving, setSaving] = useState(false);
+  const [groups, setGroups] = useState<StaffGroup[]>([]);
+  const [staffGroupId, setStaffGroupId] = useState("");
+  useState(() => { listStaffGroups().then(setGroups).catch(console.error); });
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -40,6 +44,7 @@ export default function StaffCreate() {
         role: roleType,
         roleType,
         userUid: linkedUser?.id,
+        staffGroupId: staffGroupId || undefined,
       });
 
       if (linkedUser?.id) {
@@ -115,6 +120,8 @@ export default function StaffCreate() {
             </div>
           </div>
         </div>
+
+        <label className="mt-4 block max-w-md"><span className="auth-label">Staff group</span><select value={staffGroupId} onChange={e => setStaffGroupId(e.target.value)} className="enterprise-input mt-1.5"><option value="">Unassigned</option>{groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}</select></label>
 
         {staffIdMode === "manual" ? (
           <label className="mt-4 block max-w-md">

@@ -124,7 +124,7 @@ export default function TermsList() {
         refreshing={refreshing}
         onRefresh={onRefresh}
         renderItem={({ item }) => (
-          <View className="bg-white rounded-2xl p-4 mb-3 shadow flex-row justify-between items-center">
+          <View className="bg-white rounded-2xl border border-slate-200 p-4 mb-3 shadow-sm flex-row justify-between items-center">
             <View>
               <Text className="font-semibold text-slate-800">
                 {item.name}

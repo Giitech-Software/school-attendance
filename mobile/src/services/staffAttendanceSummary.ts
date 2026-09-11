@@ -3,6 +3,7 @@ import { query, where, getDocs, collection, doc, getDoc, orderBy } from "firebas
 import { db } from "../../app/firebase";
 import { getTenantScope, tenantConstraints } from "./tenantScope";
 import type { AttendanceRecord } from "./types";
+import { getAttendanceSettings } from "./attendanceSettings";
 
 const attendanceCollection = collection(db, "attendance");
 const staffCollection = collection(db, "staff");
@@ -15,7 +16,7 @@ function toIsoDate(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
-function getSchoolDaysInRange(fromIso: string, toIso: string): string[] {
+function getStaffAttendanceDaysInRange(fromIso: string, toIso: string, includeWeekends: boolean): string[] {
   const start = new Date(`${normalizeIsoDate(fromIso)}T12:00:00`);
   const end = new Date(`${normalizeIsoDate(toIso)}T12:00:00`);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) return [];
@@ -24,7 +25,7 @@ function getSchoolDaysInRange(fromIso: string, toIso: string): string[] {
   const cursor = new Date(start);
   while (cursor <= end) {
     const dow = cursor.getDay();
-    if (dow >= 1 && dow <= 5) days.push(toIsoDate(cursor));
+    if (includeWeekends || (dow >= 1 && dow <= 5)) days.push(toIsoDate(cursor));
     cursor.setDate(cursor.getDate() + 1);
   }
   return days;
@@ -62,7 +63,8 @@ function summarizeStaffRecords(records: AttendanceRecord[], expectedDates: strin
   const totalDays = expectedDates.length;
   const score = present + late * 0.5;
   const percentagePresent = totalDays === 0 ? 0 : Number(((score / totalDays) * 100).toFixed(2));
-  return { present, late, absent, attendedSessions, totalDays, percentagePresent };
+  const earlyDepartureCount = records.filter((record: any) => Boolean(record.earlyCheckoutReason || record.earlyDeparture)).length;
+  return { present, late, absent, attendedSessions, totalDays, percentagePresent, earlyDepartureCount };
 }
 
 export type StaffAttendanceSummary = {
@@ -70,6 +72,7 @@ export type StaffAttendanceSummary = {
 
   staffName: string;
   displayId?: string;
+  staffGroupId?: string;
 
   presentCount: number;
   lateCount: number;
@@ -78,6 +81,7 @@ export type StaffAttendanceSummary = {
   attendedSessions: number;
   totalDays: number;
   percentagePresent: number;
+  earlyDepartureCount: number;
 };
 
 
@@ -103,7 +107,8 @@ export async function getStaffAttendanceInRange(
 export async function getStaffGlobalSummary(fromIso: string, toIso: string) {
   const staffSnap = await getDocs(query(staffCollection, ...tenantConstraints(await getTenantScope())));
   const allStaff = staffSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter((staff: any) => staff.isActive !== false);
-  const expectedDates = getSchoolDaysInRange(fromIso, toIso);
+  const attendanceSettings = await getAttendanceSettings();
+  const expectedDates = getStaffAttendanceDaysInRange(fromIso, toIso, attendanceSettings.allowStaffWeekendAttendance);
 
   const summaries = await Promise.all(allStaff.map(async (s: any) => {
     const records = await getStaffAttendanceInRange(s.id, fromIso, toIso);
@@ -114,18 +119,21 @@ export async function getStaffGlobalSummary(fromIso: string, toIso: string) {
       attendedSessions,
       totalDays,
       percentagePresent,
+      earlyDepartureCount,
     } = summarizeStaffRecords(records, expectedDates);
 
     return {
       staffId: s.id,
       staffName: s.name || "Unknown Staff",
-      displayId: s.staffId || s.id,
+      displayId: s.staffId || s.staffCode || s.employeeId || undefined,
+      staffGroupId: s.staffGroupId,
       presentCount: present,
       lateCount: late,
       absentCount: absent,
       attendedSessions,
       totalDays,
       percentagePresent,
+      earlyDepartureCount,
     };
   }));
 

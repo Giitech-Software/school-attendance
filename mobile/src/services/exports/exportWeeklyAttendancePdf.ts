@@ -6,6 +6,7 @@ import { Platform } from "react-native";
 import { getAttendanceSummary } from "../attendanceSummary";
 import { listClasses } from "../classes";
 import { generateAttendanceRows, attendanceTableStyles } from "./generateAttendanceRows";
+import { buildMobileAggregateReport } from "./enterpriseAttendanceReport";
 
 /* ---------------------------------------------
    Weekly Attendance PDF Export
@@ -69,7 +70,7 @@ export async function exportWeeklyAttendancePdf(opts: ExportWeeklyPdfOptions) {
   /* ---------------------------------------------
      HTML Template
   ---------------------------------------------- */
-  const html = `
+  const legacyHtml = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -128,6 +129,7 @@ export async function exportWeeklyAttendancePdf(opts: ExportWeeklyPdfOptions) {
   /* ---------------------------------------------
      Generate PDF
   ---------------------------------------------- */
+  const html = await buildMobileAggregateReport({ title, subjectLabel: "Student", fromIso, toIso, periodLabel: `${classLabel} · ${label}`, rows: summaries });
   const result = await Print.printToFileAsync({ html });
   if (!result?.uri) {
     throw new Error("Failed to generate PDF file");

@@ -167,6 +167,18 @@ const q = query(
   }
 }
 
+export async function getAllStudentAttendanceInRange(fromIso: string, toIso: string): Promise<AttendanceRecord[]> {
+  const snap = await getDocs(query(
+    attendanceCollection,
+    where("date", ">=", normalizeIsoDate(fromIso)),
+    where("date", "<=", normalizeIsoDate(toIso)),
+    ...tenantConstraints(await getTenantScope())
+  ));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...(d.data() as any) } as AttendanceRecord))
+    .filter((record) => (record as any).subjectType !== "staff" && Boolean(record.studentId || (record as any).subjectId));
+}
+
 /* -------------------------------------------------------------------------- */
 /* COMPUTE SUMMARY FOR A SINGLE STUDENT */
 /* -------------------------------------------------------------------------- */

@@ -4,6 +4,7 @@ import { Platform } from "react-native";
 
 import { getStaffGlobalSummary } from "../staffAttendanceSummary";
 import { attendanceTableStyles } from "./generateAttendanceRows";
+import { buildMobileAggregateReport } from "./enterpriseAttendanceReport";
 
 export type ExportWeeklyStaffPdfOptions = {
   fromIso: string;
@@ -73,7 +74,7 @@ export async function exportWeeklyStaffAttendance(
 
   const rowsHtml = generateStaffRows(summaries);
 
-  const html = `
+  const legacyHtml = `
   <html>
   <head>
     <meta charset="utf-8" />
@@ -108,6 +109,7 @@ export async function exportWeeklyStaffAttendance(
   </html>
   `;
 
+  const html = await buildMobileAggregateReport({ title: "Weekly Staff Attendance Report", subjectLabel: "Staff", fromIso: opts.fromIso, toIso: opts.toIso, periodLabel: opts.label, rows: summaries });
   const result = await Print.printToFileAsync({ html });
 
   await Sharing.shareAsync(result.uri, {

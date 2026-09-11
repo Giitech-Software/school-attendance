@@ -1,6 +1,6 @@
 //mobile/app/reports/student/[id].tsx
 import React, { useEffect, useState } from "react";
-import { View, Text, ActivityIndicator, FlatList } from "react-native";
+import { View, Text, ActivityIndicator, FlatList, Alert } from "react-native";
 import {
   getAttendanceSummary,
   getAttendanceForStudentInRange,
@@ -51,6 +51,16 @@ const router = useRouter();
   const [summary, setSummary] = useState<any>(null);
   const [daily, setDaily] = useState<any[]>([]);
   const [studentName, setStudentName] = useState<string>("");
+  const [exportingPdf, setExportingPdf] = useState(false);
+
+  async function handleExportPdf() {
+    if (!studentId || exportingPdf) return;
+    setExportingPdf(true);
+    try {
+      await exportStudentAttendancePdf({ studentId, fromIso: fromIsoParam ?? summary.__fromIso, toIso: toIsoParam ?? summary.__toIso, title: titleParam ?? "Student Attendance Report" });
+    } catch (err) { Alert.alert("Export failed", err instanceof Error ? err.message : "Unable to generate PDF."); }
+    finally { setExportingPdf(false); }
+  }
 
   useEffect(() => {
     if (userLoading) return;
@@ -198,19 +208,11 @@ const attendedCount =
         {studentName}
       </Text>
 <Pressable
-  onPress={() =>
-    exportStudentAttendancePdf({
-      studentId,
-      fromIso: fromIsoParam ?? summary.__fromIso,
-      toIso: toIsoParam ?? summary.__toIso,
-      title: titleParam ?? "Student Attendance Report",
-    })
-  }
+  onPress={handleExportPdf}
+  disabled={exportingPdf}
   className="bg-indigo-600 py-2 px-3 rounded-lg mb-4"
 >
-  <Text className="text-white font-semibold text-center">
-    Export PDF
-  </Text>
+  {exportingPdf ? <View className="flex-row justify-center items-center"><ActivityIndicator color="#fff" /><Text className="text-white font-semibold ml-2">Generating PDF...</Text></View> : <Text className="text-white font-semibold text-center">Export PDF</Text>}
 </Pressable>
 
       {/* -------- SUMMARY -------- */}

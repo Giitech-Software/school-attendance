@@ -7,6 +7,7 @@ import { getStaffById, upsertStaff } from "../../src/services/staff";
 import type { Staff } from "../../src/services/types";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
+import { listStaffGroups, type StaffGroup } from "../../src/services/staffGroups";
 
 export default function StaffDetail() {
   const { id } = useLocalSearchParams();
@@ -15,6 +16,8 @@ export default function StaffDetail() {
   const [staff, setStaff] = useState<Staff | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [groups, setGroups] = useState<StaffGroup[]>([]);
+  useEffect(() => { listStaffGroups().then(setGroups).catch(console.error); }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -65,7 +68,7 @@ export default function StaffDetail() {
 
   return (
     <KeyboardAwareScreen>
-      <View className="flex-1 bg-slate-300 p-4">
+      <View className="flex-1 bg-slate-100 p-4">
         <View className="flex-row items-center mb-4">
           <Pressable onPress={() => router.back()} className="p-1 mr-2" hitSlop={8}>
             <MaterialIcons name="arrow-back" size={26} color="#0f172a" />
@@ -100,6 +103,9 @@ export default function StaffDetail() {
           onChangeText={(t) => setStaff({ ...staff, role: t })}
           className="border p-3 rounded-xl mb-4 bg-white"
         />
+
+        <Text className="text-sm text-neutral">Staff group</Text>
+        <View className="flex-row flex-wrap gap-2 mb-4"><Pressable onPress={() => setStaff({ ...staff, staffGroupId: undefined })} className={`px-3 py-2 rounded-xl ${!staff.staffGroupId ? "bg-primary" : "bg-white border"}`}><Text className={!staff.staffGroupId ? "text-white" : "text-dark"}>Unassigned</Text></Pressable>{groups.map(g => <Pressable key={g.id} onPress={() => setStaff({ ...staff, staffGroupId: g.id })} className={`px-3 py-2 rounded-xl ${staff.staffGroupId === g.id ? "bg-primary" : "bg-white border"}`}><Text className={staff.staffGroupId === g.id ? "text-white" : "text-dark"}>{g.name}</Text></Pressable>)}</View>
 
         <Pressable
           onPress={handleSave}

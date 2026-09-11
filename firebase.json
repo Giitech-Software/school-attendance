@@ -1,5 +1,10 @@
 ﻿{
+  "firestore": {
+    "rules": "mobile/firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
   "hosting": {
+    "target": "astem-register",
     "public": "web/dist",
     "ignore": [
       "firebase.json",

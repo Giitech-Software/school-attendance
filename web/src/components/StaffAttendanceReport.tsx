@@ -4,6 +4,7 @@ import { getStaffGlobalSummary, type StaffAttendanceSummary } from "../services/
 import { exportReportCsv, openReportPdf } from "../services/reportExport";
 import AttendanceTotalsCards from "./AttendanceTotalsCards";
 import { autoMarkAbsentStaff } from "../services/autoMarkAbsent";
+import { listStaffGroups, type StaffGroup } from "../services/staffGroups";
 
 interface StaffAttendanceReportProps {
   title: string;
@@ -23,6 +24,9 @@ export default function StaffAttendanceReport({ title, description, initialFrom,
   const [results, setResults] = useState<StaffAttendanceSummary[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [groups, setGroups] = useState<StaffGroup[]>([]);
+  const [groupFilter, setGroupFilter] = useState("");
+  useEffect(() => { listStaffGroups().then(setGroups).catch(console.error); }, []);
 
   useEffect(() => {
     setFrom(initialFrom);
@@ -55,6 +59,7 @@ export default function StaffAttendanceReport({ title, description, initialFrom,
 
   const exportSubtitle = rangeLabel(from, to);
   const exportFilename = `${title}-${from}-${to}`.replace(/\s+/g, "-");
+  const visibleResults = results?.filter(row => !groupFilter || row.staffGroupId === groupFilter) ?? null;
 
   return (
     <div className="space-y-3">
@@ -78,6 +83,7 @@ export default function StaffAttendanceReport({ title, description, initialFrom,
           <button type="button" onClick={onGenerate} disabled={loading} className="enterprise-button-primary">
             {loading ? "Generating..." : "Generate report"}
           </button>
+          <label className="block"><span className="auth-label">Staff group</span><select value={groupFilter} onChange={e => setGroupFilter(e.target.value)} className="enterprise-input mt-1.5"><option value="">All groups</option>{groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}</select></label>
         </div>
       </section>
 
@@ -85,24 +91,25 @@ export default function StaffAttendanceReport({ title, description, initialFrom,
 
       <section className="enterprise-panel p-3">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-base font-extrabold text-slate-950">Staff ({results?.length ?? 0})</h2>
+          <h2 className="text-base font-extrabold text-slate-950">Staff ({visibleResults?.length ?? 0})</h2>
           <div className="text-sm text-slate-600">P = Present, L = Late, T = Attended, A = Absent</div>
         </div>
 
-        {results && results.length > 0 ? (
+        {visibleResults && visibleResults.length > 0 ? (
           <>
             <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-              <button type="button" onClick={() => openReportPdf({ title, subtitle: exportSubtitle, filename: exportFilename, subjectLabel: "Staff", rows: results })} className="enterprise-button-secondary">
+              <button type="button" onClick={() => openReportPdf({ title, subtitle: exportSubtitle, filename: exportFilename, subjectLabel: "Staff", rows: visibleResults })} className="enterprise-button-secondary">
                 Print / PDF
               </button>
-              <button type="button" onClick={() => exportReportCsv({ title, subtitle: exportSubtitle, filename: exportFilename, subjectLabel: "Staff", rows: results })} className="enterprise-button-secondary">
+              <button type="button" onClick={() => exportReportCsv({ title, subtitle: exportSubtitle, filename: exportFilename, subjectLabel: "Staff", rows: visibleResults })} className="enterprise-button-secondary">
                 Export CSV
               </button>
             </div>
-            <AttendanceTotalsCards rows={results} subjectLabel="Staff" groupLabel="All staff" />
+            <AttendanceTotalsCards rows={visibleResults} subjectLabel="Staff" groupLabel="Selected staff group" />
+            <div className="mt-3 rounded-lg border border-sky-100 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-800">Early departures: {visibleResults.reduce((total, row) => total + (row.earlyDepartureCount ?? 0), 0)}</div>
 
             <div className="mt-3 grid gap-3 md:hidden">
-              {results.map((row) => (
+              {visibleResults.map((row) => (
                 <div key={row.staffId} className="report-mobile-row">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -117,7 +124,7 @@ export default function StaffAttendanceReport({ title, description, initialFrom,
                       Open
                     </button>
                   </div>
-                  <div className="mt-3 grid grid-cols-5 gap-2 text-center">
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-center md:grid-cols-3 xl:grid-cols-5">
                     <span className="report-stat-pill bg-emerald-50 text-emerald-700">P {row.presentCount}</span>
                     <span className="report-stat-pill bg-amber-50 text-amber-700">L {row.lateCount}</span>
                     <span className="report-stat-pill bg-sky-50 text-sky-700">T {row.attendedSessions}</span>
@@ -143,7 +150,7 @@ export default function StaffAttendanceReport({ title, description, initialFrom,
                   </tr>
                 </thead>
                 <tbody>
-                  {results.map((row) => (
+                  {visibleResults.map((row) => (
                     <tr key={row.staffId}>
                       <td className="font-semibold text-slate-900">{row.staffName || "Staff"}</td>
                       <td className="text-slate-600">{row.displayId || row.staffId}</td>

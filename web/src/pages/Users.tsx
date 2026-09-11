@@ -84,16 +84,16 @@ export default function Users() {
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
           ["Total", counts.total],
           ["Approved", counts.approved],
           ["Pending", counts.pending],
           ["Admins", counts.admins],
         ].map(([label, value]) => (
-          <div key={label} className="enterprise-panel p-3">
+          <div key={label} className="enterprise-panel min-h-28 border-l-4 border-l-indigo-500 p-4">
             <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-950">{value}</p>
+            <p className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950">{value}</p>
           </div>
         ))}
       </section>

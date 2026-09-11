@@ -13,6 +13,7 @@ import { getUserByEmail, upsertUser } from "../../src/services/users";
 import { MaterialIcons } from "@expo/vector-icons";
 import AppInput from "@/components/AppInput";
 import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
+import { listStaffGroups, type StaffGroup } from "../../src/services/staffGroups";
 
 type StaffIdMode = "auto" | "manual";
 
@@ -26,6 +27,9 @@ export default function StaffCreate() {
   const [roleType, setRoleType] = useState<StaffRoleType>("teacher");
   const [staffIdMode, setStaffIdMode] = useState<StaffIdMode>("auto");
   const [loading, setLoading] = useState(false);
+  const [groups, setGroups] = useState<StaffGroup[]>([]);
+  const [staffGroupId, setStaffGroupId] = useState("");
+  React.useEffect(() => { listStaffGroups().then(setGroups).catch(console.error); }, []);
 
   async function handleCreate() {
     if (!name.trim() || !email.trim()) {
@@ -53,6 +57,7 @@ export default function StaffCreate() {
         role: roleType,
         roleType,
         userUid: linkedUser?.id,
+        staffGroupId: staffGroupId || undefined,
       });
 
       if (linkedUser?.id) {
@@ -88,7 +93,7 @@ export default function StaffCreate() {
 
   return (
     <KeyboardAwareScreen>
-      <View className="flex-1 bg-slate-300 p-4">
+      <View className="flex-1 bg-slate-100 p-4">
 
         {/* Header */}
         <View className="flex-row items-center mb-4">
@@ -146,6 +151,10 @@ export default function StaffCreate() {
             </Pressable>
           ))}
         </View>
+
+        {/* Staff ID */}
+        <Text className="text-sm text-neutral mb-1">Staff group</Text>
+        <View className="flex-row flex-wrap gap-2 mb-4"><Pressable onPress={() => setStaffGroupId("")} className={`px-3 py-2 rounded-xl ${!staffGroupId ? "bg-primary" : "bg-white border"}`}><Text className={!staffGroupId ? "text-white" : "text-dark"}>Unassigned</Text></Pressable>{groups.map(g => <Pressable key={g.id} onPress={() => setStaffGroupId(g.id!)} className={`px-3 py-2 rounded-xl ${staffGroupId === g.id ? "bg-primary" : "bg-white border"}`}><Text className={staffGroupId === g.id ? "text-white" : "text-dark"}>{g.name}</Text></Pressable>)}</View>
 
         {/* Staff ID */}
         <Text className="text-sm text-neutral mb-1">Staff ID</Text>

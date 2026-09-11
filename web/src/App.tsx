@@ -54,6 +54,7 @@ import AdminActivityLogs from "./pages/AdminActivityLogs";
 import AdminPromoteStudents from "./pages/AdminPromoteStudents";
 import AdminSetupSchoolLocation from "./pages/AdminSetupSchoolLocation";
 import AdminUserManual from "./pages/AdminUserManual";
+import StaffGroups from "./pages/StaffGroups";
 import SuperAdminTenants from "./pages/SuperAdminTenants";
 import NotFound from "./pages/NotFound";
 import useCurrentUser from "./hooks/useCurrentUser";
@@ -105,8 +106,8 @@ export default function App() {
 
           <Route path="students" element={<SchoolOnlyPage><Outlet /></SchoolOnlyPage>}>
             <Route index element={<Students />} />
-            <Route path="create" element={<StudentsCreate />} />
-            <Route path="bulk-import" element={<StudentsBulkImport />} />
+            <Route path="create" element={<AdminOnlyPage><StudentsCreate /></AdminOnlyPage>} />
+            <Route path="bulk-import" element={<AdminOnlyPage><StudentsBulkImport /></AdminOnlyPage>} />
             <Route path="qr-generator" element={<StudentQrGenerator />} />
             <Route path="register-face" element={<RegisterFaceStudent />} />
             <Route path="enroll-biometric" element={<EnrollBiometricStudent />} />
@@ -116,8 +117,9 @@ export default function App() {
 
           <Route path="staff">
             <Route index element={<Staff />} />
-            <Route path="create" element={<StaffCreate />} />
-            <Route path="bulk-import" element={<StaffBulkImport />} />
+            <Route path="create" element={<AdminOnlyPage><StaffCreate /></AdminOnlyPage>} />
+            <Route path="bulk-import" element={<AdminOnlyPage><StaffBulkImport /></AdminOnlyPage>} />
+            <Route path="groups" element={<AdminOnlyPage><StaffGroups /></AdminOnlyPage>} />
             <Route path="my-attendance" element={<StaffMyAttendance />} />
             <Route path="my-report" element={<StaffMyReport />} />
             <Route path="register-face" element={<RegisterFaceStaff />} />

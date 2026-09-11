@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { getStaffById } from "../services/staff";
 import { getStaffGlobalSummary, type StaffAttendanceSummary } from "../services/staffAttendanceSummary";
+import { getStaffAttendanceRecords } from "../services/staffAttendance";
+import type { AttendanceRecord } from "../types";
 import { exportReportCsv, openReportPdf } from "../services/reportExport";
 
 function fallbackRange() {
@@ -20,8 +22,10 @@ export default function ReportsStaffDetail() {
   const [displayId, setDisplayId] = useState<string | null>(null);
   const [range, setRange] = useState<{ fromIso: string; toIso: string; title: string } | null>(null);
   const [summary, setSummary] = useState<StaffAttendanceSummary | null>(null);
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -39,7 +43,11 @@ export default function ReportsStaffDetail() {
         const fromIso = params.get("fromIso") ?? fallback.fromIso;
         const toIso = params.get("toIso") ?? fallback.toIso;
         const title = params.get("title") ?? "Staff report detail";
-        const [staff, allRows] = await Promise.all([getStaffById(id), getStaffGlobalSummary(fromIso, toIso)]);
+        const [staff, allRows, timeline] = await Promise.all([
+          getStaffById(id),
+          getStaffGlobalSummary(fromIso, toIso),
+          getStaffAttendanceRecords(id, fromIso, toIso),
+        ]);
         if (!active) return;
 
         const row = allRows.find((item) => item.staffId === id) ?? null;
@@ -47,6 +55,7 @@ export default function ReportsStaffDetail() {
         setDisplayId(staff?.staffId ?? row?.displayId ?? null);
         setRange({ fromIso, toIso, title });
         setSummary(row);
+        setRecords(timeline);
       } catch (err: any) {
         console.error("load staff detail", err);
         if (active) setError(err?.message ?? "Failed to load staff report.");
@@ -59,6 +68,16 @@ export default function ReportsStaffDetail() {
       active = false;
     };
   }, [id, params]);
+
+  async function handlePdf() {
+    if (!summary || !range) return;
+    setGeneratingPdf(true);
+    setError(null);
+    try {
+      await openReportPdf({ title: range.title, subtitle: `${staffName ?? "Staff member"}${displayId ? ` (${displayId})` : ""} - ${range.fromIso} to ${range.toIso}`, filename: `${range.title}-${staffName ?? id}`.replace(/\s+/g, "-"), subjectLabel: "Staff", rows: [{ ...summary, staffName: staffName ?? "Staff member", displayId: displayId ?? summary.displayId }], detailRecords: records });
+    } catch (err: any) { setError(err?.message ?? "Unable to generate PDF."); }
+    finally { setGeneratingPdf(false); }
+  }
 
   return (
     <div className="space-y-3">
@@ -79,8 +98,8 @@ export default function ReportsStaffDetail() {
           <div className="flex flex-wrap gap-2">
             {summary && range ? (
               <>
-                <button type="button" onClick={() => openReportPdf({ title: range.title, subtitle: `${staffName ?? "Staff member"}${displayId ? ` (${displayId})` : ""} - ${range.fromIso} to ${range.toIso}`, filename: `${range.title}-${staffName ?? id}`.replace(/\s+/g, "-"), subjectLabel: "Staff", rows: [{ ...summary, staffName: staffName ?? "Staff member", displayId: displayId ?? summary.displayId }] })} className="enterprise-button-secondary">
-                  Print / PDF
+                <button type="button" onClick={handlePdf} disabled={generatingPdf} className="enterprise-button-secondary">
+                  {generatingPdf ? "Generating PDF..." : "Print / PDF"}
                 </button>
                 <button type="button" onClick={() => exportReportCsv({ title: range.title, subtitle: `${staffName ?? "Staff member"}${displayId ? ` (${displayId})` : ""} - ${range.fromIso} to ${range.toIso}`, filename: `${range.title}-${staffName ?? id}`.replace(/\s+/g, "-"), subjectLabel: "Staff", rows: [{ ...summary, staffName: staffName ?? "Staff member", displayId: displayId ?? summary.displayId }] })} className="enterprise-button-secondary">
                   Export CSV
@@ -98,7 +117,7 @@ export default function ReportsStaffDetail() {
         ) : error ? (
           <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">{error}</div>
         ) : summary ? (
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
               <div className="text-sm text-slate-500">Present</div>
               <div className="mt-2 text-2xl font-semibold text-emerald-700">{summary.presentCount}</div>

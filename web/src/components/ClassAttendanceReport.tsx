@@ -36,7 +36,7 @@ function StudentMobileRow({ row, title, from, to }: { row: AttendanceSummary; ti
           Open
         </Link>
       </div>
-      <div className="mt-3 grid grid-cols-5 gap-2 text-center">
+      <div className="mt-3 grid grid-cols-2 gap-3 text-center md:grid-cols-3 xl:grid-cols-5">
         <span className="report-stat-pill bg-emerald-50 text-emerald-700">P {row.presentCount}</span>
         <span className="report-stat-pill bg-amber-50 text-amber-700">L {row.lateCount}</span>
         <span className="report-stat-pill bg-sky-50 text-sky-700">T {row.attendedSessions}</span>

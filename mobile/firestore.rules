@@ -145,7 +145,8 @@ service cloud.firestore {
     }
 
     function validAttendanceShape() {
-      return request.resource.data.date is string
+      return validAttendanceLocation()
+        && request.resource.data.date is string
         && request.resource.data.date.size() == 10
         && request.resource.data.type in ['in', 'out']
         && request.resource.data.method in ['qr', 'fingerprint', 'face', 'manual']
@@ -179,6 +180,25 @@ service cloud.firestore {
       return request.resource.data.keys().hasAny(['location'])
         && request.resource.data.location is map
         && request.resource.data.location.geofencingBypassed == true;
+    }
+
+    function validAttendanceLocation() {
+      return request.resource.data.keys().hasAll(['location'])
+        && request.resource.data.location is map
+        && request.resource.data.location.keys().hasAll([
+          'verificationMethod',
+          'geofencingBypassed',
+          'checkedAt'
+        ])
+        && request.resource.data.location.verificationMethod in [
+          'gps', 'campus_network', 'wifi_bssid', 'geofence_bypass'
+        ]
+        && request.resource.data.location.geofencingBypassed is bool
+        && request.resource.data.location.checkedAt is string
+        && (
+          request.resource.data.location.verificationMethod != 'geofence_bypass'
+          || request.resource.data.location.geofencingBypassed == true
+        );
     }
 
 
@@ -330,6 +350,13 @@ service cloud.firestore {
     }
 
     // -------------------- ATTENDANCE --------------------
+    match /staffGroups/{groupId} {
+      allow get, list: if isAdmin() && sameTenantResource();
+      allow create: if isAdmin() && sameTenantCreate() && request.resource.data.name is string;
+      allow update: if isAdmin() && sameTenantUpdate() && request.resource.data.name is string;
+      allow delete: if isAdmin() && sameTenantResource();
+    }
+
     match /attendance/{recId} {
       allow get: if ((isAdmin() || canTakeStaffAttendance()) && sameTenantResource())
         || (resource.data.subjectType == 'student' && isAssignedToClassDoc(resource.data.classDocId))

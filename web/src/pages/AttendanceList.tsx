@@ -5,6 +5,7 @@ import { listStaff } from "../services/staff";
 import { listStudents } from "../services/students";
 import type { AttendanceRecord, Student } from "../types";
 import type { Staff } from "../services/staff";
+import { listStaffGroups, type StaffGroup } from "../services/staffGroups";
 
 type SubjectFilter = "all" | "student" | "staff";
 type StatusFilter = "all" | "present" | "late" | "absent";
@@ -42,6 +43,9 @@ export default function AttendanceList() {
   const [date, setDate] = useState(todayISO());
   const [subjectFilter, setSubjectFilter] = useState<SubjectFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [staffGroupFilter, setStaffGroupFilter] = useState("");
+  const [staffGroups, setStaffGroups] = useState<StaffGroup[]>([]);
+  useEffect(() => { listStaffGroups().then(setStaffGroups).catch(console.error); }, []);
 
   useEffect(() => {
     let active = true;
@@ -123,9 +127,10 @@ export default function AttendanceList() {
     return records.filter((record) => {
       const type = subjectType(record);
       const status = record.status ?? "present";
-      return (subjectFilter === "all" || type === subjectFilter) && (statusFilter === "all" || status === statusFilter);
+      const person = type === "staff" ? staffMap.get(subjectKey(record)) : undefined;
+      return (subjectFilter === "all" || type === subjectFilter) && (statusFilter === "all" || status === statusFilter) && (!staffGroupFilter || (type === "staff" && person?.staffGroupId === staffGroupFilter));
     });
-  }, [records, statusFilter, subjectFilter]);
+  }, [records, statusFilter, subjectFilter, staffGroupFilter, staffMap]);
 
   const counts = useMemo(() => {
     return records.reduce(
@@ -165,6 +170,10 @@ export default function AttendanceList() {
     <div className="space-y-3">
       <section className="enterprise-panel overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-900 px-4 py-3 text-white lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="auth-label mb-1.5">Staff group</p><select value={staffGroupFilter} onChange={e => setStaffGroupFilter(e.target.value)} className="enterprise-input"><option value="">All groups</option>{staffGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}</select>
+          </div>
+
           <div>
             <h1 className="text-xl font-extrabold">Today's Attendance</h1>
             <p className="mt-1 text-xs text-white/70">Review student and staff attendance records for a selected date.</p>
@@ -213,7 +222,7 @@ export default function AttendanceList() {
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
         {[
           ["Total", counts.total],
           ["Students", counts.student],
@@ -222,9 +231,9 @@ export default function AttendanceList() {
           ["Late", counts.late],
           ["Absent", counts.absent],
         ].map(([label, value]) => (
-          <div key={label} className="enterprise-panel p-3">
+          <div key={label} className="enterprise-panel min-h-28 border-l-4 border-l-emerald-500 p-4">
             <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-950">{value}</p>
+            <p className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950">{value}</p>
           </div>
         ))}
       </section>

@@ -166,7 +166,7 @@ function getClassName(classDocId?: string) {
   }
 
   return (
-    <View className="flex-1 bg-slate-300 p-4">
+    <View className="flex-1 bg-slate-100 p-4">
       {/* HEADER */}
       <View className="flex-row items-center mb-2">
         <Pressable onPress={() => router.back()} className="p-1 mr-2" hitSlop={8}>
@@ -203,7 +203,7 @@ function getClassName(classDocId?: string) {
             item.classDocId && item.classDocId !== id;
 
           return (
-            <View className="bg-white rounded-2xl p-4 mb-3">
+            <View className="bg-white rounded-2xl border border-slate-200 p-4 mb-3 shadow-sm">
               <View className="flex-row items-center justify-between">
                 <View>
                 <Text className="font-semibold text-dark">

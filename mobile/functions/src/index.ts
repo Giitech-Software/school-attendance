@@ -2,12 +2,7 @@
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
-import {
-  RekognitionClient,
-  IndexFacesCommand,
-  SearchFacesByImageCommand,
-  DeleteFacesCommand,
-} from "@aws-sdk/client-rekognition";
+export { verifyAttendancePresence } from "./handlers/verifyAttendancePresence";
 
 admin.initializeApp();
 
@@ -66,6 +61,7 @@ async (req, res): Promise<void> => {
     const normalizedBase64 = normalizeBase64Image(base64Image);
     const aws = getAwsConfig();
 
+    const { RekognitionClient, SearchFacesByImageCommand, IndexFacesCommand } = await import("@aws-sdk/client-rekognition");
     const rekognition = new RekognitionClient({
       region: aws.region,
       credentials: aws.credentials,
@@ -157,6 +153,7 @@ export const searchStaffFace = onRequest(
       const normalizedBase64 = normalizeBase64Image(base64Image);
       const aws = getAwsConfig();
 
+      const { RekognitionClient, SearchFacesByImageCommand } = await import("@aws-sdk/client-rekognition");
       const rekognition = new RekognitionClient({
         region: aws.region,
         credentials: aws.credentials,
@@ -234,6 +231,7 @@ export const deleteStaffFace = onRequest(
         return;
       }
 
+      const { RekognitionClient, DeleteFacesCommand } = await import("@aws-sdk/client-rekognition");
       const rekognition = new RekognitionClient({
         region: aws.region,
         credentials: aws.credentials,
@@ -281,6 +279,7 @@ export const indexStudentFace = onRequest(
       const normalizedBase64 = normalizeBase64Image(base64Image);
       const aws = getAwsConfig();
 
+      const { RekognitionClient, SearchFacesByImageCommand, IndexFacesCommand } = await import("@aws-sdk/client-rekognition");
       const rekognition = new RekognitionClient({
         region: aws.region,
         credentials: aws.credentials,
@@ -364,6 +363,7 @@ export const searchStudentFace = onRequest(
       const normalizedBase64 = normalizeBase64Image(base64Image);
       const aws = getAwsConfig();
 
+      const { RekognitionClient, SearchFacesByImageCommand } = await import("@aws-sdk/client-rekognition");
       const rekognition = new RekognitionClient({
         region: aws.region,
         credentials: aws.credentials,

@@ -94,6 +94,7 @@ export default function Staff() {
             <Link to="/staff/bulk-import" className="rounded-lg bg-slate-700 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-600">
               Import
             </Link>
+            <Link to="/staff/groups" className="rounded-lg border border-white/20 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10">Groups</Link>
             <Link to="/staff/create" className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-dark">
               Add
             </Link>
@@ -114,16 +115,17 @@ export default function Staff() {
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
-          ["Total", counts.total],
-          ["Face", counts.face],
-          ["Fingerprint", counts.fingerprint],
-          ["Complete", counts.complete],
-        ].map(([label, value]) => (
-          <div key={label} className="enterprise-panel p-3">
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-950">{value}</p>
+          ["Total", counts.total, "#2563eb"],
+          ["Face", counts.face, "#10b981"],
+          ["Fingerprint", counts.fingerprint, "#8b5cf6"],
+          ["Complete", counts.complete, "#f59e0b"],
+        ].map(([label, value, color]) => (
+          <div key={label} className="enterprise-panel border-l-4 p-4" style={{ borderLeftColor: color as string }}>
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">{label}</p>
+            <p className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950">{value}</p>
+            <div className="mt-3 h-1.5 rounded-full bg-slate-100"><div className="h-full w-1/2 rounded-full" style={{ backgroundColor: color as string }} /></div>
           </div>
         ))}
       </section>

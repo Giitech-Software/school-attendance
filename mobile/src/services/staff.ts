@@ -17,7 +17,8 @@ import {
 import { db } from "../../app/firebase";
 import type { Staff } from "./types";
 import { logAdminAction } from "./adminLogs";
-import { belongsToTenant, getTenantScope, sortByCreatedAtDesc, tenantConstraints, withTenantScope } from "./tenantScope";
+import { deleteFace } from "./faceService";
+import { belongsToTenant, getTenantScope, requireAdminTenantScope, sortByCreatedAtDesc, tenantConstraints, withTenantScope } from "./tenantScope";
 
 /* ============================
    COLLECTION
@@ -212,6 +213,24 @@ export async function getStaffById(id: string): Promise<Staff | null> {
   return { id: snap.id, ...data } as Staff;
 }
 
+export async function listLegacyStaff(): Promise<Staff[]> {
+  const scope = await getTenantScope();
+  if (!scope.isSuperAdmin) throw new Error("Super Admin permission is required.");
+  const snap = await getDocs(collection(db, STAFF_COLLECTION));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Staff)).filter((staff) => !staff.tenantId);
+}
+
+export async function migrateLegacyStaffToTenant(staffId: string, tenant: { id: string; name: string; type: string }): Promise<void> {
+  const scope = await getTenantScope();
+  if (!scope.isSuperAdmin) throw new Error("Super Admin permission is required.");
+  const ref = doc(db, STAFF_COLLECTION, staffId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error("Staff record not found.");
+  const data = snap.data() as Staff;
+  if (data.tenantId) throw new Error("This staff member is already assigned to a tenant.");
+  await updateDoc(ref, { tenantId: tenant.id, tenantName: tenant.name, tenantType: tenant.type, updatedAt: serverTimestamp() });
+}
+
 export async function getStaffByStaffId(staffId: string): Promise<Staff | null> {
   const normalizedStaffId = staffId.trim().toUpperCase();
   if (!normalizedStaffId) return null;
@@ -259,6 +278,7 @@ export async function getStaffByUserUid(userUid: string): Promise<Staff | null> 
 export async function createStaff(
   data: Omit<Staff, "id" | "createdAt">
 ): Promise<Staff> {
+  const scope = await requireAdminTenantScope();
   const roleType = data.roleType ?? data.role ?? "staff";
   const staffId = data.staffId?.trim() || await generateStaffId(roleType);
 
@@ -271,7 +291,7 @@ export async function createStaff(
     staffId,
     roleType,
     createdAt: serverTimestamp(),
-  }, await getTenantScope()));
+  }, scope));
 
   const ref = await addDoc(collection(db, STAFF_COLLECTION), payload);
   await logAdminAction({
@@ -329,6 +349,9 @@ export async function upsertStaff(staff: Staff): Promise<void> {
    DELETE STAFF
 ============================ */
 export async function deleteStaff(id: string): Promise<void> {
+  const staffSnap = await getDoc(doc(db, STAFF_COLLECTION, id));
+  const faceId = staffSnap.exists() ? (staffSnap.data() as Staff).faceId : undefined;
+  if (faceId) await deleteFace(faceId);
   await deleteDoc(doc(db, STAFF_COLLECTION, id));
   await logAdminAction({
     action: "DELETE_STAFF",

@@ -4,6 +4,7 @@ import { getAttendanceSummary, type AttendanceSummary } from "../services/attend
 import { getStaffGlobalSummary, type StaffAttendanceSummary } from "../services/staffAttendanceSummary";
 import useCurrentUser from "../hooks/useCurrentUser";
 import { allowsStudentAndParentFeatures } from "../services/tenantScope";
+import AttendanceAuditPanel from "../components/AttendanceAuditPanel";
 
 type ReportType = "student" | "staff";
 type SummaryRow = AttendanceSummary | StaffAttendanceSummary;
@@ -37,19 +38,19 @@ function getPreviewRange(type: ReportType) {
 }
 
 const studentLinks = [
-  { title: "Daily Attendance", subtitle: "Preview by day - Last 5 school days", href: "/reports/daily", tone: "border-l-purple-500" },
-  { title: "Weekly Reports", subtitle: "Attendance grouped by school week", href: "/reports/weekly", tone: "border-l-indigo-500" },
-  { title: "Monthly Reports", subtitle: "Attendance grouped by calendar month", href: "/reports/monthly", tone: "border-l-teal-500" },
-  { title: "Termly Reports", subtitle: "Summaries by term", href: "/reports/termly", tone: "border-l-rose-500" },
-  { title: "Yearly Reports", subtitle: "Full-year attendance summaries", href: "/reports/yearly", tone: "border-l-orange-500" },
+  { title: "Daily Attendance", subtitle: "Preview by day - Last 5 school days", href: "/reports/daily", tone: "border-l-purple-500 text-purple-600" },
+  { title: "Weekly Reports", subtitle: "Attendance grouped by school week", href: "/reports/weekly", tone: "border-l-indigo-500 text-indigo-600" },
+  { title: "Monthly Reports", subtitle: "Attendance grouped by calendar month", href: "/reports/monthly", tone: "border-l-teal-500 text-teal-600" },
+  { title: "Termly Reports", subtitle: "Summaries by term", href: "/reports/termly", tone: "border-l-rose-500 text-rose-600" },
+  { title: "Yearly Reports", subtitle: "Full-year attendance summaries", href: "/reports/yearly", tone: "border-l-orange-500 text-orange-600" },
 ];
 
 const staffLinks = [
-  { title: "Daily Attendance", subtitle: "Preview by day - staff", href: "/reports/staff-daily", tone: "border-l-purple-500" },
-  { title: "Weekly Reports", subtitle: "Staff attendance grouped by week", href: "/reports/staff-weekly", tone: "border-l-indigo-500" },
-  { title: "Monthly Reports", subtitle: "Staff attendance grouped by month", href: "/reports/staff-monthly", tone: "border-l-teal-500" },
-  { title: "Termly Reports", subtitle: "Staff summaries by term", href: "/reports/staff-termly", tone: "border-l-rose-500", schoolOnly: true },
-  { title: "Yearly Reports", subtitle: "Full-year staff summaries", href: "/reports/staff-yearly", tone: "border-l-orange-500" },
+  { title: "Daily Attendance", subtitle: "Preview by day - staff", href: "/reports/staff-daily", tone: "border-l-purple-500 text-purple-600" },
+  { title: "Weekly Reports", subtitle: "Staff attendance grouped by week", href: "/reports/staff-weekly", tone: "border-l-indigo-500 text-indigo-600" },
+  { title: "Monthly Reports", subtitle: "Staff attendance grouped by month", href: "/reports/staff-monthly", tone: "border-l-teal-500 text-teal-600" },
+  { title: "Termly Reports", subtitle: "Staff summaries by term", href: "/reports/staff-termly", tone: "border-l-rose-500 text-rose-600", schoolOnly: true },
+  { title: "Yearly Reports", subtitle: "Full-year staff summaries", href: "/reports/staff-yearly", tone: "border-l-orange-500 text-orange-600" },
 ];
 
 export default function Reports() {
@@ -142,7 +143,7 @@ export default function Reports() {
   return (
     <div className="space-y-3">
       <section className="enterprise-panel overflow-hidden">
-        <div className="grid gap-0 lg:grid-cols-[1fr_18rem]">
+        <div className="grid gap-0">
           <div className="border-b border-slate-200 bg-slate-900 px-4 py-3 text-white lg:border-b-0">
             <h1 className="text-xl font-extrabold">Reports</h1>
             <p className="mt-1 text-xs text-white/70">Quick previews - tap a tile to open detailed reports.</p>
@@ -150,12 +151,12 @@ export default function Reports() {
           <img
             src="/attendance-report.jpg"
             alt="Student and staff attendance reports"
-            className="h-[180px] w-full object-fill sm:h-[220px] lg:h-[240px]"
+            className="h-[190px] w-full object-fill sm:h-[240px] lg:h-[300px]"
           />
         </div>
       </section>
 
-      <section className="grid gap-3 xl:grid-cols-[1fr_21rem]">
+      <section className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_34rem]">
         <div className="space-y-3">
           <div className="enterprise-panel p-3">
             <div className="grid grid-cols-2 gap-2">
@@ -167,32 +168,56 @@ export default function Reports() {
             </div>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
             {tiles.map((tile) => (
-              <Link key={tile.href} to={tile.href} className={`rounded-lg border border-slate-200 border-l-4 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${tile.tone}`}>
-                <h2 className="text-base font-extrabold text-slate-950">{tile.title}</h2>
-                <p className="mt-1 text-sm text-slate-600">{tile.subtitle}</p>
+              <Link key={tile.href} to={tile.href} className={`group mb-0 flex min-h-32 flex-col justify-between rounded-2xl border border-slate-200 border-l-4 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${tile.tone}`}>
+                <div>
+                  <h2 className="text-lg font-extrabold leading-6 text-slate-900">{tile.title}</h2>
+                  <p className="mt-1 text-sm leading-5 text-slate-600">{tile.subtitle}</p>
+                </div>
+                <span className={`mt-3 text-sm font-bold ${tile.tone}`}>Open report ›</span>
               </Link>
             ))}
           </div>
         </div>
 
         <aside className="enterprise-panel p-4">
-          <h2 className="text-sm font-bold text-slate-700">{previewLabel}</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-extrabold text-slate-800">Attendance preview</h2>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500">{previewLabel.replace(" (preview)", "")}</span>
+          </div>
           {loading ? (
             <p className="mt-4 text-sm text-slate-500">Loading preview...</p>
           ) : error ? (
             <div className="status-error mt-4">{error}</div>
           ) : (
             <>
-              <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="mt-4 flex flex-col items-center gap-4 rounded-xl border border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center">
+                <div
+                  className="h-36 w-36 shrink-0 rounded-full"
+                  style={{
+                    background: `conic-gradient(#10b981 0 ${((totals.present / Math.max(1, totals.present + totals.late + totals.absent)) * 360).toFixed(2)}deg, #f59e0b ${((totals.present / Math.max(1, totals.present + totals.late + totals.absent)) * 360).toFixed(2)}deg ${(((totals.present + totals.late) / Math.max(1, totals.present + totals.late + totals.absent)) * 360).toFixed(2)}deg, #ef4444 ${(((totals.present + totals.late) / Math.max(1, totals.present + totals.late + totals.absent)) * 360).toFixed(2)}deg 360deg)`,
+                    mask: "radial-gradient(circle, transparent 56%, #000 57%)",
+                    WebkitMask: "radial-gradient(circle, transparent 56%, #000 57%)",
+                  }}
+                  aria-label={`Attendance distribution: ${totals.present} present, ${totals.late} late, ${totals.absent} absent`}
+                />
+                <div className="grid w-full grid-cols-3 gap-2 text-center sm:grid-cols-1 sm:text-left">
+                  {["Present", "Late", "Absent"].map((label) => {
+                    const value = label === "Present" ? totals.present : label === "Late" ? totals.late : totals.absent;
+                    const color = label === "Present" ? "bg-emerald-500" : label === "Late" ? "bg-amber-500" : "bg-red-500";
+                    return <div key={label} className="flex flex-col items-center gap-1 sm:flex-row sm:gap-2"><span className={`h-2.5 w-2.5 rounded-full ${color}`} /><span className="text-xs font-bold text-slate-600">{label}</span><strong className="text-sm text-slate-900">{value}</strong></div>;
+                  })}
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
                 {[
                   ["Present", totals.present, "text-emerald-600"],
                   ["Late", totals.late, "text-amber-600"],
                   ["Attended", totals.attended, "text-sky-600"],
                   ["Absent", totals.absent, "text-red-500"],
                 ].map(([label, value, color]) => (
-                  <div key={label as string} className="rounded-lg bg-slate-50 p-3">
+                  <div key={label as string} className={`min-h-20 rounded-xl border border-slate-200 border-l-4 bg-slate-50 p-3 ${color === "text-emerald-600" ? "border-l-emerald-500" : color === "text-amber-600" ? "border-l-amber-500" : color === "text-sky-600" ? "border-l-sky-500" : "border-l-red-500"}`}>
                     <p className="text-xs text-slate-500">{label}</p>
                     <p className={`text-2xl font-extrabold ${color}`}>{value}</p>
                   </div>
@@ -206,6 +231,7 @@ export default function Reports() {
           )}
         </aside>
       </section>
+      <AttendanceAuditPanel />
     </div>
   );
 }

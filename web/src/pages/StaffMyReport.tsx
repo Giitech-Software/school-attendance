@@ -246,7 +246,7 @@ export default function StaffMyReport() {
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-5">
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         {[
           ["Present", summary.presentCount, "text-emerald-600"],
           ["Late", summary.lateCount, "text-amber-700"],
@@ -271,7 +271,7 @@ export default function StaffMyReport() {
             {safeTermSummary.percentagePresent.toFixed(1)}%
           </div>
         </div>
-        <div className="grid gap-3 sm:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
           {[
             ["Present", safeTermSummary.presentCount, "text-emerald-600"],
             ["Late", safeTermSummary.lateCount, "text-amber-700"],

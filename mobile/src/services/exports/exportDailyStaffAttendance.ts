@@ -5,6 +5,7 @@ import { Platform } from "react-native";
 import { getAllStaffAttendanceInRange, getStaffAttendanceInRange } from "../staffAttendanceSummary";
 import { getStaffGlobalSummary } from "../staffAttendanceSummary";
 import { attendanceTableStyles } from "./generateAttendanceRows";
+import { buildMobileAggregateReport } from "./enterpriseAttendanceReport";
 /* ------------------------------------------------------------------
    Helpers for generating table rows & styles
 ------------------------------------------------------------------- */
@@ -89,7 +90,7 @@ const summaries = await getStaffGlobalSummary(dateIso, dateIso);
   const rowsHtml = generateStaffRows(summaries);
 
   // Full HTML
- const html = `
+ const legacyHtml = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -125,6 +126,7 @@ const summaries = await getStaffGlobalSummary(dateIso, dateIso);
 `;
 
   // Generate PDF
+  const html = await buildMobileAggregateReport({ title: "Daily Staff Attendance Report", subjectLabel: "Staff", fromIso: dateIso, toIso: dateIso, rows: summaries });
   const result = await Print.printToFileAsync({ html });
 
   if (!result?.uri) {

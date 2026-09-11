@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signIn, signOutUser } from "../services/auth";
-import { getUserById } from "../services/users";
+import { getUserById, upsertUser } from "../services/users";
 import AuthBrandHeader from "../components/AuthBrandHeader";
 
 function friendlyAuthError(err: any) {
@@ -40,8 +40,20 @@ export default function Login() {
         return;
       }
 
-      const user = await getUserById(credential.user.uid);
-      if (!user) throw new Error("User profile not found.");
+      let user = await getUserById(credential.user.uid);
+      if (!user) {
+        user = await upsertUser({
+          id: credential.user.uid,
+          uid: credential.user.uid,
+          email: credential.user.email?.toLowerCase() ?? null,
+          displayName: credential.user.displayName ?? null,
+          role: "teacher",
+          approved: false,
+          canTakeStaffAttendance: false,
+          canTakeStudentAttendance: false,
+          wards: [],
+        });
+      }
 
       if (user.role !== "admin" && user.role !== "super_admin" && user.approved !== true) {
         await signOutUser();

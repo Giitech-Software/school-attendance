@@ -1,7 +1,8 @@
 import NetInfo from "@react-native-community/netinfo";
 import * as Location from "expo-location";
 import { getDoc, doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { auth, db } from "../../app/firebase";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import app, { auth, db } from "../../app/firebase";
 import { logAdminAction } from "./adminLogs";
 import { scopedSettingsDocId } from "./tenantScope";
 
@@ -200,20 +201,25 @@ export async function validateSchoolLocation(): Promise<LocationValidationResult
   );
   const allowedDistance = settings.radiusMeters + accuracyBuffer;
 
-  if (distance > allowedDistance) {
+  // Reject only when the complete accuracy range is outside the campus.
+  // GPS drift inside buildings can otherwise produce false rejections.
+  const confidentlyOutside = distance - accuracyBuffer > settings.radiusMeters;
+  if (confidentlyOutside) {
     const accuracyText =
       typeof current.accuracy === "number"
         ? ` GPS accuracy: +/-${Math.round(current.accuracy)}m.`
         : "";
 
     throw new Error(
-      `You are outside the school premises (${Math.round(
+      `You appear to be outside the school premises (${Math.round(
         distance
-      )}m away; allowed ${settings.radiusMeters}m).${accuracyText}`
+      )}m away; GPS accuracy +/-${Math.round(
+        current.accuracy ?? accuracyBuffer
+      )}m). Move to an open area and try again.${accuracyText}`
     );
   }
 
-  return {
+  const localResult: LocationValidationResult = {
     verificationMethod: "gps",
     campusNetworkVerified: false,
     latitude: current.latitude,
@@ -224,6 +230,23 @@ export async function validateSchoolLocation(): Promise<LocationValidationResult
     radiusMeters: settings.radiusMeters,
     geofencingBypassed: false,
   };
+  return mergeServerPresenceVerification(localResult);
+}
+
+async function mergeServerPresenceVerification(localResult: LocationValidationResult) {
+  if (localResult.verificationMethod !== "gps") return localResult;
+  try {
+    const verify = httpsCallable(getFunctions(app), "verifyAttendancePresence");
+    const response = await verify({
+      latitude: localResult.latitude,
+      longitude: localResult.longitude,
+      accuracyMeters: localResult.accuracyMeters,
+    });
+    return { ...localResult, ...(response.data as Partial<LocationValidationResult>) };
+  } catch (error: any) {
+    if (error?.code === "functions/permission-denied" || error?.code === "functions/failed-precondition") throw error;
+    return localResult;
+  }
 }
 
 async function getSchoolLocationSettings(): Promise<SchoolLocationSettings> {
@@ -326,6 +349,24 @@ export async function savePresenceVerificationSettings({
       adminUid,
     },
   });
+}
+
+export async function saveSchoolLocation(config: {
+  latitude: number; longitude: number; radiusMeters: number;
+  geofencingEnabled?: boolean; presenceVerificationMode?: PresenceVerificationMode;
+  campusServer?: CampusServerSettings | null; institutionWifiNetworks?: InstitutionWifiNetwork[];
+  setupAccuracyMeters?: number | null;
+}) {
+  await setDoc(await locationDoc(), {
+    latitude: config.latitude, longitude: config.longitude, radiusMeters: config.radiusMeters,
+    setupAccuracyMeters: config.setupAccuracyMeters ?? null,
+    geofencingEnabled: config.geofencingEnabled !== false,
+    presenceVerificationMode: config.presenceVerificationMode ?? "gps",
+    campusServer: config.campusServer ?? null,
+    institutionWifiNetworks: config.institutionWifiNetworks ?? [],
+    geofencingDisabledReason: null, geofencingDisabledBy: null, geofencingDisabledUntil: null,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
 }
 
 export async function pairCampusServer({

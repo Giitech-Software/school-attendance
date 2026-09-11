@@ -104,7 +104,7 @@ const [studentId, setStudentId] = useState("");
 
   return (
     <KeyboardAwareScreen>
-      <View className="flex-1 bg-slate-300 p-4">
+      <View className="flex-1 bg-slate-100 p-4">
         <View className="flex-row items-center mb-2">
   <Pressable
     onPress={() => router.back()}

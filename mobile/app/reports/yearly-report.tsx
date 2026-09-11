@@ -64,7 +64,7 @@ export default function YearlyReport() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-slate-300 p-3">
+    <ScrollView className="flex-1 bg-slate-100 p-3">
       <View className="flex-row items-center mb-2">
         <Pressable onPress={() => router.back()} className="p-1 mr-2" hitSlop={8}>
           <MaterialIcons name="arrow-back" size={24} color="#0f172a" />

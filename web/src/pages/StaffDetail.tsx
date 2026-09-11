@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getStaffById, STAFF_ROLE_OPTIONS, upsertStaff, type Staff } from "../services/staff";
+import { listStaffGroups, type StaffGroup } from "../services/staffGroups";
 
 export default function StaffDetail() {
   const { id } = useParams<{ id: string }>();
@@ -8,6 +9,8 @@ export default function StaffDetail() {
   const [staff, setStaff] = useState<Staff | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [groups, setGroups] = useState<StaffGroup[]>([]);
+  useEffect(() => { listStaffGroups().then(setGroups).catch(console.error); }, []);
 
   useEffect(() => {
     let active = true;
@@ -73,6 +76,7 @@ export default function StaffDetail() {
               <p className="mt-1 text-xs text-white/70">{staff.name ?? staff.staffId ?? "Staff profile"}</p>
             </div>
           </div>
+          <label className="mt-3 block"><span className="auth-label">Staff group</span><select value={staff.staffGroupId ?? ""} onChange={e => setStaff({ ...staff, staffGroupId: e.target.value || undefined })} className="enterprise-input mt-1.5"><option value="">Unassigned</option>{groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}</select></label>
           <Link to={`/reports/staff/${staff.id}`} className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-100">
             View report
           </Link>

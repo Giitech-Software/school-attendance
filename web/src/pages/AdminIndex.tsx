@@ -233,7 +233,7 @@ export default function AdminIndex() {
             <h2 className="text-base font-extrabold text-slate-950">Overview</h2>
             <p className="mt-0.5 text-sm text-slate-500">Current records across your organisation.</p>
           </div>
-          <div className="grid gap-px bg-slate-200 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 bg-slate-100 p-3 lg:grid-cols-3 xl:grid-cols-5">
             {(allowsSchoolFeatures
               ? [
                   ["Terms", termsCount, "bg-red-50 text-red-700", "calendar"],
@@ -244,7 +244,7 @@ export default function AdminIndex() {
                 ]
               : [[personnelLabel, staffCount, "bg-orange-50 text-orange-700", "staff"]]
             ).map(([label, value, tone, icon]) => (
-              <div key={label} className="flex min-h-24 items-center justify-between gap-3 bg-white px-4 py-3">
+              <div key={label} style={{ borderLeftColor: String(tone).includes("red") ? "#ef4444" : String(tone).includes("amber") ? "#f59e0b" : String(tone).includes("emerald") ? "#10b981" : String(tone).includes("orange") ? "#f97316" : "#2563eb" }} className="flex min-h-28 flex-col items-start justify-between gap-3 rounded-xl border border-slate-200 border-l-4 bg-white p-4 shadow-sm">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</p>
                   <p className="mt-1 text-2xl font-extrabold text-slate-950">{value}</p>

@@ -141,7 +141,7 @@ export default function StaffQrGenerator() {
           <Pressable onPress={() => router.back()} className="p-1 mr-2"><MaterialIcons name="arrow-back" size={28} color="#0f172a" /></Pressable>
           <View>
             <Text className="text-2xl font-extrabold text-slate-900">Staff QRs</Text>
-            <Text className="text-xs text-neutral">Tap to view or Export All</Text>
+            <Text className="text-sm text-slate-500">Tap a staff member to view their QR code or export all cards.</Text>
           </View>
         </View>
         
@@ -170,10 +170,10 @@ export default function StaffQrGenerator() {
         data={filteredStaff}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <Pressable onPress={() => openQrForStaff(item)} className="bg-white rounded-xl p-4 mb-3 flex-row justify-between items-center shadow-sm">
+          <Pressable onPress={() => openQrForStaff(item)} className="bg-white rounded-2xl border border-slate-200 p-4 mb-3 flex-row justify-between items-center shadow-sm">
             <View>
               <Text className="font-bold text-dark text-lg">{item.name}</Text>
-              <Text className="text-xs text-neutral">Staff ID: {item.staffId || "N/A"}</Text>
+              <Text className="text-sm text-slate-500">Staff ID: {item.staffId || "N/A"}</Text>
             </View>
             <MaterialIcons name="qr-code" size={24} color="#4F46E5" />
           </Pressable>

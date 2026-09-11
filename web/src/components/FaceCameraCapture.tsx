@@ -71,7 +71,14 @@ export default function FaceCameraCapture({ disabled = false, captureLabel, onCa
       canvas.height = video.videoHeight || 720;
       const context = canvas.getContext("2d");
       if (!context) throw new Error("Could not prepare image capture.");
+      // Front-camera previews can be mirrored by the browser/device. Normalize
+      // the recognition image to natural orientation so left/right movement is
+      // consistent with the user's view and face-registration images.
+      context.save();
+      context.translate(canvas.width, 0);
+      context.scale(-1, 1);
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      context.restore();
       const dataUrl = canvas.toDataURL("image/jpeg", 0.72);
       const base64 = dataUrl.split(",")[1];
       if (!base64) throw new Error("Could not capture image.");
@@ -87,9 +94,9 @@ export default function FaceCameraCapture({ disabled = false, captureLabel, onCa
   return (
     <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
       <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-950">
-        <video ref={videoRef} className={`aspect-video w-full object-cover ${cameraActive ? "block" : "hidden"}`} aria-label="Face camera preview" />
+        <video ref={videoRef} className={`aspect-[3/4] w-full object-cover scale-x-[-1] sm:aspect-video ${cameraActive ? "block" : "hidden"}`} aria-label="Face camera preview" />
         {!cameraActive ? (
-          <div className="flex aspect-video items-center justify-center px-4 text-center text-sm font-semibold text-slate-300">
+            <div className="flex aspect-[3/4] items-center justify-center px-4 text-center text-sm font-semibold text-slate-300 sm:aspect-video">
             Front camera preview will appear here
           </div>
         ) : null}
@@ -98,7 +105,7 @@ export default function FaceCameraCapture({ disabled = false, captureLabel, onCa
       {cameraError ? <div className="status-error mt-3">{cameraError}</div> : null}
 
       <div className="mt-3 flex flex-wrap gap-2">
-        <button type="button" onClick={startCamera} disabled={disabled || cameraActive} className="enterprise-button-primary">
+        <button type="button" onClick={startCamera} disabled={disabled || cameraActive} className="enterprise-button-primary self-start w-fit whitespace-nowrap">
           {cameraActive ? "Camera Ready" : "Start Camera"}
         </button>
         <button type="button" onClick={captureFrame} disabled={disabled || !cameraActive || capturing} className="enterprise-button-primary">

@@ -17,7 +17,7 @@ import { db } from "../../app/firebase";
 import type { Student } from "./types";
 import { getClassById } from "./classes";
 import { logAdminAction } from "./adminLogs";
-import { belongsToTenant, getTenantScope, sortByCreatedAtDesc, tenantConstraints, withTenantScope } from "./tenantScope";
+import { belongsToTenant, getTenantScope, requireAdminTenantScope, sortByCreatedAtDesc, tenantConstraints, withTenantScope } from "./tenantScope";
 
 const studentsCollection = collection(db, "students");
 
@@ -51,7 +51,7 @@ async function nextStudentId() {
 
 export async function createStudent(data: Omit<Student, "id" | "createdAt">): Promise<Student> {
   try {
-    const scope = await getTenantScope();
+    const scope = await requireAdminTenantScope();
     const payload: any = withTenantScope({ ...data, createdAt: serverTimestamp() }, scope);
     Object.keys(payload).forEach((key) => { if (payload[key] === undefined) delete payload[key]; });
     if (!payload.studentId) payload.studentId = await nextStudentId();

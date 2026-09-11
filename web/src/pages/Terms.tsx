@@ -77,16 +77,17 @@ export default function Terms() {
         </div>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
-          ["Total", counts.total],
-          ["Current", counts.current],
-          ["Upcoming", counts.upcoming],
-          ["Ended", counts.ended],
-        ].map(([label, value]) => (
-          <div key={label} className="enterprise-panel p-3">
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</p>
-            <p className="mt-1 text-2xl font-extrabold text-slate-950">{value}</p>
+          ["Total", counts.total, "border-l-blue-500"],
+          ["Current", counts.current, "border-l-emerald-500"],
+          ["Upcoming", counts.upcoming, "border-l-indigo-500"],
+          ["Ended", counts.ended, "border-l-slate-400"],
+        ].map(([label, value, accent]) => (
+          <div key={label} className={`enterprise-panel min-h-28 border-l-4 p-4 ${accent}`}>
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">{label}</p>
+            <p className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950">{value}</p>
+            <div className="mt-3 h-1.5 rounded-full bg-slate-100"><div className="h-full w-1/2 rounded-full bg-current opacity-30" /></div>
           </div>
         ))}
       </section>

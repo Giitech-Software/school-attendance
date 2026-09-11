@@ -12,9 +12,11 @@ import {
 import { useRouter, useLocalSearchParams  } from "expo-router";
 import { getAttendanceSummary } from "../../src/services/attendanceSummary";
 import { MaterialIcons } from "@expo/vector-icons";
+import Svg, { Circle } from "react-native-svg";
 import { getStaffGlobalSummary, } from "../../src/services/staffAttendanceSummary";
 import useCurrentUser from "../../src/hooks/useCurrentUser";
 import { allowsStudentAndParentFeatures } from "../../src/services/tenantScope";
+import AttendanceAuditPanel from "../../components/AttendanceAuditPanel";
 export default function ReportsDashboard() {
   const router = useRouter();
 
@@ -140,13 +142,14 @@ setPreviewLabel(range.label);
   }) => hidden ? null : (
     <Pressable
       onPress={onPress}
-      className={`mb-6 p-5 rounded-2xl shadow-lg w-full ${color}`}
-      style={{ elevation: 4 }}
+      className="mb-3 min-h-[128px] w-[48.5%] justify-between rounded-2xl border border-slate-200 border-l-4 bg-white p-4 shadow-sm"
+      style={{ elevation: 2, borderLeftColor: color.includes("purple") ? "#A855F7" : color.includes("indigo") ? "#6366F1" : color.includes("teal") ? "#14B8A6" : color.includes("rose") ? "#F43F5E" : "#F97316" }}
     >
-      <Text className="text-lg font-extrabold text-white">{title}</Text>
+      <Text className="text-lg font-extrabold leading-6 text-slate-900">{title}</Text>
       {subtitle ? (
-        <Text className="text-sm text-white/80 mt-1.5">{subtitle}</Text>
+        <Text className="mt-2 text-sm leading-5 text-slate-600">{subtitle}</Text>
       ) : null}
+      <Text className={`mt-3 text-sm font-bold ${color.includes("purple") ? "text-purple-600" : color.includes("indigo") ? "text-indigo-600" : color.includes("teal") ? "text-teal-600" : color.includes("rose") ? "text-rose-600" : "text-orange-600"}`}>Open report  ›</Text>
     </Pressable>
   );
 
@@ -177,7 +180,7 @@ if (userDoc?.role !== "admin" && userDoc?.role !== "super_admin") {
       <Text className="text-lg font-bold text-red-600">
         Access Denied
       </Text>
-      <Text className="text-sm text-slate-500 mt-1.5">
+      <Text className="text-sm font-medium text-slate-700 mt-1.5">
         You do not have permission to view reports.
       </Text>
     </View>
@@ -190,7 +193,7 @@ if (userDoc?.role !== "admin" && userDoc?.role !== "super_admin") {
   return (
 
     <ScrollView
-      className="flex-1 bg-slate-300"
+      className="flex-1 bg-slate-100"
       contentContainerStyle={{ padding: 16 }}
 
     >
@@ -216,7 +219,7 @@ if (userDoc?.role !== "admin" && userDoc?.role !== "super_admin") {
 <View className="bg-white -mx-4">
   <Image
     source={require("../../assets/images/attendance-report.jpg")}
-    style={{ width: "100%", height: 140 }}
+    style={{ width: "100%", height: 220 }}
     resizeMode="stretch"
   />
 </View>
@@ -258,7 +261,7 @@ if (userDoc?.role !== "admin" && userDoc?.role !== "super_admin") {
   </Pressable>
 </View>
 
-      <View className="mt-1.5">
+      <View className="mt-1.5 flex-row flex-wrap justify-between">
         <Tile
           title="Daily Attendance"
           subtitle={reportType === "student" ? "Preview by day - Last 5 school days" : `Preview by day - ${personnelLabel.toLowerCase()}`}
@@ -328,45 +331,61 @@ if (userDoc?.role !== "admin" && userDoc?.role !== "super_admin") {
         />
 
       {/* - PREVIEW SUMMARY - */}
-     <View className="mt-6 p-4 bg-white rounded-xl shadow-sm">
- <Text className="text-sm font-semibold text-slate-700">
+     <AttendanceAuditPanel />
+     <View className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+ <Text className="text-lg font-extrabold text-slate-700">
   {previewLabel}
 </Text>
 
-  <View className="mt-3 flex-row justify-between">
-    <View>
-      <Text className="text-xs text-slate-500">Present</Text>
-      <Text className="text-lg font-bold text-emerald-600">
+  <View className="mt-4 flex-row items-center rounded-2xl bg-slate-50 p-4">
+    <View className="relative h-[132px] w-[132px] items-center justify-center">
+      <Svg width={132} height={132} viewBox="0 0 132 132">
+        <Circle cx="66" cy="66" r="50" stroke="#e2e8f0" strokeWidth="16" fill="none" />
+        <Circle cx="66" cy="66" r="50" stroke="#10b981" strokeWidth="16" fill="none" strokeDasharray={`${Math.max(0, totals.present) * 3.14159} 1000`} strokeDashoffset="0" rotation="-90" origin="66, 66" />
+        <Circle cx="66" cy="66" r="50" stroke="#f59e0b" strokeWidth="16" fill="none" strokeDasharray={`${Math.max(0, totals.late) * 3.14159} 1000`} strokeDashoffset={`${-Math.max(0, totals.present) * 3.14159}`} rotation="-90" origin="66, 66" />
+        <Circle cx="66" cy="66" r="50" stroke="#ef4444" strokeWidth="16" fill="none" strokeDasharray={`${Math.max(0, totals.absent) * 3.14159} 1000`} strokeDashoffset={`${-(Math.max(0, totals.present) + Math.max(0, totals.late)) * 3.14159}`} rotation="-90" origin="66, 66" />
+      </Svg>
+      <View className="absolute items-center"><Text className="text-xl font-black text-slate-900">{totals.pct.toFixed(0)}%</Text><Text className="text-[10px] font-bold uppercase text-slate-500">attended</Text></View>
+    </View>
+    <View className="ml-4 flex-1 gap-2">
+      {[['Present', totals.present, 'bg-emerald-500'], ['Late', totals.late, 'bg-amber-500'], ['Absent', totals.absent, 'bg-red-500']].map(([label, value, color]) => <View key={String(label)} className="flex-row items-center justify-between"><View className="flex-row items-center"><View className={`mr-2 h-2.5 w-2.5 rounded-full ${color}`} /><Text className="text-xs font-bold text-slate-600">{label}</Text></View><Text className="text-sm font-black text-slate-900">{String(value)}</Text></View>)}
+    </View>
+  </View>
+
+  <View className="mt-3 flex-row flex-wrap justify-between">
+    <View className="mb-3 w-[48%] rounded-xl border border-emerald-100 border-l-4 bg-emerald-50 p-3">
+      <Text className="text-base font-semibold text-slate-500">Present</Text>
+      <Text className="mt-1 text-2xl font-extrabold text-emerald-600">
         {totals.present}
       </Text>
     </View>
 
  {/* - NEW - LATE SUMMARY */}
-    <View>
-      <Text className="text-xs text-slate-500">Late</Text>
-      <Text className="text-lg font-bold text-amber-600">
+    <View className="mb-3 w-[48%] rounded-xl border border-amber-100 border-l-4 bg-amber-50 p-3">
+      <Text className="text-base font-semibold text-slate-500">Late</Text>
+      <Text className="mt-1 text-2xl font-extrabold text-amber-600">
         {totals.late}
       </Text>
     </View>
-<View>
-  <Text className="text-xs text-slate-500">Attended</Text>
-  <Text className="text-lg font-bold text-sky-600">
+<View className="mb-3 w-[48%] rounded-xl border border-sky-100 border-l-4 bg-sky-50 p-3">
+  <Text className="text-base font-semibold text-slate-500">Attended</Text>
+  <Text className="mt-1 text-2xl font-extrabold text-sky-600">
     {totals.attended}
   </Text>
 </View>
 
-    <View>
-      <Text className="text-xs text-slate-500">Absent</Text>
-      <Text className="text-lg font-bold text-red-500">
+    <View className="mb-3 w-[48%] rounded-xl border border-red-100 border-l-4 bg-red-50 p-3">
+      <Text className="text-base font-semibold text-slate-500">Absent</Text>
+      <Text className="mt-1 text-2xl font-extrabold text-red-500">
         {totals.absent}
       </Text>
     </View>
 
 
 
-    <View>
-      <Text className="text-xs text-slate-500">Attendance %</Text>
-                                    <Text className="text-lg font-bold text-slate-900">
+    <View className="w-full rounded-xl border border-slate-200 border-l-4 border-l-slate-500 bg-slate-50 p-3">
+      <Text className="text-base font-semibold text-slate-500">Attendance %</Text>
+                                    <Text className="mt-1 text-2xl font-extrabold text-slate-900">
                                       {totals.pct.toFixed(1)}%
                                     </Text>
                                   </View>

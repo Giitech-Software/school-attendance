@@ -123,7 +123,7 @@ function goToEdit(id?: string) {
         data={items}
         keyExtractor={(i) => i.id ?? ""}
         renderItem={({ item }) => (
-          <View className="bg-white rounded-2xl p-4 mb-3 flex-row items-center justify-between">
+          <View className="bg-white rounded-2xl border border-slate-200 p-4 mb-3 flex-row items-center justify-between shadow-sm">
             <View>
               <Text className="font-semibold text-dark">{item.name}</Text>
               <Text className="text-xs text-neutral mt-1">

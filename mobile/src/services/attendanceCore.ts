@@ -1,10 +1,10 @@
 // mobile/src/services/attendanceCore.ts
 
 import {
-  addDoc,
   updateDoc,
   doc,
   getDoc,
+  runTransaction,
   serverTimestamp,
   collection,
 } from "firebase/firestore";
@@ -134,7 +134,17 @@ export async function recordAttendanceCore({
     location: locationAudit,
   }, tenantScope);
 
-  const ref = await addDoc(attendanceCollection, data);
+  const ref = doc(
+    attendanceCollection,
+    stableAttendanceId(record.subjectType, record.subjectId, record.date)
+  );
+  await runTransaction(db, async (transaction) => {
+    const existing = await transaction.get(ref);
+    if (existing.exists()) {
+      throw new Error("Attendance already exists for this person today.");
+    }
+    transaction.set(ref, data);
+  });
   await logAdminAction({
     action: "CHECK_IN",
     targetType: "attendance",
@@ -155,6 +165,10 @@ export async function recordAttendanceCore({
     createdAt: new Date().toISOString(),
   } as AttendanceRecord;
 } // ✅ CLOSES recordAttendanceCore PROPERLY
+
+function stableAttendanceId(subjectType: string, subjectId: string, date: string) {
+  return `${encodeURIComponent(subjectType)}_${encodeURIComponent(subjectId)}_${date}`;
+}
 
 async function assertCanRecordDuringGeofenceBypass(
   geofencingBypassed: boolean,

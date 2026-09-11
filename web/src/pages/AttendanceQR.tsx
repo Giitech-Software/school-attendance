@@ -366,7 +366,7 @@ export default function AttendanceQR() {
                 <p className="mt-1 text-xs text-slate-600">{cameraStatus}</p>
               </div>
               <div className="flex gap-2">
-                <button type="button" onClick={startCameraScanner} disabled={loading || cameraActive} className="enterprise-button-primary">
+                <button type="button" onClick={startCameraScanner} disabled={loading || cameraActive} className="enterprise-button-primary self-start w-fit whitespace-nowrap">
                   {cameraActive ? "Scanning..." : "Use Camera"}
                 </button>
                 <button type="button" onClick={stopCameraScanner} disabled={!cameraActive} className="enterprise-button-secondary">

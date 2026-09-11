@@ -8,9 +8,8 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  Modal,
 } from "react-native";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
-import { db } from "../firebase";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -22,11 +21,12 @@ import {
   pairCampusServer,
   PresenceVerificationMode,
   savePresenceVerificationSettings,
+  saveSchoolLocation,
   setEmergencyGeofenceBypass,
 } from "../../src/services/locationGuard";
 import { getCurrentTerm } from "../../src/services/terms";
-import { logAdminAction } from "../../src/services/adminLogs";
 import { allowsStudentAndParentFeatures } from "../../src/services/tenantScope";
+import { CameraView, useCameraPermissions } from "expo-camera";
 
 type LocationCoords = Location.LocationObjectCoords;
 type BypassDuration = "day" | "week" | "month" | "term" | "year";
@@ -92,6 +92,8 @@ export default function SetupSchoolLocation() {
   const [campusInstitutionId, setCampusInstitutionId] = useState("");
   const [campusServerName, setCampusServerName] = useState("");
   const [campusSetupCode, setCampusSetupCode] = useState("");
+  const [showPairingScanner, setShowPairingScanner] = useState(false);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [campusServer, setCampusServer] =
     useState<CampusServerSettings | null>(null);
   const [wifiBssidList, setWifiBssidList] = useState("");
@@ -214,36 +216,7 @@ export default function SetupSchoolLocation() {
 
     try {
       setLoading(true);
-      await setDoc(
-        doc(db, "settings", "location"),
-        {
-          latitude: lat,
-          longitude: lng,
-          radiusMeters: rad,
-          setupAccuracyMeters: accuracy,
-          geofencingEnabled: presenceMode !== "disabled",
-          presenceVerificationMode: presenceMode,
-          campusServer: buildCampusSettings(),
-          institutionWifiNetworks: buildWifiNetworks(),
-          geofencingDisabledReason: null,
-          geofencingDisabledBy: null,
-          geofencingDisabledUntil: null,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
-      await logAdminAction({
-        action: "UPDATE_SCHOOL_LOCATION",
-        targetType: "settings",
-        targetId: "location",
-        description: `Updated ${locationLabelLower} verification location`,
-        metadata: {
-          latitude: lat,
-          longitude: lng,
-          radiusMeters: rad,
-          setupAccuracyMeters: accuracy,
-        },
-      });
+      await saveSchoolLocation({ latitude: lat, longitude: lng, radiusMeters: rad, setupAccuracyMeters: accuracy, geofencingEnabled: presenceMode !== "disabled", presenceVerificationMode: presenceMode, campusServer: buildCampusSettings(), institutionWifiNetworks: buildWifiNetworks() });
 
       Alert.alert("Success", `${locationLabel} verification has been saved!`);
       setGeofencingEnabled(presenceMode !== "disabled");
@@ -282,6 +255,32 @@ export default function SetupSchoolLocation() {
 
   const buildWifiNetworks = (): InstitutionWifiNetwork[] =>
     parseWifiNetworkList(wifiBssidList);
+
+  const handlePairingQr = ({ data }: { data: string }) => {
+    try {
+      if (data.length > 4096) throw new Error("Pairing QR payload is too large.");
+      const value = JSON.parse(data);
+      if (value?.v !== 1 || value?.type !== "astem-campus-pairing") throw new Error("This is not an ASTEM campus pairing QR code.");
+      if (typeof value.baseUrl !== "string" || !/^https?:\/\//i.test(value.baseUrl)) throw new Error("The pairing QR has an invalid server URL.");
+      setCampusBaseUrl(value.baseUrl);
+      if (typeof value.tokenEndpoint === "string") setCampusTokenEndpoint(value.tokenEndpoint);
+      if (typeof value.pairEndpoint === "string") setCampusPairEndpoint(value.pairEndpoint);
+      if (typeof value.institutionId === "string") setCampusInstitutionId(value.institutionId);
+      if (typeof value.serverName === "string") setCampusServerName(value.serverName);
+      if (typeof value.setupCode === "string") setCampusSetupCode(value.setupCode);
+      setShowPairingScanner(false);
+      Alert.alert("Pairing details loaded", "Review the server details, then tap Pair Server. No connection has been made yet.");
+    } catch (err) {
+      setShowPairingScanner(false);
+      Alert.alert("Invalid pairing QR", err instanceof Error ? err.message : "Unable to read pairing details.");
+    }
+  };
+
+  const openPairingScanner = async () => {
+    const permission = cameraPermission?.granted ? cameraPermission : await requestCameraPermission();
+    if (!permission.granted) return Alert.alert("Camera required", "Allow camera access to scan the campus server QR code.");
+    setShowPairingScanner(true);
+  };
 
   const handlePairCampusServer = async () => {
     if (!campusBaseUrl.trim() || !campusSetupCode.trim()) {
@@ -580,7 +579,12 @@ export default function SetupSchoolLocation() {
           onChangeText={setCampusSetupCode}
           autoCapitalize="none"
           placeholder="One-time code from server"
+          secureTextEntry
         />
+
+        <Pressable onPress={openPairingScanner} disabled={loading} className="border border-blue-600 p-3 rounded-lg mt-3 items-center">
+          <Text className="text-blue-700 font-semibold">Scan Pairing QR Code</Text>
+        </Pressable>
 
         <Text className="mt-4 font-medium">Institution WiFi BSSID</Text>
         <TextInput
@@ -614,6 +618,13 @@ export default function SetupSchoolLocation() {
           </Pressable>
         </View>
       </View>
+
+      <Modal visible={showPairingScanner} animationType="slide" onRequestClose={() => setShowPairingScanner(false)}>
+        <View className="flex-1 bg-black">
+          <CameraView style={{ flex: 1 }} barcodeScannerSettings={{ barcodeTypes: ["qr"] }} onBarcodeScanned={handlePairingQr} />
+          <Pressable onPress={() => setShowPairingScanner(false)} className="absolute bottom-10 self-center bg-white px-6 py-3 rounded-lg"><Text className="font-semibold">Cancel scan</Text></Pressable>
+        </View>
+      </Modal>
 
       <Text className="mt-2 font-medium">Latitude</Text>
       <TextInput

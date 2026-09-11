@@ -8,8 +8,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import {
-  CameraView,
-  useCameraPermissions,
+  CameraView, useCameraPermissions,
 } from "expo-camera";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { doc, getDoc } from "firebase/firestore";
@@ -167,11 +166,7 @@ export default function FaceCheckin() {
 
   return (
     <View className="flex-1">
-      <CameraView
-        ref={cameraRef}
-        style={{ flex: 1 }}
-        facing="front"
-      />
+      <CameraView ref={cameraRef} style={{ flex: 1 }} facing="front" />
 
       <Pressable
         onPress={() => router.back()}
@@ -182,11 +177,7 @@ export default function FaceCheckin() {
       </Pressable>
 
       <View className="absolute bottom-10 w-full items-center">
-        <Pressable
-          onPress={handleCheckin}
-          disabled={loading}
-          className="bg-green-600 px-6 py-3 rounded-full"
-        >
+        <Pressable onPress={handleCheckin} disabled={loading} className="bg-green-600 px-6 py-3 rounded-full">
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (

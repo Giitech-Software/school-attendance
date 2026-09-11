@@ -64,6 +64,7 @@ export default function Layout() {
   const location = useLocation();
   const { authUser, userDoc, loading } = useCurrentUser();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem("astem-sidebar-collapsed") === "true");
 
   const isPublicRoute = publicRoutes.has(location.pathname);
   const isSuperAdmin = userDoc?.role === "super_admin";
@@ -89,6 +90,10 @@ export default function Layout() {
   useEffect(() => {
     setMenuOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    localStorage.setItem("astem-sidebar-collapsed", String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
 
   useEffect(() => {
     if (loading || isPublicRoute || !isAdmin) return;
@@ -124,17 +129,26 @@ export default function Layout() {
 
   const sidebar = (
     <aside className="flex h-full flex-col bg-white">
-      <div className="border-b border-slate-200 px-3 py-3">
-        <p className="truncate text-sm font-extrabold text-slate-950">{pageTitle}</p>
+      <div className={`flex items-center border-b border-slate-200 py-3 ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3"}`}>
+        {!sidebarCollapsed ? <p className="truncate text-sm font-extrabold text-slate-950">{pageTitle}</p> : null}
+        <button
+          type="button"
+          onClick={() => setSidebarCollapsed((value) => !value)}
+          className="hidden h-8 w-8 items-center justify-center rounded-md text-lg font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-950 lg:inline-flex"
+          aria-label={sidebarCollapsed ? "Expand navigation" : "Collapse navigation"}
+          title={sidebarCollapsed ? "Expand navigation" : "Collapse navigation"}
+        >
+          {sidebarCollapsed ? "»" : "«"}
+        </button>
       </div>
 
-      <nav className="flex-1 space-y-4 overflow-y-auto px-2.5 py-3">
+      <nav className={`flex-1 space-y-4 overflow-y-auto py-3 ${sidebarCollapsed ? "px-2" : "px-2.5"}`}>
         <div>
-          <p className="px-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Main</p>
+          {!sidebarCollapsed ? <p className="px-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Main</p> : null}
           <div className="mt-2 space-y-1">
             {visibleMainLinks.map((link) => (
-              <NavLink key={link.to} to={link.to} end={link.to === "/"} className={navLinkClass}>
-                {link.label}
+              <NavLink key={link.to} to={link.to} end={link.to === "/"} className={(state) => `${navLinkClass(state)} ${sidebarCollapsed ? "justify-center px-2" : ""}`} title={sidebarCollapsed ? link.label : undefined}>
+                {sidebarCollapsed ? link.label.charAt(0) : link.label}
               </NavLink>
             ))}
           </div>
@@ -142,11 +156,11 @@ export default function Layout() {
 
         {visibleAdminLinks.length ? (
           <div>
-            <p className="px-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Admin</p>
+            {!sidebarCollapsed ? <p className="px-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Admin</p> : null}
             <div className="mt-2 space-y-1">
               {visibleAdminLinks.map((link) => (
-                <NavLink key={link.to} to={link.to} className={navLinkClass}>
-                  {link.label}
+                <NavLink key={link.to} to={link.to} className={(state) => `${navLinkClass(state)} ${sidebarCollapsed ? "justify-center px-2" : ""}`} title={sidebarCollapsed ? link.label : undefined}>
+                  {sidebarCollapsed ? link.label.charAt(0) : link.label}
                 </NavLink>
               ))}
             </div>
@@ -154,9 +168,10 @@ export default function Layout() {
         ) : null}
       </nav>
 
-      <div className="border-t border-slate-200 p-2.5">
-        <div className="rounded-md border border-slate-200 bg-slate-50 p-2.5">
-          <p className="truncate text-xs font-bold text-slate-900">{accountLabel}</p>
+      <div className={`border-t border-slate-200 ${sidebarCollapsed ? "p-2" : "p-2.5"}`}>
+        <div className={`rounded-md border border-slate-200 bg-slate-50 ${sidebarCollapsed ? "p-2 text-center" : "p-2.5"}`}>
+          {!sidebarCollapsed ? <p className="truncate text-xs font-bold text-slate-900">{accountLabel}</p> : <span className="text-xs font-extrabold text-slate-700">{avatarText}</span>}
+          {!sidebarCollapsed ? (
           <div className="mt-2 flex items-center justify-between gap-2">
             <span className="rounded bg-emerald-100 px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-emerald-700">
               {userDoc?.role ?? "user"}
@@ -165,6 +180,7 @@ export default function Layout() {
               Sign out
             </button>
           </div>
+          ) : null}
         </div>
       </div>
     </aside>
@@ -201,7 +217,7 @@ export default function Layout() {
         </div>
       </header>
 
-      <div className="hidden lg:fixed lg:bottom-0 lg:left-0 lg:top-14 lg:block lg:w-60 lg:border-r lg:border-slate-200">{sidebar}</div>
+      <div className={`hidden lg:fixed lg:bottom-0 lg:left-0 lg:top-14 lg:block lg:border-r lg:border-slate-200 ${sidebarCollapsed ? "lg:w-[4.5rem]" : "lg:w-60"}`}>{sidebar}</div>
 
       {menuOpen ? (
         <div className="fixed inset-0 z-40 lg:hidden">
@@ -210,7 +226,7 @@ export default function Layout() {
         </div>
       ) : null}
 
-      <div className="lg:pl-60">
+      <div className={sidebarCollapsed ? "lg:pl-[4.5rem]" : "lg:pl-60"}>
         <main className="mx-auto max-w-[1440px] px-3 py-3 sm:px-4 lg:py-4">
           {backTarget ? (
             <div className="mb-3">

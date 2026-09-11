@@ -185,6 +185,7 @@ export async function upsertUser(user: AppUser): Promise<string> {
 
     const ref = doc(db, USERS_COLLECTION, user.id);
 
+   const scope = await getTenantScope();
    await setDoc(
   ref,
   withTenantScope({
@@ -235,10 +236,11 @@ export async function upsertUser(user: AppUser): Promise<string> {
     }),
 
     createdAt: user.createdAt ?? serverTimestamp(),
-  }, await getTenantScope()),
+  }, scope),
   { merge: true }
 );
-    await logAdminAction({
+    if (scope.role === "admin" || scope.role === "super_admin") {
+      await logAdminAction({
       action: "UPSERT_USER",
       targetType: "user",
       targetId: user.id,
@@ -252,7 +254,8 @@ export async function upsertUser(user: AppUser): Promise<string> {
         canTakeStudentAttendance: user.canTakeStudentAttendance,
         wardsCount: user.wards?.length,
       },
-    });
+      });
+    }
 
 
     return user.id;

@@ -44,7 +44,7 @@ export default function StaffYearlyReport() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-slate-300 p-3">
+    <ScrollView className="flex-1 bg-slate-100 p-3">
       <View className="flex-row items-center mb-2">
         <Pressable onPress={() => router.back()} className="p-1 mr-2" hitSlop={8}>
           <MaterialIcons name="arrow-back" size={24} color="#0f172a" />
@@ -70,7 +70,7 @@ export default function StaffYearlyReport() {
       ) : (
         rows.map((item) => (
           <Pressable key={item.staffId} onPress={() => router.push({ pathname: "/reports/staff/[id]", params: { id: item.staffId, fromIso: range.fromIso, toIso: range.toIso, title: `${range.label} Report` } })} className="bg-white px-3 py-2 rounded-md mb-2 shadow">
-            <Text className="font-semibold">{item.staffName}{item.displayId ? ` (${item.displayId})` : ""}</Text>
+          <Text className="font-semibold">{item.staffName}{item.displayId && item.displayId !== item.staffId ? ` (${item.displayId})` : ""}</Text>
             <View className="flex-row justify-between mt-1.5">
               <Text className="text-emerald-600">P: {item.presentCount}</Text>
               <Text className="text-amber-600">L: {item.lateCount}</Text>

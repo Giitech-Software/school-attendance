@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import useCurrentUser from "../hooks/useCurrentUser";
+import { listUsers, type AppUser } from "../services/users";
 import {
   assignTenantAdminByEmail,
   createTenant,
+  ensureTenantInvite,
   listTenants,
   updateTenantStatus,
   type Tenant,
   type TenantStatus,
   type TenantType,
 } from "../services/tenants";
+import { listLegacyStaff, migrateLegacyStaffToTenant, type Staff } from "../services/staff";
 
 const tenantTypes: { label: string; value: TenantType }[] = [
   { label: "School", value: "school" },
@@ -43,10 +46,13 @@ function signupInviteLink(code?: string | null) {
 export default function SuperAdminTenants() {
   const { userDoc, loading: authLoading } = useCurrentUser();
   const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [registrations, setRegistrations] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [legacyStaff, setLegacyStaff] = useState<Staff[]>([]);
+  const [migrationTenant, setMigrationTenant] = useState("");
 
   const [name, setName] = useState("");
   const [type, setType] = useState<TenantType>("school");
@@ -65,7 +71,10 @@ export default function SuperAdminTenants() {
     setLoading(true);
     setError(null);
     try {
-      setTenants(await listTenants());
+      const [tenantRows, userRows, legacyRows] = await Promise.all([listTenants(), listUsers(), listLegacyStaff()]);
+      setTenants(tenantRows);
+      setLegacyStaff(legacyRows);
+      setRegistrations(userRows.filter((user) => user.role !== "super_admin"));
     } catch (err: any) {
       setError(err?.message ?? "Failed to load tenants.");
     } finally {
@@ -131,6 +140,22 @@ export default function SuperAdminTenants() {
     }
   }
 
+  async function handleEnsureInvite(tenant: Tenant) {
+    try {
+      setMessage(null);
+      const code = await ensureTenantInvite(tenant);
+      setTenants((current) => current.map((item) => item.id === tenant.id ? { ...item, inviteCode: code } : item));
+      setMessage(`Invite code ready for ${tenant.name}: ${code}`);
+    } catch (err: any) { setError(err?.message ?? "Failed to generate invite code."); }
+  }
+
+  async function handleMigrateStaff(staff: Staff) {
+    const tenant = tenants.find((item) => item.id === migrationTenant);
+    if (!tenant || !staff.id) return;
+    try { await migrateLegacyStaffToTenant(staff.id, tenant); setLegacyStaff((rows) => rows.filter((row) => row.id !== staff.id)); setMessage(`${staff.name} migrated to ${tenant.name}.`); }
+    catch (err: any) { setError(err?.message ?? "Failed to migrate staff."); }
+  }
+
   if (authLoading || loading) {
     return <div className="enterprise-panel px-5 py-4 text-sm font-semibold text-slate-600">Loading tenants...</div>;
   }
@@ -168,17 +193,46 @@ export default function SuperAdminTenants() {
           </div>
         )}
 
-        <section className="grid gap-3 md:grid-cols-3">
+        <section className="grid gap-3 md:grid-cols-4">
           {[
             ["Total tenants", tenants.length, "bg-slate-900 text-white"],
             ["Active", activeCount, "bg-emerald-100 text-emerald-800"],
             ["Suspended", suspendedCount, "bg-red-100 text-red-800"],
+            ["Registrations", registrations.length, "bg-blue-100 text-blue-800"],
           ].map(([label, value, tone]) => (
             <div key={label} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
               <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</p>
               <p className={`mt-2 w-fit rounded px-2 py-1 text-2xl font-extrabold ${tone}`}>{value}</p>
             </div>
           ))}
+        </section>
+
+        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-lg font-extrabold text-slate-950">User registrations</h2>
+              <p className="text-sm text-slate-500">New accounts appear here immediately. Tenant administrators see only registrations made with their organisation invite.</p>
+            </div>
+            <Link to="/users" className="enterprise-button-secondary">Manage all users</Link>
+          </div>
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            {registrations.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500 lg:col-span-2">No registered accounts found.</p>
+            ) : registrations.slice(0, 12).map((registration) => (
+              <Link key={registration.id} to={`/users/${registration.id}`} className="rounded-lg border border-slate-200 p-3 transition hover:border-blue-300 hover:bg-blue-50">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-bold text-slate-900">{registration.displayName || registration.email || "Unnamed user"}</p>
+                    <p className="truncate text-xs text-slate-500">{registration.email}</p>
+                    <p className="mt-1 text-xs text-slate-600">{registration.tenantName || "Not assigned to an organisation"} · {(registration.role || "user").replaceAll("_", " ")}</p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${registration.approved || registration.role === "admin" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                    {registration.approved || registration.role === "admin" ? "Approved" : "Pending"}
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
         </section>
 
         <section className="grid gap-4 lg:grid-cols-[390px_1fr]">
@@ -225,6 +279,13 @@ export default function SuperAdminTenants() {
             </button>
           </form>
 
+          <section className="mb-5 rounded-lg border border-blue-200 bg-blue-50 p-4">
+            <h2 className="text-lg font-extrabold text-slate-900">Migrate legacy staff</h2>
+            <p className="mt-1 text-sm text-slate-700">Assign staff created before tenancy to a tenant without changing their Staff ID, face registration, biometric data, or attendance history.</p>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row"><select value={migrationTenant} onChange={(event) => setMigrationTenant(event.target.value)} className="enterprise-input"><option value="">Select destination tenant</option>{tenants.map((tenant) => <option key={tenant.id} value={tenant.id}>{tenant.name}</option>)}</select></div>
+            {legacyStaff.length ? <div className="mt-3 space-y-2">{legacyStaff.map((staff) => <div key={staff.id} className="flex items-center justify-between gap-3 rounded-lg bg-white p-3"><div className="min-w-0"><p className="truncate font-semibold text-slate-900">{staff.name}</p><p className="text-sm text-slate-700">{staff.staffId || "No Staff ID"}</p></div><button type="button" disabled={!migrationTenant} onClick={() => handleMigrateStaff(staff)} className="enterprise-button-primary shrink-0">Migrate</button></div>)}</div> : <p className="mt-3 text-sm text-slate-700">No legacy staff records found.</p>}
+          </section>
+
           <div className="space-y-3">
             {tenants.length === 0 ? (
               <div className="rounded-lg border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">No tenants created yet.</div>
@@ -262,6 +323,7 @@ export default function SuperAdminTenants() {
                       />
                       <button type="button" onClick={() => handleAssignAdmin(tenant)} className="enterprise-button-secondary shrink-0">Assign</button>
                     </div>
+                    {!tenant.inviteCode ? <button type="button" onClick={() => handleEnsureInvite(tenant)} className="enterprise-button-secondary w-full">Generate signup invite</button> : null}
                   </div>
                 </div>
               </article>

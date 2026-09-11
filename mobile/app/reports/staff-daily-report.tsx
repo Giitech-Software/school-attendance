@@ -95,7 +95,7 @@ export default function StaffDailyReport() {
   /* UI */
   /* - */
   return (
-    <ScrollView className="flex-1 bg-slate-300 p-3">
+    <ScrollView className="flex-1 bg-slate-100 p-3">
       <View className="flex-row items-center mb-2">
         <Pressable
           onPress={() => router.back()}
@@ -201,7 +201,7 @@ export default function StaffDailyReport() {
           >
             <Text className="font-semibold">
   {item.staffName} 
-  {item.displayId ? ` (${item.displayId})` : ""}
+              {item.displayId && item.displayId !== item.staffId ? ` (${item.displayId})` : ""}
 </Text>
             <View className="flex-row justify-between mt-1.5">
               <Text className="text-emerald-600">P: {item.presentCount}</Text>

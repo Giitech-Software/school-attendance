@@ -1,6 +1,6 @@
 // mobile/app/staff/index.tsx
 import React, { useState } from "react";
-import { View, Text, SectionList, Pressable, Alert, ActivityIndicator } from "react-native";
+import { View, Text, SectionList, Pressable, Alert, ActivityIndicator, Image } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { listStaff, deleteStaff } from "../../src/services/staff";
 import type { Staff } from "../../src/services/types";
@@ -157,6 +157,7 @@ const filteredStaff = staffList.filter((s) => {
               {/* Staff Info */}
               <View>
                 <Text className="font-semibold text-dark text-base">🧑 {item.name}</Text>
+                {item.profilePhotoUrl ? <Image source={{ uri: item.profilePhotoUrl }} className="h-10 w-10 rounded-full" /> : null}
                 <Text className="text-sm text-neutral">ID: {item.staffId}</Text>
 
                 {/* Biometric Status */}

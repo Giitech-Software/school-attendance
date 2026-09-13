@@ -10,7 +10,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { db } from "../../app/firebase";
-import { getUserByEmail, upsertUser } from "./users";
+import { getUserByEmail, listUsers, upsertUser } from "./users";
 
 const TENANTS_COLLECTION = "tenants";
 const TENANT_INVITES_COLLECTION = "tenantInvites";
@@ -206,7 +206,8 @@ export async function assignTenantAdminByEmail(
   if (!normalizedEmail) throw new Error("Admin email is required.");
 
   const resolvedTenantType = tenantType ?? ((await getDoc(doc(db, TENANTS_COLLECTION, tenantId))).data()?.type as TenantType | undefined);
-  const user = await getUserByEmail(normalizedEmail);
+  const user = (await getUserByEmail(normalizedEmail))
+    ?? (await listUsers()).find((candidate) => candidate.email?.trim().toLowerCase() === normalizedEmail);
   if (!user?.id) {
     throw new Error(
       "No registered user was found for this email. Ask the tenant admin to sign up first, then assign them here."

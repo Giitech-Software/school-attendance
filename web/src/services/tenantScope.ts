@@ -32,7 +32,7 @@ export async function getTenantScope(): Promise<TenantScope> {
 
   const snap = await getDoc(doc(db, "users", uid));
   const data = snap.exists() ? snap.data() : null;
-  const isSuperAdmin = data?.role === "super_admin";
+  const isSuperAdmin = data?.role === "super_admin" || data?.role === "superadmin";
   const role = typeof data?.role === "string" ? data.role : null;
   const tenantId = typeof data?.tenantId === "string" && data.tenantId.trim() ? data.tenantId : null;
   const tenantName = typeof data?.tenantName === "string" && data.tenantName.trim() ? data.tenantName : null;
@@ -44,7 +44,7 @@ export async function getTenantScope(): Promise<TenantScope> {
 export async function requireAdminTenantScope(): Promise<TenantScope> {
   if (!auth.currentUser?.uid) throw new Error("Your session has expired. Please sign in again.");
   const scope = await getTenantScope();
-  if (scope.role !== "admin" && scope.role !== "super_admin") {
+  if (scope.role !== "admin" && scope.role !== "super_admin" && scope.role !== "superadmin") {
     throw new Error("Administrator permission is required. Ask your organisation administrator to verify your user role.");
   }
   if (!scope.isSuperAdmin && !scope.tenantId) {

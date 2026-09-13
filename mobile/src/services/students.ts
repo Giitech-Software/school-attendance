@@ -14,6 +14,8 @@ import {
   deleteField,
 } from "firebase/firestore";
 import { db } from "../../app/firebase";
+import { storage } from "../../app/firebase";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import type { Student } from "./types";
 import { getClassById } from "./classes";
 import { logAdminAction } from "./adminLogs";
@@ -144,4 +146,10 @@ export async function findStudentByFingerprint(fingerprintId: string): Promise<S
   if (snap.empty) return null;
   const docSnap = snap.docs[0];
   return withShortId(docSnap.id, docSnap.data());
+}
+export async function uploadStudentProfilePhoto(studentId: string, uri: string): Promise<string> {
+  const blob = await (await fetch(uri)).blob();
+  const photoRef = ref(storage, `student-profile-photos/${studentId}.jpg`);
+  await uploadBytes(photoRef, blob, { contentType: "image/jpeg", cacheControl: "public,max-age=86400" });
+  return getDownloadURL(photoRef);
 }

@@ -1,13 +1,15 @@
 // mobile/app/staff/[id].tsx
 import React, { useEffect, useState } from "react";
-import { View, Text, TextInput, Pressable, Alert, ActivityIndicator } from "react-native";
+import { View, Text, TextInput, Pressable, Alert, ActivityIndicator, Image } from "react-native";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import KeyboardAwareScreen from "@/components/KeyboardAwareScreen";
-import { getStaffById, upsertStaff } from "../../src/services/staff";
+import { getStaffById, uploadStaffProfilePhoto, upsertStaff } from "../../src/services/staff";
 import type { Staff } from "../../src/services/types";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
 import { listStaffGroups, type StaffGroup } from "../../src/services/staffGroups";
+import useCurrentUser from "../../src/hooks/useCurrentUser";
 
 export default function StaffDetail() {
   const { id } = useLocalSearchParams();
@@ -16,7 +18,13 @@ export default function StaffDetail() {
   const [staff, setStaff] = useState<Staff | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [permission, requestPermission] = useCameraPermissions();
+  const cameraRef = React.useRef<CameraView>(null);
   const [groups, setGroups] = useState<StaffGroup[]>([]);
+  const { userDoc: currentUser } = useCurrentUser();
+  const isSuperAdmin = currentUser?.role === "super_admin";
   useEffect(() => { listStaffGroups().then(setGroups).catch(console.error); }, []);
 
   useEffect(() => {
@@ -50,6 +58,20 @@ export default function StaffDetail() {
     }
   }
 
+  async function captureProfilePhoto() {
+    if (!staff?.id || !cameraRef.current) return;
+    setPhotoUploading(true);
+    try {
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.45, skipProcessing: true });
+      if (!photo?.uri) throw new Error("Could not capture profile photo.");
+      const profilePhotoUrl = await uploadStaffProfilePhoto(staff.id, photo.uri);
+      await upsertStaff({ ...staff, profilePhotoUrl });
+      setStaff({ ...staff, profilePhotoUrl });
+      setCameraOpen(false);
+    } catch (err: any) { Alert.alert("Photo upload failed", err?.message ?? "Could not save profile photo."); }
+    finally { setPhotoUploading(false); }
+  }
+
   if (adminLoading || !adminReady || loading) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
@@ -65,6 +87,8 @@ export default function StaffDetail() {
       </View>
     );
   }
+
+  if (cameraOpen) return <View className="flex-1 bg-black"><CameraView ref={cameraRef} style={{ flex: 1 }} facing="front" /><Pressable onPress={() => setCameraOpen(false)} className="absolute top-12 left-4 rounded-full bg-black/60 p-3"><Text className="text-white">Cancel</Text></Pressable><Pressable onPress={captureProfilePhoto} disabled={photoUploading} className="absolute bottom-10 self-center rounded-full bg-white px-6 py-4"><Text className="font-bold text-slate-900">{photoUploading ? "Saving..." : "Capture photo"}</Text></Pressable></View>;
 
   return (
     <KeyboardAwareScreen>
@@ -89,6 +113,20 @@ export default function StaffDetail() {
           onChangeText={(t) => setStaff({ ...staff, staffId: t || undefined })}
           className="border p-3 rounded-xl mb-3 bg-white"
         />
+
+        <Text className="text-sm text-neutral">Profile photo</Text>
+        {staff.profilePhotoUrl ? <Image source={{ uri: staff.profilePhotoUrl }} className="mb-2 h-16 w-16 rounded-full" /> : null}
+        <Pressable onPress={async () => { if (!permission?.granted) { const result = await requestPermission(); if (!result.granted) return; } setCameraOpen(true); }} className="mb-3 rounded-xl bg-slate-800 p-3"><Text className="text-center font-semibold text-white">{staff.profilePhotoUrl ? "Update profile photo" : "Capture profile photo"}</Text></Pressable>
+
+        {isSuperAdmin ? <>
+          <Text className="text-sm text-neutral">Linked User UID</Text>
+          <TextInput
+            value={staff.userUid ?? "Not linked"}
+            editable={false}
+            selectTextOnFocus
+            className="border p-3 rounded-xl mb-3 bg-slate-50 text-slate-600"
+          />
+        </> : null}
 
         <Text className="text-sm text-neutral">Email</Text>
         <TextInput

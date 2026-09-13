@@ -47,11 +47,12 @@ export type AppUser = {
 const usersCollection = collection(db, "users");
 
 function normalizeUser(id: string, data: any): AppUser {
+  const normalizedRole = data.role === "superadmin" ? "super_admin" : data.role;
   return {
     id,
     uid: data.uid ?? id,
     displayName: data.displayName ?? null,
-    role: data.role ?? null,
+    role: normalizedRole ?? null,
     email: data.email ?? null,
     createdAt: data.createdAt ?? Date.now(),
     wards: Array.isArray(data.wards) ? data.wards : [],

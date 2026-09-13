@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { getAttendanceSummary, type AttendanceSummary } from "../services/attendanceSummary";
 import { getStaffGlobalSummary, type StaffAttendanceSummary } from "../services/staffAttendanceSummary";
 import useCurrentUser from "../hooks/useCurrentUser";
+import ImageCarousel from "../components/ImageCarousel";
 import { allowsStudentAndParentFeatures } from "../services/tenantScope";
 import AttendanceAuditPanel from "../components/AttendanceAuditPanel";
 
@@ -148,11 +149,7 @@ export default function Reports() {
             <h1 className="text-xl font-extrabold">Reports</h1>
             <p className="mt-1 text-xs text-white/70">Quick previews - tap a tile to open detailed reports.</p>
           </div>
-          <img
-            src="/attendance-report.jpg"
-            alt="Student and staff attendance reports"
-            className="h-[190px] w-full object-fill sm:h-[240px] lg:h-[300px]"
-          />
+          <ImageCarousel images={[{ src: "/attendance-report.jpg", alt: "Student and staff attendance reports" }, { src: "/how-it-works2.jpg", alt: "Attendance workflow" }]} />
         </div>
       </section>
 

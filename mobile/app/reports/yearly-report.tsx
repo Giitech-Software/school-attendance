@@ -97,7 +97,7 @@ export default function YearlyReport() {
       </ScrollView>
 
       <Text className="text-lg font-semibold mt-3 mb-1.5">Students ({rows.length})</Text>
-{rows.length > 0 ? <AttendanceTotalsCards rows={rows} label="Students" periodFrom={`${year}-01-01`} periodTo={`${year}-12-31`} /> : null}
+{rows.length > 0 ? <AttendanceTotalsCards rows={rows} label="Students" periodFrom={range.fromIso} periodTo={range.toIso} /> : null}
       <Text className="text-ml text-slate-700 mb-2">P = Present - L = Late - T = Attended - A = Absent</Text>
 
       {rows.length === 0 ? (

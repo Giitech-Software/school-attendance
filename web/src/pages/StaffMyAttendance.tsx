@@ -1,11 +1,24 @@
 import { Link } from "react-router-dom";
 import { useCurrentStaff } from "../hooks/useCurrentStaff";
+import useCurrentUser from "../hooks/useCurrentUser";
 
 export default function StaffMyAttendance() {
   const { staff, loading } = useCurrentStaff();
+  const { userDoc, loading: userLoading } = useCurrentUser();
+  const isAdmin = userDoc?.role === "admin" || userDoc?.role === "super_admin";
+  const canUseMyAttendance = isAdmin || (userDoc?.approved === true && userDoc?.canTakeStaffAttendance === true);
 
-  if (loading) {
+  if (loading || userLoading) {
     return <div className="enterprise-panel p-4 text-sm text-slate-500">Loading staff profile...</div>;
+  }
+
+  if (!canUseMyAttendance) {
+    return (
+      <div className="mx-auto max-w-lg enterprise-panel p-6 text-center">
+        <h1 className="text-xl font-extrabold text-slate-950">Attendance access unavailable</h1>
+        <p className="mt-2 text-sm text-slate-700">An administrator must enable staff check-in and check-out for your account.</p>
+      </div>
+    );
   }
 
   if (!staff) {

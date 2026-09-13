@@ -15,6 +15,8 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../../app/firebase";
+import { storage } from "../../app/firebase";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import type { Staff } from "./types";
 export type { Staff } from "./types";
 import { logAdminAction } from "./adminLogs";
@@ -25,6 +27,14 @@ import { belongsToTenant, getTenantScope, requireAdminTenantScope, sortByCreated
    COLLECTION
 ============================ */
 const STAFF_COLLECTION = "staff";
+
+export async function uploadStaffProfilePhoto(staffId: string, uri: string): Promise<string> {
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  const photoRef = ref(storage, `staff-profile-photos/${staffId}.jpg`);
+  await uploadBytes(photoRef, blob, { contentType: "image/jpeg", cacheControl: "public,max-age=86400" });
+  return getDownloadURL(photoRef);
+}
 
 export type StaffRoleType =
   | "teacher"

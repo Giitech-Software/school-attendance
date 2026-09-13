@@ -2,6 +2,8 @@ import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, query, serv
 import { db } from "../firebase";
 import { belongsToTenant, getTenantScope, requireAdminTenantScope, sortByCreatedAtDesc, tenantConstraints, withTenantScope } from "./tenantScope";
 import { deleteFace } from "./faceService";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { storage } from "../firebase";
 
 export type Staff = {
   id?: string;
@@ -14,6 +16,7 @@ export type Staff = {
   staffGroupId?: string;
   fingerprintId?: string;
   faceImageUrl?: string;
+  profilePhotoUrl?: string;
   faceId?: string;
   faceEnrolled?: boolean;
   tenantId?: string | null;
@@ -23,6 +26,19 @@ export type Staff = {
 };
 
 const STAFF_COLLECTION = "staff";
+
+export async function uploadStaffProfilePhoto(staffId: string, file: File): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, 320 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not compress profile photo.")), "image/jpeg", 0.72));
+  const photoRef = ref(storage, `staff-profile-photos/${staffId}.jpg`);
+  await uploadBytes(photoRef, blob, { contentType: "image/jpeg", cacheControl: "public,max-age=86400" });
+  return getDownloadURL(photoRef);
+}
 
 export type StaffRoleType = "teacher" | "non_teaching_staff" | "staff" | "general_staff";
 

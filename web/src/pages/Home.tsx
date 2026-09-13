@@ -5,6 +5,8 @@ import useCurrentUser from "../hooks/useCurrentUser";
 import { useAssignedStudentClasses } from "../hooks/useAssignedStudentClasses";
 import { getAttendanceSettings } from "../services/attendanceSettings";
 import { allowsStudentAndParentFeatures } from "../services/tenantScope";
+import ImageCarousel from "../components/ImageCarousel";
+import landingHowItWorks2 from "../assets/landing-how-it-works.jpg";
 
 function formatTime(time?: string) {
   if (!time) return "--";
@@ -326,7 +328,7 @@ export default function Home() {
         </section>
 
         <div className="bg-white">
-          <img src={landingHowItWorks} alt="Attendance workflow" className="h-[190px] w-full object-fill sm:h-[240px] lg:h-[300px]" />
+          <ImageCarousel images={[{ src: landingHowItWorks, alt: "Attendance workflow" }, { src: landingHowItWorks2, alt: "Attendance workflow overview" }]} />
         </div>
 
         <main className="space-y-5 px-4 py-4 sm:px-6">

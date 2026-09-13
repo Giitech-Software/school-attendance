@@ -7,10 +7,12 @@ import {
   Pressable,
   ActivityIndicator,
   Alert,
+  Image,
 } from "react-native";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import KeyboardAwareScreen from "@/components/KeyboardAwareScreen";
-import { getStudentById, upsertStudent } from "../../src/services/students";
+import { getStudentById, uploadStudentProfilePhoto, upsertStudent } from "../../src/services/students";
 import type { Student } from "../../src/services/types";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
@@ -25,6 +27,10 @@ export default function StudentDetail() {
   const [student, setStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [photoSaving, setPhotoSaving] = useState(false);
+  const [permission, requestPermission] = useCameraPermissions();
+  const cameraRef = React.useRef<CameraView>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -57,6 +63,19 @@ export default function StudentDetail() {
     }
   }
 
+  async function captureProfilePhoto() {
+    if (!student?.id || !cameraRef.current) return;
+    setPhotoSaving(true);
+    try {
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.45, skipProcessing: true });
+      if (!photo?.uri) throw new Error("Could not capture profile photo.");
+      const profilePhotoUrl = await uploadStudentProfilePhoto(student.id, photo.uri);
+      await upsertStudent({ ...student, profilePhotoUrl });
+      setStudent({ ...student, profilePhotoUrl }); setCameraOpen(false);
+    } catch (err: any) { Alert.alert("Photo upload failed", err?.message ?? "Could not save profile photo."); }
+    finally { setPhotoSaving(false); }
+  }
+
   if (adminLoading || !adminReady || loading) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
@@ -72,6 +91,8 @@ export default function StudentDetail() {
       </View>
     );
   }
+
+  if (cameraOpen) return <View className="flex-1 bg-black"><CameraView ref={cameraRef} style={{ flex: 1 }} facing="front" /><Pressable onPress={() => setCameraOpen(false)} className="absolute top-12 left-4 rounded-full bg-black/60 p-3"><Text className="text-white">Cancel</Text></Pressable><Pressable onPress={captureProfilePhoto} disabled={photoSaving} className="absolute bottom-10 self-center rounded-full bg-white px-6 py-4"><Text className="font-bold text-slate-900">{photoSaving ? "Saving..." : "Capture photo"}</Text></Pressable></View>;
 
   return (
     <KeyboardAwareScreen>
@@ -100,6 +121,10 @@ Edit Student
           onChangeText={(t) => setStudent({ ...student, name: t })}
           className="border p-3 rounded-xl mb-3 bg-white"
         />
+
+        <Text className="text-sm text-neutral">Profile photo</Text>
+        {student.profilePhotoUrl ? <Image source={{ uri: student.profilePhotoUrl }} className="mb-2 h-16 w-16 rounded-full" /> : null}
+        <Pressable onPress={async () => { if (!permission?.granted) { const result = await requestPermission(); if (!result.granted) return; } setCameraOpen(true); }} className="mb-3 rounded-xl bg-slate-800 p-3"><Text className="text-center font-semibold text-white">{student.profilePhotoUrl ? "Update profile photo" : "Capture profile photo"}</Text></Pressable>
 <Text className="text-sm text-neutral">Student ID</Text>
 <TextInput
   value={student.studentId ?? ""}

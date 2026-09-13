@@ -144,6 +144,7 @@ export default function Staff() {
                 <div key={item.id} className={`rounded-lg border p-3 ${enrollmentTone(item)}`}>
                   <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
                     <div className="min-w-0">
+                      {item.profilePhotoUrl ? <img src={item.profilePhotoUrl} alt="" className="mr-3 inline-block h-10 w-10 rounded-full object-cover align-middle" loading="lazy" /> : null}
                       <Link to={`/staff/${item.id}`} className="truncate text-base font-bold text-slate-950 hover:text-primary">
                         {item.name ?? "Staff member"}
                       </Link>

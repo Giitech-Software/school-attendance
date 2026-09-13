@@ -65,6 +65,7 @@ export default function Layout() {
   const location = useLocation();
   const { authUser, userDoc, loading } = useCurrentUser();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrollState, setScrollState] = useState({ canUp: false, canDown: false });
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem("astem-sidebar-collapsed") === "true");
 
   const isPublicRoute = publicRoutes.has(location.pathname);
@@ -95,6 +96,23 @@ export default function Layout() {
   useEffect(() => {
     localStorage.setItem("astem-sidebar-collapsed", String(sidebarCollapsed));
   }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    const updateScrollState = () => {
+      const documentElement = document.documentElement;
+      setScrollState({
+        canUp: window.scrollY > 80,
+        canDown: window.scrollY + window.innerHeight < documentElement.scrollHeight - 80,
+      });
+    };
+    updateScrollState();
+    window.addEventListener("scroll", updateScrollState, { passive: true });
+    window.addEventListener("resize", updateScrollState);
+    return () => {
+      window.removeEventListener("scroll", updateScrollState);
+      window.removeEventListener("resize", updateScrollState);
+    };
+  }, [location.pathname]);
 
   useEffect(() => {
     if (loading || isPublicRoute || !isAdmin) return;
@@ -244,6 +262,13 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+
+      {scrollState.canUp || scrollState.canDown ? (
+        <div className="fixed bottom-5 right-4 z-40 flex flex-col gap-2 sm:right-6">
+          {scrollState.canUp ? <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-xl font-bold text-white shadow-lg transition hover:bg-slate-700" aria-label="Scroll to top" title="Scroll to top">↑</button> : null}
+          {scrollState.canDown ? <button type="button" onClick={() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" })} className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-xl font-bold text-white shadow-lg transition hover:bg-primary-dark" aria-label="Scroll to bottom" title="Scroll to bottom">↓</button> : null}
+        </div>
+      ) : null}
     </div>
   );
 }

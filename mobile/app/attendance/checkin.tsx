@@ -121,7 +121,7 @@ export default function CheckinScreen() {
     ready: authorizationReady,
     hasCapability,
   } = useRequireAttendanceAccess(attendanceKind);
-  const [confirmation, setConfirmation] = useState<{ name: string; mode: "in" | "out"; time: string; } | null>(null);
+  const [confirmation, setConfirmation] = useState<{ name: string; mode: "in" | "out"; time: string; imageUrl?: string; } | null>(null);
   const [loading, setLoading] = useState(false);
   const [classes, setClasses] = useState<ClassRecord[]>([]);
   const [students, setStudents] = useState<StudentRecord[]>([]);
@@ -299,6 +299,7 @@ export default function CheckinScreen() {
         name: student.name ?? "Student",
         mode: checkType,
         time: new Date().toLocaleTimeString(),
+        imageUrl: student.profilePhotoUrl,
       });
     }
 
@@ -404,6 +405,7 @@ export default function CheckinScreen() {
         name: staff.name ?? staff.staffId ?? "Staff member",
         mode,
         time: new Date().toLocaleTimeString(),
+        imageUrl: staff.profilePhotoUrl,
       });
       setStaffIdInput("");
       setTimeout(() => setConfirmation(null), 3000);
@@ -664,6 +666,7 @@ export default function CheckinScreen() {
       {confirmation ? (
         <View className="absolute bottom-10 left-0 right-0 items-center px-4">
           <View className="bg-white rounded-2xl px-6 py-4 shadow-lg border border-gray-200">
+            {confirmation.imageUrl ? <Image source={{ uri: confirmation.imageUrl }} className="mb-2 h-12 w-12 self-center rounded-full" /> : null}
             <Text className="text-lg font-semibold text-dark">{confirmation.mode === "in" ? "Checked In" : "Checked Out"}</Text>
             <Text className="mt-1 text-neutral text-base">{`${confirmation.name}`}</Text>
             <Text className="text-xs text-neutral/60 mt-1">{`${confirmation.time}`}</Text>

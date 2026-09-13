@@ -13,6 +13,8 @@ import {
   deleteField,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { storage } from "../firebase";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import type { Student } from "../types";
 import { getClassById } from "./classes";
 import { belongsToTenant, getTenantScope, requireAdminTenantScope, sortByCreatedAtDesc, tenantConstraints, withTenantScope } from "./tenantScope";
@@ -20,6 +22,17 @@ import { belongsToTenant, getTenantScope, requireAdminTenantScope, sortByCreated
 export type { Student };
 
 const studentsCollection = collection(db, "students");
+
+export async function uploadStudentProfilePhoto(studentId: string, file: File): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, 320 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas"); canvas.width = Math.max(1, Math.round(bitmap.width * scale)); canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not compress profile photo.")), "image/jpeg", 0.72));
+  const photoRef = ref(storage, `student-profile-photos/${studentId}.jpg`);
+  await uploadBytes(photoRef, blob, { contentType: "image/jpeg", cacheControl: "public,max-age=86400" });
+  return getDownloadURL(photoRef);
+}
 
 function withShortId(id: string, data: any): Student {
   return {

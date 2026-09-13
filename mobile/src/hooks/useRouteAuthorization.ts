@@ -145,7 +145,8 @@ export function useRequireAttendanceAccess(
     options.allowSelfService === true &&
     kind === "staff" &&
     isApproved &&
-    isStaffRole(userDoc);
+    isStaffRole(userDoc) &&
+    hasCapability;
   const assignedClassAllowed =
     !geofenceBypassActive &&
     kind === "student" &&
@@ -181,7 +182,9 @@ export function useRequireAttendanceAccess(
         "Access denied",
         geofenceBypassActive
           ? "Geofencing is currently bypassed. Only users explicitly permitted to take attendance can record student or staff attendance."
-          : "You do not have permission to take this attendance."
+          : kind === "staff"
+            ? "An administrator must enable staff check-in and check-out for your account."
+            : "An administrator must enable student attendance access for your account."
       );
       router.replace("/" as any);
     }

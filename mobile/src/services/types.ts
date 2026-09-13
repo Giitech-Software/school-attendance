@@ -9,6 +9,7 @@ export type Student = {
 
   studentId?: string; // display ID
   classId?: string;
+  profilePhotoUrl?: string;
 
   isActive?: boolean;
   classDocId?: string;
@@ -119,6 +120,7 @@ export interface Staff {
   tenantType?: string | null;
   fingerprintId?: string;
     faceImageUrl?: string;
+    profilePhotoUrl?: string;
     faceId?: string;   // ✅ ADD THIS
     faceEnrolled?: boolean;
   createdAt?: any;

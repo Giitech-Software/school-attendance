@@ -21,7 +21,7 @@ service cloud.firestore {
     }
 
     function isSuperAdmin() {
-      return callerUserExists() && callerUser().role == 'super_admin';
+      return callerUserExists() && (callerUser().role == 'super_admin' || callerUser().role == 'superadmin');
     }
 
     function isAdmin() {

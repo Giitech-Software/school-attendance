@@ -8,6 +8,7 @@ export type Student = {
   classDocId?: string;
   rollNo?: string;
   photoUrl?: string;
+  profilePhotoUrl?: string;
   faceEnrolledAt?: string | null;
   faceEmbedding?: number[];
   faceId?: string;

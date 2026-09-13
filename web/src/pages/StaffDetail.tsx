@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { getStaffById, STAFF_ROLE_OPTIONS, upsertStaff, type Staff } from "../services/staff";
+import { getStaffById, STAFF_ROLE_OPTIONS, uploadStaffProfilePhoto, upsertStaff, type Staff } from "../services/staff";
 import { listStaffGroups, type StaffGroup } from "../services/staffGroups";
+import useCurrentUser from "../hooks/useCurrentUser";
 
 export default function StaffDetail() {
   const { id } = useParams<{ id: string }>();
@@ -10,6 +11,9 @@ export default function StaffDetail() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [groups, setGroups] = useState<StaffGroup[]>([]);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const { userDoc: currentUser } = useCurrentUser();
+  const isSuperAdmin = currentUser?.role === "super_admin";
   useEffect(() => { listStaffGroups().then(setGroups).catch(console.error); }, []);
 
   useEffect(() => {
@@ -50,6 +54,18 @@ export default function StaffDetail() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handlePhoto(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file || !staff?.id) return;
+    setPhotoUploading(true);
+    try {
+      const profilePhotoUrl = await uploadStaffProfilePhoto(staff.id, file);
+      setStaff({ ...staff, profilePhotoUrl });
+      await upsertStaff({ ...staff, profilePhotoUrl });
+    } catch (err: any) { alert(err?.message ?? "Profile photo upload failed."); }
+    finally { setPhotoUploading(false); event.target.value = ""; }
   }
 
   if (loading) {
@@ -95,6 +111,12 @@ export default function StaffDetail() {
               <span className="auth-label">Staff ID</span>
               <input value={staff.staffId ?? ""} onChange={(event) => setStaff({ ...staff, staffId: event.target.value.toUpperCase() || undefined })} className="enterprise-input mt-1.5" />
             </label>
+            <label className="block md:col-span-2">
+              <span className="auth-label">Profile photo</span>
+              <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhoto} disabled={photoUploading} className="enterprise-input mt-1.5" />
+              <span className="mt-1 block text-xs text-slate-500">Compressed to a small JPEG thumbnail for fast loading. Separate from face recognition.</span>
+              {staff.profilePhotoUrl ? <img src={staff.profilePhotoUrl} alt={`${staff.name} profile`} className="mt-2 h-16 w-16 rounded-full object-cover" /> : null}
+            </label>
 
             <label className="block">
               <span className="auth-label">Email</span>
@@ -113,10 +135,10 @@ export default function StaffDetail() {
             </div>
           </div>
 
-          <label className="mt-3 block">
+          {isSuperAdmin ? <label className="mt-3 block">
             <span className="auth-label">Linked User UID</span>
-            <input value={staff.userUid ?? ""} onChange={(event) => setStaff({ ...staff, userUid: event.target.value || undefined })} className="enterprise-input mt-1.5" placeholder="Optional Firebase user UID" />
-          </label>
+            <input value={staff.userUid ?? ""} readOnly className="enterprise-input mt-1.5 bg-slate-50 text-slate-600" placeholder="Not linked" />
+          </label> : null}
 
           <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
             <button type="submit" disabled={saving} className="enterprise-button-primary">

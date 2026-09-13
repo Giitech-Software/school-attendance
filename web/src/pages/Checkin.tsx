@@ -7,6 +7,8 @@ import { getStaffByStaffId, listStaff, type Staff } from "../services/staff";
 import { registerStaffAttendance } from "../services/staffAttendance";
 import { getAttendanceSettings } from "../services/attendanceSettings";
 import type { AttendanceRecord } from "../types";
+import useCurrentUser from "../hooks/useCurrentUser";
+import ImageCarousel from "../components/ImageCarousel";
 
 function isAttendanceAllowed(actor: "student" | "staff", allowStaffWeekendAttendance: boolean): { allowed: boolean; reason?: string } {
   const today = new Date();
@@ -78,6 +80,7 @@ function actionCardClass(tone: "primary" | "sky" | "emerald" | "slate") {
 }
 
 export default function Checkin() {
+  const { userDoc, loading: userLoading } = useCurrentUser();
   const [searchParams, setSearchParams] = useSearchParams();
   const actor = searchParams.get("actor") === "staff" ? "staff" : "student";
   const initialMode = searchParams.get("mode") === "out" ? "out" : "in";
@@ -94,7 +97,10 @@ export default function Checkin() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [successStaffPhoto, setSuccessStaffPhoto] = useState<string | null>(null);
   const [allowStaffWeekendAttendance, setAllowStaffWeekendAttendance] = useState(false);
+  const isAdmin = userDoc?.role === "admin" || userDoc?.role === "super_admin";
+  const canRecord = isAdmin || (userDoc?.approved === true && (actor === "staff" ? userDoc.canTakeStaffAttendance === true : userDoc.canTakeStudentAttendance === true));
 
   const attendanceCheck = isAttendanceAllowed(actor, allowStaffWeekendAttendance);
   const selectedClass = useMemo(
@@ -165,6 +171,7 @@ export default function Checkin() {
     setSearchParams({ actor: nextActor, mode });
     setError(null);
     setSuccess(null);
+    setSuccessStaffPhoto(null);
   }
 
 
@@ -173,6 +180,7 @@ export default function Checkin() {
   }
 
   async function submitStudentAttendance(studentId = selectedStudentId, nextMode: "in" | "out" = mode) {
+    if (!canRecord) { setError("An administrator must enable student attendance access for your account."); return; }
     if (!studentId) {
       setError("Select a student before recording attendance.");
       return;
@@ -202,6 +210,7 @@ export default function Checkin() {
         movementReason,
       });
       setSuccess(`${student?.name ?? student?.studentId ?? "Student"} checked ${nextMode === "in" ? "in" : "out"} successfully.`);
+      setSuccessStaffPhoto(student?.profilePhotoUrl ?? null);
       setSelectedStudentId("");
       await refreshAttendance();
     } catch (err: any) {
@@ -212,6 +221,7 @@ export default function Checkin() {
   }
 
   async function submitStaffAttendance(nextMode = mode) {
+    if (!canRecord) { setError("An administrator must enable staff check-in and check-out for your account."); return; }
     if (!staffIdInput.trim()) {
       setError("Enter a staff ID before recording attendance.");
       return;
@@ -232,6 +242,7 @@ export default function Checkin() {
       await registerStaffAttendance({ staffId: staff.id, mode: nextMode, method: "manual", biometric: false, movementReason });
       setStaffMembers((current) => (current.some((item) => item.id === staff.id || item.staffId === staff.staffId) ? current : [...current, staff]));
       setSuccess(`${staff.name ?? staff.staffId ?? "Staff member"} checked ${nextMode === "in" ? "in" : "out"} successfully.`);
+      setSuccessStaffPhoto(staff.profilePhotoUrl ?? null);
       setStaffIdInput("");
       await refreshAttendance();
     } catch (err: any) {
@@ -285,6 +296,10 @@ export default function Checkin() {
 
   const qrClassQuery = selectedClassId ? `&classId=${selectedClassId}&classDocId=${selectedClass?.id ?? ""}` : "";
 
+  if (userLoading) return <div className="enterprise-panel p-4 text-sm text-slate-600">Checking attendance access...</div>;
+  if (!userDoc) return <div className="enterprise-panel p-6 text-center"><h1 className="text-xl font-extrabold text-slate-950">Sign in required</h1><p className="mt-2 text-sm text-slate-700">Please sign in before recording attendance.</p></div>;
+  if (!canRecord) return <div className="enterprise-panel p-6 text-center"><h1 className="text-xl font-extrabold text-slate-950">Attendance access unavailable</h1><p className="mt-2 text-sm text-slate-700">{actor === "staff" ? "An administrator must enable staff check-in and check-out for your account." : "An administrator must enable student attendance access for your account."}</p></div>;
+
   return (
     <div className="min-w-0 space-y-3">
       <section className="enterprise-panel overflow-hidden">
@@ -314,17 +329,13 @@ export default function Checkin() {
               </button>
             </div>
           </div>
-          <img
-            src="/how-it-works.jpg"
-            alt={`${actor === "student" ? "Student" : "Staff"} attendance workflow`}
-            className="h-[190px] w-full object-fill sm:h-[240px] lg:h-[300px]"
-          />
+          <ImageCarousel images={[{ src: "/how-it-works.jpg", alt: `${actor === "student" ? "Student" : "Staff"} attendance workflow` }, { src: "/how-it-works2.jpg", alt: "Attendance check-in and check-out workflow" }]} />
         </div>
       </section>
 
       {!attendanceCheck.allowed ? <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm font-semibold text-yellow-800">{attendanceCheck.reason}</div> : null}
       {error ? <div className="status-error">{error}</div> : null}
-      {success ? <div className="status-success">{success}</div> : null}
+      {success ? <div className="status-success flex items-center gap-3">{successStaffPhoto ? <img src={successStaffPhoto} alt="" className="h-10 w-10 rounded-full object-cover" /> : null}<span>{success}</span></div> : null}
 
       <section className="grid min-w-0 gap-3 xl:grid-cols-[minmax(0,1fr)_21rem]">
         <div className="min-w-0 space-y-3">

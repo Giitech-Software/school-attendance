@@ -86,7 +86,7 @@ export default function Staff() {
               <Link to="/" className="rounded-lg border border-white/20 px-2.5 py-1 text-sm font-semibold text-white hover:bg-white/10" aria-label="Back">
                 Back
               </Link>
-              <h1 className="text-xl font-extrabold">Staff ({search ? `${filteredStaff.length} of ${staff.length}` : staff.length})</h1>
+              <h1 className="text-xl font-extrabold">Staff</h1>
             </div>
             <p className="mt-1 text-xs text-white/70">Manage staff profiles, login links, and enrollment status.</p>
           </div>

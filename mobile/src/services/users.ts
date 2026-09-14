@@ -54,6 +54,7 @@ export type AppUser = {
   approved?: boolean;
   canTakeStaffAttendance?: boolean;
   canTakeStudentAttendance?: boolean;
+  canTakeSelfAttendance?: boolean;
 };
 
 const USERS_COLLECTION = "users";
@@ -89,6 +90,7 @@ export async function listUsers(): Promise<AppUser[]> {
         approved: Boolean(data.approved),
         canTakeStaffAttendance: Boolean(data.canTakeStaffAttendance),
         canTakeStudentAttendance: Boolean(data.canTakeStudentAttendance),
+        canTakeSelfAttendance: Boolean(data.canTakeSelfAttendance),
       } as AppUser;
     });
   } catch (err) {
@@ -230,6 +232,7 @@ export async function upsertUser(user: AppUser): Promise<string> {
     ...(user.canTakeStudentAttendance !== undefined && {
       canTakeStudentAttendance: user.canTakeStudentAttendance,
     }),
+    ...(user.canTakeSelfAttendance !== undefined && { canTakeSelfAttendance: user.canTakeSelfAttendance }),
 
     ...(user.wards !== undefined && {
       wards: user.wards,

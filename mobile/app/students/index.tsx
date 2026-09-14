@@ -104,7 +104,7 @@ export default function StudentsList() {
           </Pressable>
 
           <Text className="text-2xl font-extrabold text-slate-900">
-            Students ({search ? `${filteredStudents.length} of ${students.length}` : students.length})
+            Students
           </Text>
         </View>
 

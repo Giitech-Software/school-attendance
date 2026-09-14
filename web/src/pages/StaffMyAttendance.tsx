@@ -6,7 +6,7 @@ export default function StaffMyAttendance() {
   const { staff, loading } = useCurrentStaff();
   const { userDoc, loading: userLoading } = useCurrentUser();
   const isAdmin = userDoc?.role === "admin" || userDoc?.role === "super_admin";
-  const canUseMyAttendance = isAdmin || (userDoc?.approved === true && userDoc?.canTakeStaffAttendance === true);
+  const canUseMyAttendance = isAdmin || (userDoc?.approved === true && userDoc?.canTakeSelfAttendance === true);
 
   if (loading || userLoading) {
     return <div className="enterprise-panel p-4 text-sm text-slate-500">Loading staff profile...</div>;

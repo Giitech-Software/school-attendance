@@ -77,7 +77,7 @@ export default function Students() {
                 Back
               </Link>
               <h1 className="text-xl font-extrabold">
-                Students ({search ? `${filteredStudents.length} of ${students.length}` : students.length})
+                Students
               </h1>
             </div>
             <p className="mt-1 text-xs text-white/70">Manage student records, class assignment, IDs, and enrollment status.</p>

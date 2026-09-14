@@ -112,7 +112,7 @@ service cloud.firestore {
     }
 
     function isWritingOwnStaffAttendance() {
-      return isStaffRole()
+      return isStaffRole() && callerUser().canTakeSelfAttendance == true
         && request.resource.data.subjectType == 'staff'
         && request.resource.data.subjectId is string
         && exists(/databases/$(database)/documents/staff/$(request.resource.data.subjectId))
@@ -273,6 +273,7 @@ service cloud.firestore {
               'approved',
               'canTakeStaffAttendance',
               'canTakeStudentAttendance',
+              'canTakeSelfAttendance',
               'tenantId',
               'tenantName',
               'tenantType',
@@ -358,7 +359,7 @@ service cloud.firestore {
     }
 
     match /attendance/{recId} {
-      allow get: if ((isAdmin() || canTakeStaffAttendance()) && sameTenantResource())
+      allow get: if ((isAdmin() || canTakeStaffAttendance()) && (resource == null || sameTenantResource()))
         || (resource.data.subjectType == 'student' && isAssignedToClassDoc(resource.data.classDocId))
         || isReadingOwnStaffAttendance()
         || isReadingWardAttendance();
@@ -374,8 +375,8 @@ service cloud.firestore {
           isAdmin()
           || (request.resource.data.subjectType == 'student' && canTakeStudentAttendance())
           || (!attendanceUsesGeofenceBypass() && request.resource.data.subjectType == 'student' && isAssignedToClassDoc(request.resource.data.classDocId))
-          || (request.resource.data.subjectType == 'staff' && canTakeStaffAttendance())
-          || (!attendanceUsesGeofenceBypass() && isWritingOwnStaffAttendance())
+          || (request.resource.data.subjectType == 'staff' && isAdmin() && canTakeStaffAttendance())
+          || isWritingOwnStaffAttendance()
         );
 
       allow update: if validAttendanceShape()
@@ -384,8 +385,8 @@ service cloud.firestore {
           isAdmin()
           || (resource.data.subjectType == 'student' && canTakeStudentAttendance())
           || (!attendanceUsesGeofenceBypass() && resource.data.subjectType == 'student' && isAssignedToClassDoc(resource.data.classDocId) && request.resource.data.classDocId == resource.data.classDocId)
-          || (resource.data.subjectType == 'staff' && canTakeStaffAttendance())
-          || (!attendanceUsesGeofenceBypass() && isReadingOwnStaffAttendance() && request.resource.data.subjectType == resource.data.subjectType && request.resource.data.subjectId == resource.data.subjectId)
+          || (resource.data.subjectType == 'staff' && isAdmin() && canTakeStaffAttendance())
+          || (isReadingOwnStaffAttendance() && request.resource.data.subjectType == resource.data.subjectType && request.resource.data.subjectId == resource.data.subjectId)
         );
 
       allow delete: if isAdmin() && sameTenantResource();

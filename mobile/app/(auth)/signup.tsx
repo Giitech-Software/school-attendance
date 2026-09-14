@@ -101,6 +101,7 @@ await upsertUser({
   approved: false,
   canTakeStaffAttendance: false,
   canTakeStudentAttendance: false,
+  canTakeSelfAttendance: false,
 
   ...(tenantInvite ? {
     tenantId: tenantInvite.tenantId,

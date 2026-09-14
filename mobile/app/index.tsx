@@ -18,6 +18,7 @@ import { signOutUser } from "../src/services/auth";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons, Entypo } from "@expo/vector-icons";
 import useCurrentUser from "../src/hooks/useCurrentUser";
+import ImageCarousel from "../components/ImageCarousel";
 import { useAssignedStudentClasses } from "../src/hooks/useAssignedStudentClasses";
 import { getAttendanceSettings } from "../src/services/attendanceSettings";
 //import { autoMarkAbsentsForToday } from "../src/services/attendance"; // adjust path if needed
@@ -309,17 +310,6 @@ useFocusEffect(
 
 </View>
 </View>
-{/* Hero Image */}
-<View className="bg-white">
-  <Image
-    source={require("../assets/images/how-it-works2.jpg")}
-    style={{ width: "100%", height: 130 }}
-    resizeMode="stretch"
-  />
-</View>
-
-
-
 {/* Welcome Popup */}
 {showWelcome && (
   <View className="absolute top-0 left-0 right-0 bottom-0 bg-black/40 items-center justify-center px-6 z-50">
@@ -410,6 +400,9 @@ useFocusEffect(
 
       {/* Content area */}
       <ScrollView contentContainerStyle={{ padding: 16 }} className="flex-1">
+        <View className="-mx-4 -mt-4 bg-white">
+          <ImageCarousel images={[require("../assets/images/home-banner-1.jpg"), require("../assets/images/home-banner-2.jpg"), require("../assets/images/home-banner-3.jpg"), require("../assets/images/home-banner-4.jpg"), require("../assets/images/home-banner-5.jpg")]} height={280} />
+        </View>
         <LandingActionGroup title="My workspace" description="Your attendance and personal records." actions={personalActions} />
         <LandingActionGroup title="Attendance operations" description="Start and manage authorised attendance activities." actions={attendanceActions} />
         <LandingActionGroup title="Management" description="Administration, reporting, and enrolment tools." actions={managementActions} />

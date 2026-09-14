@@ -96,7 +96,7 @@ const filteredStaff = staffList.filter((s) => {
             <MaterialIcons name="arrow-back" size={26} color="#0f172a" />
           </Pressable>
           <Text className="text-2xl font-extrabold text-slate-900">
-  Staff ({search ? `${filteredStaff.length} of ${staffList.length}` : staffList.length})
+  Staff
 </Text>
         </View>
 

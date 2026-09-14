@@ -189,16 +189,16 @@ export default function SuperAdminTenants() {
           </div>
         )}
 
-        <section className="grid gap-3 md:grid-cols-4">
+        <section className="grid grid-cols-2 gap-3 bg-slate-100 p-3 lg:grid-cols-4">
           {[
             ["Total tenants", tenants.length, "bg-slate-900 text-white"],
             ["Active", activeCount, "bg-emerald-100 text-emerald-800"],
             ["Suspended", suspendedCount, "bg-red-100 text-red-800"],
             ["Registrations", registrations.length, "bg-blue-100 text-blue-800"],
           ].map(([label, value, tone]) => (
-            <div key={label} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <div key={label} className="flex min-h-28 flex-col items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</p>
-              <p className={`mt-2 w-fit rounded px-2 py-1 text-2xl font-extrabold ${tone}`}>{value}</p>
+              <p className={`w-fit rounded px-2 py-1 text-2xl font-extrabold ${tone}`}>{value}</p>
             </div>
           ))}
         </section>

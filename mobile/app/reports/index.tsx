@@ -17,6 +17,7 @@ import { getStaffGlobalSummary, } from "../../src/services/staffAttendanceSummar
 import useCurrentUser from "../../src/hooks/useCurrentUser";
 import { allowsStudentAndParentFeatures } from "../../src/services/tenantScope";
 import AttendanceAuditPanel from "../../components/AttendanceAuditPanel";
+import ImageCarousel from "../../components/ImageCarousel";
 export default function ReportsDashboard() {
   const router = useRouter();
 
@@ -197,35 +198,18 @@ if (userDoc?.role !== "admin" && userDoc?.role !== "super_admin") {
       contentContainerStyle={{ padding: 16 }}
 
     >
-     <View className="flex-row items-center mb-2">
-  <Pressable
-    onPress={() => router.back()}
-    className="p-1 mr-2"
-    hitSlop={8}
-  >
-    <MaterialIcons
-      name="arrow-back"
-      size={24}
-      color="#0f172a"
-    />
-  </Pressable>
-
-
-  <Text className="text-xl font-extrabold text-slate-900">
-    Reports
-  </Text>
-</View>
-{/* Hero Image */}
-<View className="bg-white -mx-4">
-  <Image
-    source={require("../../assets/images/attendance-report.jpg")}
-    style={{ width: "100%", height: 220 }}
-    resizeMode="stretch"
-  />
-</View>
-<Text className="text-ml font-bold text-slate-800 py-4">
-  Quick previews - tap a tile to open detailed reports
-</Text>
+     <View className="-mx-4 overflow-hidden rounded-none bg-white">
+       <View className="flex-row items-center border-b border-slate-700 bg-slate-900 px-4 py-3">
+         <Pressable onPress={() => router.back()} className="mr-2 rounded-lg border border-white/20 p-1" hitSlop={8}>
+           <MaterialIcons name="arrow-back" size={22} color="#ffffff" />
+         </Pressable>
+         <View>
+           <Text className="text-xl font-extrabold text-white">Reports</Text>
+           <Text className="mt-1 text-xs font-medium text-white/70">Quick previews - tap a tile to open detailed reports.</Text>
+         </View>
+       </View>
+     <ImageCarousel images={[require("../../assets/images/reports-1.jpg"), require("../../assets/images/reports-2.jpg"), require("../../assets/images/reports-3.jpg"), require("../../assets/images/reports-4.jpg")]} height={300} />
+     </View>
 
 <View className="flex-row mb-3">
   {allowsSchoolFeatures ? (

@@ -142,14 +142,17 @@ export default function Reports() {
   const tiles = reportType === "student" && allowsSchoolFeatures ? studentLinks : staffLinks.filter((link) => !link.schoolOnly || allowsSchoolFeatures);
 
   return (
-    <div className="space-y-3">
-      <section className="enterprise-panel overflow-hidden">
+    <div className="-m-3 space-y-3 sm:-m-4 lg:-m-5">
+      <section className="enterprise-panel rounded-none overflow-hidden">
         <div className="grid gap-0">
-          <div className="border-b border-slate-200 bg-slate-900 px-4 py-3 text-white lg:border-b-0">
-            <h1 className="text-xl font-extrabold">Reports</h1>
-            <p className="mt-1 text-xs text-white/70">Quick previews - tap a tile to open detailed reports.</p>
+          <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-900 px-3 py-3 text-white sm:px-4 lg:border-b-0">
+            <Link to="/" className="shrink-0 rounded-lg border border-white/20 px-2.5 py-1 text-sm font-semibold text-white hover:bg-white/10" aria-label="Back home">Back</Link>
+            <div>
+              <h1 className="text-xl font-extrabold">Reports</h1>
+              <p className="mt-1 text-xs text-white/70">Quick previews - tap a tile to open detailed reports.</p>
+            </div>
           </div>
-          <ImageCarousel images={[{ src: "/attendance-report.jpg", alt: "Student and staff attendance reports" }, { src: "/how-it-works2.jpg", alt: "Attendance workflow" }]} />
+          <ImageCarousel images={[{ src: "/reports-1.webp", alt: "Student and staff attendance reports" }, { src: "/reports-2.webp", alt: "Attendance summaries" }, { src: "/reports-3.webp", alt: "Attendance audit reports" }, { src: "/reports-4.webp", alt: "Attendance analytics" }]} />
         </div>
       </section>
 

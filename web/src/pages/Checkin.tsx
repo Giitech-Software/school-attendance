@@ -238,6 +238,9 @@ export default function Checkin() {
       const staffCode = staffIdInput.trim();
       const staff = await getStaffByStaffId(staffCode);
       if (!staff?.id) throw new Error(`No staff record found for ID: ${staffCode}`);
+      if (!isAdmin && staff.userUid !== (userDoc.uid ?? userDoc.id)) {
+        throw new Error("You can only record attendance for your own staff profile.");
+      }
       const movementReason = await promptMovementReason(nextMode);
       await registerStaffAttendance({ staffId: staff.id, mode: nextMode, method: "manual", biometric: false, movementReason });
       setStaffMembers((current) => (current.some((item) => item.id === staff.id || item.staffId === staff.staffId) ? current : [...current, staff]));
@@ -301,12 +304,17 @@ export default function Checkin() {
   if (!canRecord) return <div className="enterprise-panel p-6 text-center"><h1 className="text-xl font-extrabold text-slate-950">Attendance access unavailable</h1><p className="mt-2 text-sm text-slate-700">{actor === "staff" ? "An administrator must enable staff check-in and check-out for your account." : "An administrator must enable student attendance access for your account."}</p></div>;
 
   return (
-    <div className="min-w-0 space-y-3">
-      <section className="enterprise-panel overflow-hidden">
+    <div className="-m-3 min-w-0 space-y-3 sm:-m-4 lg:-m-5">
+      <section className="enterprise-panel rounded-none overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-900 px-3 py-3 text-white sm:px-4 md:flex-row md:items-center md:justify-between">
-          <div>
+          <div className="flex min-w-0 items-center gap-2">
+            <Link to="/attendance" className="shrink-0 rounded-lg border border-white/20 px-2.5 py-1 text-sm font-semibold text-white hover:bg-white/10" aria-label="Back to attendance">
+              Back
+            </Link>
+            <div className="min-w-0">
             <h1 className="text-xl font-extrabold">{actor === "student" ? "Student Attendance" : "Staff Attendance"}</h1>
             <p className="mt-1 text-xs text-white/70">{actor === "student" ? "Scan QR or fingerprint for check-in." : "Scan QR or use face recognition for check-in."}</p>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
             <Link to={`/attendance/qr?actor=${actor}&mode=${mode}${qrClassQuery}`} className="inline-flex items-center justify-center rounded-lg bg-secondary px-3 py-2 text-xs font-extrabold text-primary">
@@ -320,16 +328,16 @@ export default function Checkin() {
 
         <div className="grid gap-0">
           <div className="p-3 sm:p-4">
-            <div className="grid gap-2 sm:grid-cols-2">
-              <button type="button" onClick={() => changeActor("student")} className={`rounded-xl border px-3 py-2 text-sm font-semibold ${actor === "student" ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-dark hover:bg-slate-50"}`}>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => changeActor("student")} className={`inline-flex items-center justify-center rounded-lg border px-3 py-2 text-xs font-extrabold ${actor === "student" ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-dark hover:bg-slate-50"}`}>
                 Students
               </button>
-              <button type="button" onClick={() => changeActor("staff")} className={`rounded-xl border px-3 py-2 text-sm font-semibold ${actor === "staff" ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-dark hover:bg-slate-50"}`}>
+              <button type="button" onClick={() => changeActor("staff")} className={`inline-flex items-center justify-center rounded-lg border px-3 py-2 text-xs font-extrabold ${actor === "staff" ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-dark hover:bg-slate-50"}`}>
                 Staff
               </button>
             </div>
           </div>
-          <ImageCarousel images={[{ src: "/how-it-works.jpg", alt: `${actor === "student" ? "Student" : "Staff"} attendance workflow` }, { src: "/how-it-works2.jpg", alt: "Attendance check-in and check-out workflow" }]} />
+          <ImageCarousel images={[{ src: "/attendance-1.webp", alt: `${actor === "student" ? "Student" : "Staff"} attendance workflow` }, { src: "/attendance-2.webp", alt: "Attendance check-in workflow" }, { src: "/attendance-3.webp", alt: "Attendance check-out workflow" }, { src: "/attendance-4.webp", alt: "Secure attendance verification" }]} />
         </div>
       </section>
 

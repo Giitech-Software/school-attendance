@@ -1,0 +1,48 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function caller() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isSuperAdmin() {
+      return signedIn() && (caller().role == 'super_admin' || caller().role == 'superadmin');
+    }
+
+    function isAdmin() {
+      return isSuperAdmin() || (signedIn() && caller().role == 'admin');
+    }
+
+    function sameTenant(tenantId) {
+      return isSuperAdmin() || (isAdmin() && caller().tenantId == tenantId);
+    }
+
+    function validThumbnail() {
+      return request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /staff-profile-photos/{staffId} {
+      allow read: if signedIn();
+      allow write: if isAdmin()
+        && validThumbnail()
+        && sameTenant(firestore.get(/databases/(default)/documents/staff/$(staffId)).data.tenantId);
+      allow delete: if isAdmin()
+        && sameTenant(firestore.get(/databases/(default)/documents/staff/$(staffId)).data.tenantId);
+    }
+
+    match /student-profile-photos/{studentId} {
+      allow read: if signedIn();
+      allow write: if isAdmin()
+        && validThumbnail()
+        && sameTenant(firestore.get(/databases/(default)/documents/students/$(studentId)).data.tenantId);
+      allow delete: if isAdmin()
+        && sameTenant(firestore.get(/databases/(default)/documents/students/$(studentId)).data.tenantId);
+    }
+  }
+}

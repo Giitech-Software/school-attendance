@@ -237,6 +237,14 @@ export default function UserDetail() {
             : "Cannot take staff attendance"}
         </Text>
       </Pressable>
+      <Pressable
+        onPress={() => setUser((prev) => prev ? { ...prev, canTakeSelfAttendance: !prev.canTakeSelfAttendance } : prev)}
+        className={`px-4 py-2 rounded ${user.canTakeSelfAttendance ? "bg-green-600" : "bg-slate-500"}`}
+      >
+        <Text className="text-white">
+          {user.canTakeSelfAttendance ? "Can take self attendance" : "Cannot take self attendance"}
+        </Text>
+      </Pressable>
     </View>
 
     {isStaffAccount() && user.id ? (

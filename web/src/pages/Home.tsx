@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import landingHowItWorks from "../assets/landing-how-it-works.jpg";
 import useCurrentUser from "../hooks/useCurrentUser";
 import { useAssignedStudentClasses } from "../hooks/useAssignedStudentClasses";
 import { getAttendanceSettings } from "../services/attendanceSettings";
 import { allowsStudentAndParentFeatures } from "../services/tenantScope";
 import ImageCarousel from "../components/ImageCarousel";
-import landingHowItWorks2 from "../assets/landing-how-it-works.jpg";
 
 function formatTime(time?: string) {
   if (!time) return "--";
@@ -328,7 +326,7 @@ export default function Home() {
         </section>
 
         <div className="bg-white">
-          <ImageCarousel images={[{ src: landingHowItWorks, alt: "Attendance workflow" }, { src: landingHowItWorks2, alt: "Attendance workflow overview" }]} />
+          <ImageCarousel images={[{ src: "/home-banner-1.webp", alt: "Attendance workflow" }, { src: "/home-banner-2.webp", alt: "Attendance overview" }, { src: "/home-banner-3.webp", alt: "Secure attendance records" }, { src: "/home-banner-4.webp", alt: "Attendance operations" }, { src: "/home-banner-5.webp", alt: "Attendance management" }]} />
         </div>
 
         <main className="space-y-5 px-4 py-4 sm:px-6">

@@ -26,6 +26,7 @@ import { db } from "../../app/firebase";
 import { handleStaffBiometricCheck } from "../../src/services/staffBiometricHandler";
 import { useRequireAttendanceAccess } from "../../src/hooks/useRouteAuthorization";
 import AppInput from "@/components/AppInput";
+import ImageCarousel from "../../components/ImageCarousel";
 import { useMovementReasonPrompt } from "@/components/MovementReasonPrompt";
 import { getTenantScope, tenantConstraints } from "../../src/services/tenantScope";
 
@@ -443,7 +444,7 @@ export default function CheckinScreen() {
         ) : null}
 
         <View className="bg-white -mx-4">
-          <Image source={require("../../assets/images/how-it-works.jpg")} style={{ width: "100%", height: 220 }} resizeMode="stretch" />
+          <ImageCarousel images={[require("../../assets/images/attendance-1.jpg"), require("../../assets/images/attendance-2.jpg"), require("../../assets/images/attendance-3.jpg"), require("../../assets/images/attendance-4.jpg")]} height={300} />
         </View>
 
         {actor === "student" ? (

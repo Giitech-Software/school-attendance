@@ -18,17 +18,6 @@ const cfg = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-// Fix incorrect bucket (Google console sometimes generates `.firebasestorage.app`)
-if (cfg.storageBucket && cfg.storageBucket.endsWith(".firebasestorage.app")) {
-  console.warn(
-    `[WARNING] Rewriting invalid Firebase storageBucket "${cfg.storageBucket}" → appspot.com`
-  );
-  cfg.storageBucket = cfg.storageBucket.replace(
-    ".firebasestorage.app",
-    ".appspot.com"
-  );
-}
-
 // Initialize Firebase App (idempotent)
 let app: FirebaseApp;
 if (!getApps().length) {

@@ -95,6 +95,7 @@ export default function Signup() {
         approved: false,
         canTakeStaffAttendance: false,
         canTakeStudentAttendance: false,
+        canTakeSelfAttendance: false,
         wards: [],
         ...(tenantInvite ? {
           tenantId: tenantInvite.tenantId,

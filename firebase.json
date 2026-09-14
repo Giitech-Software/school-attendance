@@ -3,6 +3,9 @@
     "rules": "mobile/firestore.rules",
     "indexes": "firestore.indexes.json"
   },
+  "storage": {
+    "rules": "storage.rules"
+  },
   "hosting": {
     "target": "astem-register",
     "public": "web/dist",

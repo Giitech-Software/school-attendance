@@ -25,21 +25,6 @@ const adminLinks = [
 
 const publicRoutes = new Set(["/login", "/forgot-password", "/signup"]);
 
-const backTargets: Record<string, string> = {
-  "/terms": "/admin",
-  "/users": "/admin",
-  "/attendance": "/",
-  "/attendance/checkin": "/",
-  "/staff/my-attendance": "/",
-  "/reports": "/",
-  "/reports/daily": "/reports",
-  "/reports/yearly": "/reports",
-  "/reports/staff-daily": "/reports?type=staff",
-  "/admin": "/",
-  "/admin/classes": "/admin",
-  "/super-admin": "/admin",
-};
-
 function initialsFromEmail(email?: string | null) {
   if (!email) return "U";
   return (email.split("@")[0] || "U").slice(0, 2).toUpperCase();
@@ -144,7 +129,6 @@ export default function Layout() {
   const pageTitle = getPageTitle(location.pathname);
   const accountLabel = userDoc?.displayName ?? authUser.email ?? "Signed in user";
   const avatarText = initialsFromEmail(authUser.email);
-  const backTarget = backTargets[location.pathname];
 
   const sidebar = (
     <aside className="flex h-full flex-col bg-white">
@@ -247,18 +231,6 @@ export default function Layout() {
 
       <div className={sidebarCollapsed ? "lg:pl-[4.5rem]" : "lg:pl-60"}>
         <main className="mx-auto max-w-[1440px] px-3 py-3 sm:px-4 lg:py-4">
-          {backTarget ? (
-            <div className="mb-3">
-              <Link
-                to={backTarget}
-                className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950"
-                aria-label="Go back"
-              >
-                <span aria-hidden="true">&larr;</span>
-                Back
-              </Link>
-            </div>
-          ) : null}
           <Outlet />
         </main>
       </div>

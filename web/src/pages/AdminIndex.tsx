@@ -187,7 +187,9 @@ export default function AdminIndex() {
       <div className="mx-auto max-w-7xl space-y-3">
         <section className="overflow-hidden rounded-lg border border-blue-900/40 bg-[#0B1C33] text-white shadow-xl shadow-slate-900/20">
           <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
+            <div className="flex items-center gap-2">
+              <Link to="/" className="rounded-lg border border-white/20 px-2.5 py-1 text-sm font-semibold text-white hover:bg-white/10">Back</Link>
+              <div>
               <div className="flex items-center gap-2">
                 <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/15 text-blue-300 ring-1 ring-blue-300/20">
                   <AdminIcon name="shield" />
@@ -195,6 +197,7 @@ export default function AdminIndex() {
                 <h1 className="text-2xl font-extrabold sm:text-3xl">Admin</h1>
               </div>
               <p className="mt-1 text-sm text-blue-300">{setupSubtitle}</p>
+              </div>
             </div>
             <button type="button" onClick={loadDashboard} disabled={loading} className="rounded-lg border border-white/20 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10 disabled:opacity-60">
               {loading ? "Refreshing..." : "Refresh"}

@@ -58,9 +58,13 @@ export default function StaffMyAttendance() {
     <div className="space-y-3">
       <section className="enterprise-panel overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-900 px-4 py-3 text-white sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="flex min-w-0 items-center gap-2">
+            <Link to="/" className="rounded-lg border border-white/20 px-2.5 py-1 text-sm font-semibold text-white hover:bg-white/10">Back</Link>
+            {staff.profilePhotoUrl ? <img src={staff.profilePhotoUrl} alt="Staff profile" className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-white/20" /> : null}
+            <div>
             <h1 className="text-xl font-extrabold">My Attendance</h1>
             <p className="mt-1 text-xs text-white/70">Check in or check out using your approved staff profile.</p>
+            </div>
           </div>
           <Link to="/staff/my-report" className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-dark">
             My Report

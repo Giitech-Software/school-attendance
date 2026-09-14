@@ -181,7 +181,7 @@ export default function ClassAttendanceReport({
       <section className="report-results">
         <div className="flex flex-col gap-3 border-b border-slate-100 pb-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-base font-extrabold text-slate-950">Students ({results?.length ?? 0})</h2>
+            <h2 className="text-base font-extrabold text-slate-950">Students</h2>
             <p className="mt-1 text-sm text-slate-600">P = Present, L = Late, T = Attended, A = Absent</p>
           </div>
 

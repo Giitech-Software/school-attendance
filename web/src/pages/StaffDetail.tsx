@@ -113,8 +113,8 @@ export default function StaffDetail() {
             </label>
             <label className="block md:col-span-2">
               <span className="auth-label">Profile photo</span>
-              <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhoto} disabled={photoUploading} className="enterprise-input mt-1.5" />
-              <span className="mt-1 block text-xs text-slate-500">Compressed to a small JPEG thumbnail for fast loading. Separate from face recognition.</span>
+              <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" onChange={handlePhoto} disabled={photoUploading} className="enterprise-input mt-1.5" />
+              <span className="mt-1 block text-xs text-slate-500">Choose an image or take a photo with your device camera. Compressed to a small JPEG thumbnail for fast loading.</span>
               {staff.profilePhotoUrl ? <img src={staff.profilePhotoUrl} alt={`${staff.name} profile`} className="mt-2 h-16 w-16 rounded-full object-cover" /> : null}
             </label>
 

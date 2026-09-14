@@ -67,9 +67,12 @@ export default function Users() {
     <div className="space-y-3">
       <section className="enterprise-panel overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-900 px-4 py-3 text-white lg:flex-row lg:items-center lg:justify-between">
-          <div>
+          <div className="flex items-center gap-2">
+            <Link to="/admin" className="rounded-lg border border-white/20 px-2.5 py-1 text-sm font-semibold text-white hover:bg-white/10">Back</Link>
+            <div>
             <h1 className="text-xl font-extrabold">Manage Users</h1>
             <p className="mt-1 text-xs text-white/70">Approve accounts, assign roles, and grant attendance permissions.</p>
+            </div>
           </div>
           <button type="button" onClick={loadUsers} disabled={loading} className="rounded-lg border border-white/20 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10 disabled:opacity-60">
             {loading ? "Refreshing..." : "Refresh"}

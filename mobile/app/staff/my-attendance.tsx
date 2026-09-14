@@ -6,6 +6,7 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import * as LocalAuthentication from "expo-local-authentication";
@@ -127,6 +128,7 @@ export default function MyStaffAttendance() {
         <Pressable onPress={() => router.back()} className="p-1 mr-2" hitSlop={8}>
           <MaterialIcons name="arrow-back" size={26} color="#0f172a" />
         </Pressable>
+        {staff.profilePhotoUrl ? <Image source={{ uri: staff.profilePhotoUrl }} className="mr-3 h-12 w-12 rounded-full" /> : null}
         <Text className="text-2xl font-extrabold text-slate-900">My Attendance</Text>
       </View>
 

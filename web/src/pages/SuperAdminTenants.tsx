@@ -172,10 +172,13 @@ export default function SuperAdminTenants() {
       <div className="mx-auto max-w-7xl space-y-4">
         <section className="rounded-lg border border-slate-800 bg-slate-950 p-4 text-white shadow-lg">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
+            <div className="flex items-center gap-2">
+              <Link to="/admin" className="rounded-lg border border-white/20 px-2.5 py-1 text-sm font-semibold text-white hover:bg-white/10">Back</Link>
+              <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-300">Renting</p>
               <h1 className="mt-1 text-2xl font-extrabold sm:text-3xl">Super Admin Tenants</h1>
               <p className="mt-1 text-sm text-slate-300">Create renters, assign tenant admins, and control subscription status.</p>
+              </div>
             </div>
             <button type="button" onClick={loadTenants} className="rounded-lg border border-white/20 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10">
               Refresh

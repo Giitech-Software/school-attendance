@@ -174,9 +174,12 @@ export default function AttendanceList() {
             <p className="auth-label mb-1.5">Staff group</p><select value={staffGroupFilter} onChange={e => setStaffGroupFilter(e.target.value)} className="enterprise-input"><option value="">All groups</option>{staffGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}</select>
           </div>
 
-          <div>
+          <div className="flex items-center gap-2">
+            <Link to="/" className="rounded-lg border border-white/20 px-2.5 py-1 text-sm font-semibold text-white hover:bg-white/10">Back</Link>
+            <div>
             <h1 className="text-xl font-extrabold">Today's Attendance</h1>
             <p className="mt-1 text-xs text-white/70">Review student and staff attendance records for a selected date.</p>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
             <Link to="/attendance/checkin" className="inline-flex items-center justify-center rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-dark">

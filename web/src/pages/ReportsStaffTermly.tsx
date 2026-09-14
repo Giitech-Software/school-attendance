@@ -111,7 +111,7 @@ export default function ReportsStaffTermly() {
 
       <div className="enterprise-panel p-4">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-base font-extrabold text-slate-950">Staff ({rows.length})</h2>
+          <h2 className="text-base font-extrabold text-slate-950">Staff</h2>
           <div className="text-sm text-slate-600">P = Present, L = Late, T = Attended, A = Absent</div>
         </div>
 

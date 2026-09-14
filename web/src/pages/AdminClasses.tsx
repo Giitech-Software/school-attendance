@@ -42,9 +42,12 @@ export default function AdminClasses() {
     <div className="space-y-3">
       <section className="enterprise-panel overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-900 px-4 py-3 text-white sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="flex items-center gap-2">
+            <Link to="/admin" className="rounded-lg border border-white/20 px-2.5 py-1 text-sm font-semibold text-white hover:bg-white/10">Back</Link>
+            <div>
             <h1 className="text-xl font-extrabold">Classes</h1>
             <p className="mt-1 text-xs text-white/70">Manage class groups, assigned staff, and student assignment readiness.</p>
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={loadClasses} disabled={loading} className="rounded-lg border border-white/20 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10 disabled:opacity-60">

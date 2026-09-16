@@ -125,7 +125,7 @@ export default function Users() {
                       <div className="mt-1 grid gap-1 text-sm text-slate-600 sm:grid-cols-3">
                         <p className="truncate">{user.email ?? "No email"}</p>
                         <p>Role: {roleLabel(user.role)}</p>
-                        <p>{user.canTakeStudentAttendance || user.canTakeStaffAttendance ? "Attendance access" : "No attendance access"}</p>
+                        <p>{user.canTakeStudentAttendance || user.canTakeStaffAttendance || user.canTakeSelfAttendance ? "Attendance access" : "No attendance access"}</p>
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2 lg:justify-end">

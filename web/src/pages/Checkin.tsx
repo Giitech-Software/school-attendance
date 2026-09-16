@@ -8,6 +8,7 @@ import { registerStaffAttendance } from "../services/staffAttendance";
 import { getAttendanceSettings } from "../services/attendanceSettings";
 import type { AttendanceRecord } from "../types";
 import useCurrentUser from "../hooks/useCurrentUser";
+import { useCurrentStaff } from "../hooks/useCurrentStaff";
 import ImageCarousel from "../components/ImageCarousel";
 import { userFacingError } from "../services/userFacingError";
 
@@ -82,6 +83,7 @@ function actionCardClass(tone: "primary" | "sky" | "emerald" | "slate") {
 
 export default function Checkin() {
   const { userDoc, loading: userLoading } = useCurrentUser();
+  const { staff: currentStaff } = useCurrentStaff();
   const [searchParams, setSearchParams] = useSearchParams();
   const actor = searchParams.get("actor") === "staff" ? "staff" : "student";
   const initialMode = searchParams.get("mode") === "out" ? "out" : "in";
@@ -237,7 +239,14 @@ export default function Checkin() {
     setSuccess(null);
     try {
       const staffCode = staffIdInput.trim();
-      const staff = await getStaffByStaffId(staffCode);
+      const normalizedStaffCode = staffCode.toUpperCase();
+      const ownIds = [currentStaff?.id, currentStaff?.staffId].filter(Boolean).map((value) => String(value).toUpperCase());
+      const selfOnly = userDoc?.canTakeSelfAttendance === true && userDoc?.canTakeStaffAttendance !== true && !isAdmin;
+      const staff = ownIds.includes(normalizedStaffCode)
+        ? currentStaff
+        : selfOnly
+          ? null
+          : await getStaffByStaffId(staffCode);
       if (!staff?.id) throw new Error(`No staff record found for ID: ${staffCode}`);
       if (!isAdmin && userDoc?.canTakeStaffAttendance !== true && staff.userUid !== (userDoc.uid ?? userDoc.id)) {
         throw new Error("You can only record attendance for your own staff profile.");

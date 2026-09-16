@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { auth } from "../../app/firebase";
-import { getStaffByUserUid, linkStaffAccount } from "../services/staff";
+import { getStaffById, getStaffByUserUid, linkStaffAccount } from "../services/staff";
 import type { Staff } from "../services/types";
 
 export function useCurrentStaff() {
@@ -18,11 +18,11 @@ export function useCurrentStaff() {
           return;
         }
 
-        let currentStaff = await getStaffByUserUid(uid);
-        if (!currentStaff) {
-          await linkStaffAccount();
-          currentStaff = await getStaffByUserUid(uid);
-        }
+        // Resolve the staff document through the callable first. This avoids
+        // requiring staff-list permission for users who only have self access.
+        const staffDocId = await linkStaffAccount();
+        let currentStaff = staffDocId ? await getStaffById(staffDocId) : null;
+        if (!currentStaff) currentStaff = await getStaffByUserUid(uid);
         if (mounted) setStaff(currentStaff);
       } catch (error) {
         console.error("useCurrentStaff", error);

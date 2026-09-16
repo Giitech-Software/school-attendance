@@ -285,9 +285,10 @@ export async function getStaffByUserUid(userUid: string): Promise<Staff | null> 
   } as Staff;
 }
 
-export async function linkStaffAccount(): Promise<void> {
+export async function linkStaffAccount(): Promise<string | null> {
   const link = httpsCallable(getFunctions(app), "linkStaffAccount");
-  await link({});
+  const result = await link({}) as { data?: { staffDocId?: string } };
+  return result.data?.staffDocId ?? null;
 }
 
 /* ============================

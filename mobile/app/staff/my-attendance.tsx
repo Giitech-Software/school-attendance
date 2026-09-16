@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Image,
+  Modal,
 } from "react-native";
 import { useRouter } from "expo-router";
 import * as LocalAuthentication from "expo-local-authentication";
@@ -18,6 +19,7 @@ export default function MyStaffAttendance() {
   const router = useRouter();
   const { staff, loading } = useCurrentStaff();
   const [saving, setSaving] = useState(false);
+  const [confirmation, setConfirmation] = useState<string | null>(null);
 
   function openQrAttendance(mode: "in" | "out") {
     router.push({
@@ -67,10 +69,7 @@ export default function MyStaffAttendance() {
         method: "fingerprint",
       });
 
-      Alert.alert(
-        mode === "in" ? "Checked In" : "Checked Out",
-        `${staff.name} ${mode === "in" ? "checked in" : "checked out"} successfully.`
-      );
+      setConfirmation(`${staff.name} ${mode === "in" ? "checked in" : "checked out"} successfully.`);
     } catch (error) {
       Alert.alert(
         "Attendance error",
@@ -235,6 +234,17 @@ export default function MyStaffAttendance() {
           <ActivityIndicator />
         </View>
       ) : null}
+      <Modal visible={Boolean(confirmation)} transparent animationType="fade" onRequestClose={() => setConfirmation(null)}>
+        <View className="flex-1 items-center justify-center bg-black/45 px-5">
+          <View className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+            <Text className="text-xl font-extrabold text-slate-900">Attendance saved</Text>
+            <Text className="mt-2 text-base text-slate-600">{confirmation}</Text>
+            <Pressable onPress={() => setConfirmation(null)} className="mt-5 w-full rounded-xl bg-blue-600 py-4">
+              <Text className="text-center text-base font-extrabold text-white">OK</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }

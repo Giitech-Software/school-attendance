@@ -30,6 +30,7 @@ import ImageCarousel from "../../components/ImageCarousel";
 import { useMovementReasonPrompt } from "@/components/MovementReasonPrompt";
 import { getTenantScope, tenantConstraints } from "../../src/services/tenantScope";
 import { userFacingError } from "../../src/services/userFacingError";
+import { useCurrentStaff } from "../../src/hooks/useCurrentStaff";
 
 /* ------------------------- Attendance Restrictions ------------------------- */
 function isAttendanceAllowed(actor: "student" | "staff", allowStaffWeekendAttendance: boolean): { allowed: boolean; reason?: string } {
@@ -135,6 +136,7 @@ export default function CheckinScreen() {
   const [staffIdSubmitting, setStaffIdSubmitting] = useState(false);
   const [allowStaffWeekendAttendance, setAllowStaffWeekendAttendance] = useState(false);
   const { promptMovementReason, movementReasonPrompt } = useMovementReasonPrompt();
+  const { staff: currentStaff } = useCurrentStaff();
 
   const canUseAllStudentClasses =
     userDoc?.role === "admin" || hasCapability;
@@ -389,7 +391,14 @@ export default function CheckinScreen() {
     setStaffIdSubmitting(true);
     try {
       const movementReason = await getMovementReasonFor(mode);
-      const staff = await getStaffByStaffId(staffCode);
+      const normalizedStaffCode = staffCode.toUpperCase();
+      const ownIds = [currentStaff?.id, currentStaff?.staffId].filter(Boolean).map((value) => String(value).toUpperCase());
+      const selfOnly = userDoc?.canTakeSelfAttendance === true && userDoc?.canTakeStaffAttendance !== true && userDoc?.role !== "admin" && userDoc?.role !== "super_admin";
+      const staff = ownIds.includes(normalizedStaffCode)
+        ? currentStaff
+        : selfOnly
+          ? null
+          : await getStaffByStaffId(staffCode);
       if (!staff?.id) {
         Alert.alert("Staff not found", `No staff record found for ID: ${staffCode}`);
         return;

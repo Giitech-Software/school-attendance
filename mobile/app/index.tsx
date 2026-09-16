@@ -193,7 +193,7 @@ useFocusEffect(
     (isApproved && hasAssignedStudentClasses)
     );
   const canTakeStaffAttendance =
-    isAdmin || (isApproved && userDoc?.canTakeStaffAttendance === true);
+    isAdmin || (isApproved && (userDoc?.canTakeStaffAttendance === true || userDoc?.canTakeSelfAttendance === true));
   const selectedActor = allowsSchoolFeatures ? actor : "staff";
   const canTakeSelectedAttendance =
     selectedActor === "staff" ? canTakeStaffAttendance : canTakeStudentAttendance;

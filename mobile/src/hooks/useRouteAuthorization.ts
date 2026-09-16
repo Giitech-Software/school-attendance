@@ -111,7 +111,7 @@ export function useRequireAttendanceAccess(
   } = useAssignedStudentClasses(isApproved ? userDoc?.uid ?? userDoc?.id : null);
   const hasCapability =
     kind === "staff"
-      ? userDoc?.canTakeSelfAttendance === true
+      ? userDoc?.canTakeStaffAttendance === true || userDoc?.canTakeSelfAttendance === true
       : userDoc?.canTakeStudentAttendance === true;
   const explicitAttendanceTaker = isAdmin || (isApproved && hasCapability);
 

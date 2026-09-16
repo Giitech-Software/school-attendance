@@ -186,7 +186,7 @@ async function assertCanRecordDuringGeofenceBypass(
   const isAdmin = user?.role === "admin";
   const canTakeAttendance =
     subjectType === "staff"
-      ? user?.canTakeSelfAttendance === true
+      ? user?.canTakeStaffAttendance === true || user?.canTakeSelfAttendance === true
       : user?.canTakeStudentAttendance === true;
 
   if (!isAdmin && !canTakeAttendance) {

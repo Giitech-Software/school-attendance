@@ -21,6 +21,8 @@ import type { Staff } from "./types";
 export type { Staff } from "./types";
 import { logAdminAction } from "./adminLogs";
 import { deleteFace } from "./faceService";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import app from "../../app/firebase";
 import { belongsToTenant, getTenantScope, requireAdminTenantScope, sortByCreatedAtDesc, tenantConstraints, withTenantScope } from "./tenantScope";
 
 /* ============================
@@ -281,6 +283,11 @@ export async function getStaffByUserUid(userUid: string): Promise<Staff | null> 
     id: staffDoc.id,
     ...staffDoc.data(),
   } as Staff;
+}
+
+export async function linkStaffAccount(): Promise<void> {
+  const link = httpsCallable(getFunctions(app), "linkStaffAccount");
+  await link({});
 }
 
 /* ============================

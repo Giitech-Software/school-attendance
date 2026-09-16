@@ -13,6 +13,9 @@ import { useCurrentStaff } from "../../src/hooks/useCurrentStaff";
 import { getStaffAttendanceInRange } from "../../src/services/staffAttendanceSummary";
 import { listTerms } from "../../src/services/terms";
 import { listWeeks } from "../../src/services/weeks";
+import useCurrentUser from "../../src/hooks/useCurrentUser";
+import { allowsStudentAndParentFeatures } from "../../src/services/tenantScope";
+import Svg, { Circle } from "react-native-svg";
 
 function getLast30Days() {
   const today = new Date();
@@ -28,14 +31,17 @@ function getLast30Days() {
 export default function MyStaffReport() {
   const router = useRouter();
   const { staff, loading: staffLoading } = useCurrentStaff();
+  const { userDoc } = useCurrentUser();
+  const allowsSchoolFeatures = allowsStudentAndParentFeatures(userDoc);
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<any>(null);
   const [termSummary, setTermSummary] = useState<any>(null);
+  const [yearSummary, setYearSummary] = useState<any>(null);
   const [termLabel, setTermLabel] = useState<string | null>(null);
   const [records, setRecords] = useState<any[]>([]);
   const [weeks, setWeeks] = useState<any[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<any | null>(null);
-  const [reportMode, setReportMode] = useState<"last30" | "week">("last30");
+  const [reportMode, setReportMode] = useState<"last30" | "week" | "term" | "year">("last30");
   const [emptyMessage, setEmptyMessage] = useState(
     "No attendance records in the last 30 days."
   );
@@ -91,6 +97,10 @@ export default function MyStaffReport() {
           setTermSummary(buildStaffSummary(termRecords));
         }
 
+        const year = new Date().getFullYear();
+        const yearRecords = await getStaffAttendanceInRange(staffId, `${year}-01-01`, `${year}-12-31`);
+        setYearSummary(buildStaffSummary(yearRecords));
+
         const range = getLast30Days();
         const staffRecords = await getStaffAttendanceInRange(
           staffId,
@@ -137,6 +147,22 @@ export default function MyStaffReport() {
       }
     })();
   }, [selectedWeek?.id, reportMode]);
+
+  async function loadRange(mode: "term" | "year") {
+    if (!staff?.id) return;
+    const year = new Date().getFullYear();
+    const fromIso = mode === "term" && termLabel ? termLabel.split(": ")[1]?.split(" to ")[0] : `${year}-01-01`;
+    const toIso = mode === "term" && termLabel ? termLabel.split(" to ")[1] : `${year}-12-31`;
+    if (!fromIso || !toIso) return;
+    setReportMode(mode);
+    setLoading(true);
+    try {
+      const rows = await getStaffAttendanceInRange(staff.id, fromIso, toIso);
+      setSummary(buildStaffSummary(rows));
+      setRecords([...rows].sort((a, b) => b.date.localeCompare(a.date)));
+      setEmptyMessage(`No attendance records for the ${mode}.`);
+    } finally { setLoading(false); }
+  }
 
   if (staffLoading || loading) {
     return (
@@ -204,7 +230,7 @@ export default function MyStaffReport() {
         <Text className="text-slate-500 mt-1">
           {reportMode === "week" && selectedWeek
             ? `Week ${selectedWeek.weekNumber}: ${selectedWeek.startDate} to ${selectedWeek.endDate}`
-            : "Last 30 days"}
+            : reportMode === "term" ? termLabel ?? "Current term" : reportMode === "year" ? `Year ${new Date().getFullYear()}` : "Last 30 days"}
         </Text>
       </View>
 
@@ -256,6 +282,9 @@ export default function MyStaffReport() {
           </Text>
         </Pressable>
 
+        {allowsSchoolFeatures && termLabel ? <Pressable onPress={() => loadRange("term")} className={`h-8 px-3 mr-2 rounded-lg border items-center justify-center ${reportMode === "term" ? "bg-blue-600 border-blue-600" : "bg-white border-slate-200"}`}><Text className={`text-xs font-bold ${reportMode === "term" ? "text-white" : "text-slate-800"}`}>Term</Text></Pressable> : null}
+        <Pressable onPress={() => loadRange("year")} className={`h-8 px-3 mr-2 rounded-lg border items-center justify-center ${reportMode === "year" ? "bg-blue-600 border-blue-600" : "bg-white border-slate-200"}`}><Text className={`text-xs font-bold ${reportMode === "year" ? "text-white" : "text-slate-800"}`}>Year</Text></Pressable>
+
         {weeks.map((week) => (
           <Pressable
             key={week.id}
@@ -281,6 +310,14 @@ export default function MyStaffReport() {
           </Pressable>
         ))}
       </ScrollView>
+
+      <View className="bg-white rounded-2xl p-4 mb-4 shadow">
+        <Text className="text-base font-extrabold text-slate-900 mb-3">Attendance distribution</Text>
+        <View className="flex-row items-center">
+          <AttendanceDonut summary={safeSummary} />
+          <View className="ml-5 gap-2"><LegendDot color="#10B981" label={`Present: ${safeSummary.presentCount}`} /><LegendDot color="#F59E0B" label={`Late: ${safeSummary.lateCount}`} /><LegendDot color="#EF4444" label={`Absent: ${safeSummary.absentCount}`} /></View>
+        </View>
+      </View>
 
       <View className="bg-white rounded-2xl p-4 shadow mb-4">
         <View className="flex-row justify-between">
@@ -358,6 +395,16 @@ export default function MyStaffReport() {
         </View>
       </View>
 
+      <View className="bg-white rounded-2xl p-4 shadow mb-4">
+        <View className="flex-row items-start justify-between mb-3">
+          <View><Text className="font-bold text-slate-900">Year Attendance</Text><Text className="text-xs text-slate-500 mt-1">Calendar year {new Date().getFullYear()}</Text></View>
+          <Text className="bg-sky-50 text-sky-700 font-extrabold px-3 py-2 rounded-xl">{Number((yearSummary ?? {}).percentagePresent ?? 0).toFixed(1)}%</Text>
+        </View>
+        <View className="flex-row justify-between">
+          {[["Present", (yearSummary ?? {}).presentCount ?? 0, "text-emerald-600"], ["Late", (yearSummary ?? {}).lateCount ?? 0, "text-amber-700"], ["Attended", (yearSummary ?? {}).attendedSessions ?? 0, "text-sky-700"], ["Absent", (yearSummary ?? {}).absentCount ?? 0, "text-red-600"]].map(([label, value, tone]) => <View key={label as string}><Text className="text-xs text-slate-500">{label}</Text><Text className={`text-lg font-bold ${tone}`}>{value}</Text></View>)}
+        </View>
+      </View>
+
       <Text className="font-semibold text-slate-900 mb-2">Timeline</Text>
       <FlatList
         data={records}
@@ -405,6 +452,18 @@ export default function MyStaffReport() {
       />
     </View>
   );
+}
+
+function LegendDot({ color, label }: { color: string; label: string }) {
+  return <View className="flex-row items-center"><View style={{ backgroundColor: color }} className="h-3 w-3 rounded-full mr-2" /><Text className="text-sm font-semibold text-slate-700">{label}</Text></View>;
+}
+
+function AttendanceDonut({ summary }: { summary: any }) {
+  const total = Math.max(1, (summary.presentCount ?? 0) + (summary.lateCount ?? 0) + (summary.absentCount ?? 0));
+  const circumference = 2 * Math.PI * 42;
+  const segments = [{ value: summary.presentCount ?? 0, color: "#10B981" }, { value: summary.lateCount ?? 0, color: "#F59E0B" }, { value: summary.absentCount ?? 0, color: "#EF4444" }];
+  let offset = 0;
+  return <Svg width="108" height="108" viewBox="0 0 108 108"><Circle cx="54" cy="54" r="42" stroke="#E2E8F0" strokeWidth="14" fill="none" />{segments.map((segment) => { const length = circumference * segment.value / total; const circle = <Circle key={segment.color} cx="54" cy="54" r="42" stroke={segment.color} strokeWidth="14" fill="none" strokeDasharray={`${length} ${circumference - length}`} strokeDashoffset={-offset} strokeLinecap="butt" transform="rotate(-90 54 54)" />; offset += length; return circle; })}</Svg>;
 }
 
 function buildStaffSummary(records: any[]) {

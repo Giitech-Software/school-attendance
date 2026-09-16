@@ -201,7 +201,7 @@ export default function Home() {
     (isApproved && userDoc?.canTakeStudentAttendance === true) ||
     (isApproved && hasAssignedClasses)
     );
-  const canTakeStaffAttendance = isAdmin || (isApproved && userDoc?.canTakeStaffAttendance === true);
+  const canTakeStaffAttendance = isAdmin || (isApproved && (userDoc?.canTakeStaffAttendance === true || userDoc?.canTakeSelfAttendance === true));
   const selectedActor = allowsSchoolFeatures ? actor : "staff";
   const reportSubtitle = allowsSchoolFeatures ? "Daily • Weekly • Monthly • Termly • Yearly" : "Daily • Weekly • Monthly • Yearly";
   const canTakeSelectedAttendance = selectedActor === "staff" ? canTakeStaffAttendance : canTakeStudentAttendance;

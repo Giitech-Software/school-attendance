@@ -1,13 +1,15 @@
-import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { createStaff, STAFF_ROLE_OPTIONS, type StaffRoleType } from "../services/staff";
-import { getUserByEmail, upsertUser } from "../services/users";
+import { useEffect, useState, type FormEvent } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { createStaff, listStaff, STAFF_ROLE_OPTIONS, type StaffRoleType, upsertStaff } from "../services/staff";
+import { getUserByEmail, getUserById, upsertUser } from "../services/users";
 import { listStaffGroups, type StaffGroup } from "../services/staffGroups";
 
 type StaffIdMode = "auto" | "manual";
 
 export default function StaffCreate() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const userId = searchParams.get("userId");
   const [name, setName] = useState("");
   const [staffId, setStaffId] = useState("");
   const [email, setEmail] = useState("");
@@ -17,6 +19,16 @@ export default function StaffCreate() {
   const [groups, setGroups] = useState<StaffGroup[]>([]);
   const [staffGroupId, setStaffGroupId] = useState("");
   useState(() => { listStaffGroups().then(setGroups).catch(console.error); });
+
+  useEffect(() => {
+    if (!userId) return;
+    getUserById(userId).then((user) => {
+      if (!user) return;
+      setName(user.displayName ?? "");
+      setEmail(user.email ?? "");
+      if (STAFF_ROLE_OPTIONS.some((option) => option.value === user.role)) setRoleType(user.role as StaffRoleType);
+    }).catch(console.error);
+  }, [userId]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -35,9 +47,13 @@ export default function StaffCreate() {
     try {
       const normalizedEmail = email.trim().toLowerCase();
       const linkedUser = await getUserByEmail(normalizedEmail);
+      // Match the staff record first. A staff record may have been created
+      // before the user account existed, so this must not depend on finding a
+      // user document first.
+      const existingStaff = (await listStaffByEmail(normalizedEmail))[0];
       const requestedStaffId = staffIdMode === "manual" ? staffId.trim().toUpperCase() : undefined;
 
-      const staff = await createStaff({
+      const staffData = {
         name: name.trim(),
         staffId: requestedStaffId,
         email: normalizedEmail,
@@ -45,7 +61,11 @@ export default function StaffCreate() {
         roleType,
         userUid: linkedUser?.id,
         staffGroupId: staffGroupId || undefined,
-      });
+      };
+      const staff = existingStaff
+        ? ({ ...existingStaff, ...staffData, staffId: existingStaff.staffId } as any)
+        : await createStaff(staffData);
+      if (existingStaff) await upsertStaff(staff);
 
       if (linkedUser?.id) {
         await upsertUser({
@@ -77,8 +97,8 @@ export default function StaffCreate() {
             Back
           </Link>
           <div>
-            <h1 className="text-xl font-extrabold">New Staff</h1>
-            <p className="mt-1 text-xs text-white/70">Create a staff profile and link it to an approved user account when one exists.</p>
+          <h1 className="text-xl font-extrabold">{userId ? "Link Existing Staff" : "New Staff"}</h1>
+            <p className="mt-1 text-xs text-white/70">{userId ? "The existing staff profile for this user will be linked when you save." : "Create a staff profile and link it to an approved user account when one exists."}</p>
           </div>
         </div>
       </section>
@@ -134,7 +154,7 @@ export default function StaffCreate() {
 
         <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
           <button type="submit" disabled={saving} className="enterprise-button-primary">
-            {saving ? "Creating..." : "Create Staff"}
+            {saving ? "Saving..." : userId ? "Link Existing Staff" : "Create Staff"}
           </button>
           <button type="button" onClick={() => navigate("/staff")} className="enterprise-button-secondary">
             Cancel
@@ -143,6 +163,10 @@ export default function StaffCreate() {
       </form>
     </div>
   );
+}
+
+async function listStaffByEmail(email: string) {
+  return (await listStaff()).filter((row) => row.email?.trim().toLowerCase() === email);
 }
 
 

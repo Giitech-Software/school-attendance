@@ -5,6 +5,9 @@ import { getStaffAttendanceInRange } from "../services/staffAttendanceSummary";
 import { listTerms } from "../services/terms";
 import { listWeeks } from "../services/weeks";
 import type { AttendanceRecord, Week } from "../types";
+import AttendancePieChart from "../components/AttendancePieChart";
+import useCurrentUser from "../hooks/useCurrentUser";
+import { allowsStudentAndParentFeatures } from "../services/tenantScope";
 
 function getLast30Days() {
   const today = new Date();
@@ -43,13 +46,16 @@ function formatMaybeTime(value?: string | null) {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-type ReportMode = "last30" | "week";
+type ReportMode = "last30" | "week" | "term" | "year";
 type StaffSummary = ReturnType<typeof buildStaffSummary>;
 
 export default function StaffMyReport() {
   const { staff, loading: staffLoading } = useCurrentStaff();
+  const { userDoc } = useCurrentUser();
+  const allowsSchoolFeatures = allowsStudentAndParentFeatures(userDoc);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [termSummary, setTermSummary] = useState<StaffSummary | null>(null);
+  const [yearSummary, setYearSummary] = useState<StaffSummary | null>(null);
   const [termLabel, setTermLabel] = useState<string | null>(null);
   const [weeks, setWeeks] = useState<Week[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<Week | null>(null);
@@ -97,8 +103,13 @@ export default function StaffMyReport() {
           setWeeks([]);
           setSelectedWeek(null);
           setTermSummary(null);
+          setYearSummary(null);
           setTermLabel(null);
         }
+
+        const year = new Date().getFullYear();
+        const yearRecords = await getStaffAttendanceInRange(staffId, `${year}-01-01`, `${year}-12-31`);
+        if (active) setYearSummary(buildStaffSummary(yearRecords));
 
         const range = getLast30Days();
         const rows = await getStaffAttendanceInRange(staffId, range.fromIso, range.toIso);
@@ -171,6 +182,27 @@ export default function StaffMyReport() {
     }
   }
 
+  async function showRange(mode: "term" | "year") {
+    if (!staff?.id) return;
+    const year = new Date().getFullYear();
+    const fromIso = mode === "term" && termLabel ? termLabel.split(": ")[1]?.split(" to ")[0] : `${year}-01-01`;
+    const toIso = mode === "term" && termLabel ? termLabel.split(" to ")[1] : `${year}-12-31`;
+    if (!fromIso || !toIso) return;
+    try {
+      setReportMode(mode);
+      setLoading(true);
+      setError(null);
+      const rows = await getStaffAttendanceInRange(staff.id, fromIso, toIso);
+      setRecords([...rows].sort((a, b) => b.date.localeCompare(a.date)));
+      setEmptyMessage(`No attendance records for the ${mode}.`);
+    } catch (err: any) {
+      console.error(`my staff report ${mode}`, err);
+      setError(err?.message ?? `Could not load the ${mode} report.`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   if (staffLoading || loading) {
     return <div className="enterprise-panel p-4 text-sm text-slate-500">Loading report...</div>;
   }
@@ -208,7 +240,7 @@ export default function StaffMyReport() {
           <p className="text-sm text-slate-500">
             {reportMode === "week" && selectedWeek
               ? `Week ${selectedWeek.weekNumber}: ${selectedWeek.startDate} to ${selectedWeek.endDate}`
-              : "Last 30 days"}
+              : reportMode === "term" ? termLabel ?? "Current term" : reportMode === "year" ? `Year ${new Date().getFullYear()}` : "Last 30 days"}
           </p>
         </div>
         <div className="mt-4">
@@ -224,6 +256,12 @@ export default function StaffMyReport() {
               }`}
             >
               Last 30 days
+            </button>
+            {allowsSchoolFeatures ? <button type="button" onClick={() => showRange("term")} disabled={!termLabel} className={`shrink-0 rounded-md border px-3 py-2 text-xs font-bold ${reportMode === "term" ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"}`}>
+              Term
+            </button> : null}
+            <button type="button" onClick={() => showRange("year")} className={`shrink-0 rounded-md border px-3 py-2 text-xs font-bold ${reportMode === "year" ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"}`}>
+              Year
             </button>
             {weeks.map((week) => (
               <button
@@ -246,7 +284,7 @@ export default function StaffMyReport() {
         </div>
       </section>
 
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+      <section className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4 xl:grid-cols-5">
         {[
           ["Present", summary.presentCount, "text-emerald-600"],
           ["Late", summary.lateCount, "text-amber-700"],
@@ -254,14 +292,16 @@ export default function StaffMyReport() {
           ["Absent", summary.absentCount, "text-red-600"],
           ["Attendance", `${summary.percentagePresent.toFixed(1)}%`, "text-slate-950"],
         ].map(([label, value, tone]) => (
-          <div key={label} className="enterprise-panel p-3">
+          <div key={label} className="enterprise-panel min-w-0 p-3 shadow-sm">
             <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</p>
             <p className={`mt-1 text-2xl font-extrabold ${tone}`}>{value}</p>
           </div>
         ))}
       </section>
 
-      <section className="enterprise-panel p-4">
+      <AttendancePieChart present={summary.presentCount} late={summary.lateCount} absent={summary.absentCount} title={`${reportMode === "term" ? "Term" : reportMode === "year" ? "Year" : "Current period"} attendance distribution`} />
+
+      {allowsSchoolFeatures ? <section className="enterprise-panel p-3 sm:p-4">
         <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-base font-extrabold text-slate-950">Term Attendance</h2>
@@ -271,7 +311,7 @@ export default function StaffMyReport() {
             {safeTermSummary.percentagePresent.toFixed(1)}%
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4 xl:grid-cols-5">
           {[
             ["Present", safeTermSummary.presentCount, "text-emerald-600"],
             ["Late", safeTermSummary.lateCount, "text-amber-700"],
@@ -279,11 +319,24 @@ export default function StaffMyReport() {
             ["Absent", safeTermSummary.absentCount, "text-red-600"],
             ["Attendance", `${safeTermSummary.percentagePresent.toFixed(1)}%`, "text-slate-950"],
           ].map(([label, value, tone]) => (
-            <div key={label} className="rounded-md border border-slate-200 bg-slate-50 p-3">
+            <div key={label} className="min-w-0 rounded-md border border-slate-200 bg-slate-50 p-3 shadow-sm">
               <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</p>
               <p className={`mt-1 text-xl font-extrabold ${tone}`}>{value}</p>
             </div>
           ))}
+        </div>
+      </section> : null}
+
+      <section className="enterprise-panel p-3 sm:p-4">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-base font-extrabold text-slate-950">Year Attendance</h2>
+            <p className="text-sm text-slate-500">Calendar year {new Date().getFullYear()}</p>
+          </div>
+          <div className="rounded-md bg-sky-50 px-3 py-2 text-sm font-extrabold text-sky-700">{(yearSummary ?? buildStaffSummary([])).percentagePresent.toFixed(1)}%</div>
+        </div>
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4 xl:grid-cols-5">
+          {[["Present", (yearSummary ?? buildStaffSummary([])).presentCount, "text-emerald-600"], ["Late", (yearSummary ?? buildStaffSummary([])).lateCount, "text-amber-700"], ["Attended", (yearSummary ?? buildStaffSummary([])).attendedSessions, "text-sky-700"], ["Absent", (yearSummary ?? buildStaffSummary([])).absentCount, "text-red-600"], ["Attendance", `${(yearSummary ?? buildStaffSummary([])).percentagePresent.toFixed(1)}%`, "text-slate-950"]].map(([label, value, tone]) => <div key={label} className="min-w-0 rounded-md border border-slate-200 bg-slate-50 p-3 shadow-sm"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</p><p className={`mt-1 text-xl font-extrabold ${tone}`}>{value}</p></div>)}
         </div>
       </section>
 

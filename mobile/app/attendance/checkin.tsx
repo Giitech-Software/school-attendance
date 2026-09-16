@@ -29,6 +29,7 @@ import AppInput from "@/components/AppInput";
 import ImageCarousel from "../../components/ImageCarousel";
 import { useMovementReasonPrompt } from "@/components/MovementReasonPrompt";
 import { getTenantScope, tenantConstraints } from "../../src/services/tenantScope";
+import { userFacingError } from "../../src/services/userFacingError";
 
 /* ------------------------- Attendance Restrictions ------------------------- */
 function isAttendanceAllowed(actor: "student" | "staff", allowStaffWeekendAttendance: boolean): { allowed: boolean; reason?: string } {
@@ -202,10 +203,10 @@ export default function CheckinScreen() {
         unsubscribe = onSnapshot(q, (snapshot) => {
           setStudents(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as StudentRecord[]);
         }, (err) => {
-          Alert.alert("Failed to load students", err?.message ?? String(err));
+          Alert.alert("Unable to load students", userFacingError(err, "Please try again."));
         });
       })
-      .catch((err) => Alert.alert("Failed to load students", err?.message ?? String(err)));
+      .catch((err) => Alert.alert("Unable to load students", userFacingError(err, "Please try again.")));
     return () => {
       active = false;
       unsubscribe?.();
@@ -230,7 +231,7 @@ export default function CheckinScreen() {
         setSelectedClassId(null);
       }
     } catch (err: any) {
-      Alert.alert("Failed to load classes", err?.message ?? String(err));
+      Alert.alert("Unable to load classes", userFacingError(err, "Please try again."));
     } finally { setClassesLoading(false); }
   }
 
@@ -344,7 +345,7 @@ export default function CheckinScreen() {
 
     setTimeout(() => setConfirmation(null), 3000);
   } catch (err: any) {
-    Alert.alert("Error", err?.message ?? String(err));
+    Alert.alert("Unable to record attendance", userFacingError(err, "Please check your connection and try again."));
   } finally {
     setLoading(false);
   }
@@ -413,7 +414,7 @@ export default function CheckinScreen() {
     } catch (error) {
       Alert.alert(
         "Attendance error",
-        error instanceof Error ? error.message : "Could not record staff attendance."
+        userFacingError(error, "Could not record staff attendance.")
       );
     } finally {
       setStaffIdSubmitting(false);

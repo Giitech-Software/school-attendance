@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { auth } from "../../app/firebase";
-import { getStaffByUserUid } from "../services/staff";
+import { getStaffByUserUid, linkStaffAccount } from "../services/staff";
 import type { Staff } from "../services/types";
 
 export function useCurrentStaff() {
@@ -18,7 +18,11 @@ export function useCurrentStaff() {
           return;
         }
 
-        const currentStaff = await getStaffByUserUid(uid);
+        let currentStaff = await getStaffByUserUid(uid);
+        if (!currentStaff) {
+          await linkStaffAccount();
+          currentStaff = await getStaffByUserUid(uid);
+        }
         if (mounted) setStaff(currentStaff);
       } catch (error) {
         console.error("useCurrentStaff", error);

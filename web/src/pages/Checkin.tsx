@@ -9,6 +9,7 @@ import { getAttendanceSettings } from "../services/attendanceSettings";
 import type { AttendanceRecord } from "../types";
 import useCurrentUser from "../hooks/useCurrentUser";
 import ImageCarousel from "../components/ImageCarousel";
+import { userFacingError } from "../services/userFacingError";
 
 function isAttendanceAllowed(actor: "student" | "staff", allowStaffWeekendAttendance: boolean): { allowed: boolean; reason?: string } {
   const today = new Date();
@@ -100,7 +101,7 @@ export default function Checkin() {
   const [successStaffPhoto, setSuccessStaffPhoto] = useState<string | null>(null);
   const [allowStaffWeekendAttendance, setAllowStaffWeekendAttendance] = useState(false);
   const isAdmin = userDoc?.role === "admin" || userDoc?.role === "super_admin";
-  const canRecord = isAdmin || (userDoc?.approved === true && (actor === "staff" ? userDoc.canTakeStaffAttendance === true : userDoc.canTakeStudentAttendance === true));
+  const canRecord = isAdmin || (userDoc?.approved === true && (actor === "staff" ? (userDoc.canTakeStaffAttendance === true || userDoc.canTakeSelfAttendance === true) : userDoc.canTakeStudentAttendance === true));
 
   const attendanceCheck = isAttendanceAllowed(actor, allowStaffWeekendAttendance);
   const selectedClass = useMemo(
@@ -214,7 +215,7 @@ export default function Checkin() {
       setSelectedStudentId("");
       await refreshAttendance();
     } catch (err: any) {
-      setError(err?.message ?? "Could not record student attendance.");
+      setError(userFacingError(err, "Could not record student attendance."));
     } finally {
       setSubmitting(false);
     }
@@ -238,7 +239,7 @@ export default function Checkin() {
       const staffCode = staffIdInput.trim();
       const staff = await getStaffByStaffId(staffCode);
       if (!staff?.id) throw new Error(`No staff record found for ID: ${staffCode}`);
-      if (!isAdmin && staff.userUid !== (userDoc.uid ?? userDoc.id)) {
+      if (!isAdmin && userDoc?.canTakeStaffAttendance !== true && staff.userUid !== (userDoc.uid ?? userDoc.id)) {
         throw new Error("You can only record attendance for your own staff profile.");
       }
       const movementReason = await promptMovementReason(nextMode);
@@ -249,7 +250,7 @@ export default function Checkin() {
       setStaffIdInput("");
       await refreshAttendance();
     } catch (err: any) {
-      setError(err?.message ?? "Could not record staff attendance.");
+      setError(userFacingError(err, "Could not record staff attendance."));
     } finally {
       setSubmitting(false);
     }

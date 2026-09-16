@@ -375,7 +375,7 @@ service cloud.firestore {
           isAdmin()
           || (request.resource.data.subjectType == 'student' && canTakeStudentAttendance())
           || (!attendanceUsesGeofenceBypass() && request.resource.data.subjectType == 'student' && isAssignedToClassDoc(request.resource.data.classDocId))
-          || (request.resource.data.subjectType == 'staff' && isAdmin() && canTakeStaffAttendance())
+          || (request.resource.data.subjectType == 'staff' && canTakeStaffAttendance())
           || isWritingOwnStaffAttendance()
         );
 
@@ -385,7 +385,7 @@ service cloud.firestore {
           isAdmin()
           || (resource.data.subjectType == 'student' && canTakeStudentAttendance())
           || (!attendanceUsesGeofenceBypass() && resource.data.subjectType == 'student' && isAssignedToClassDoc(resource.data.classDocId) && request.resource.data.classDocId == resource.data.classDocId)
-          || (resource.data.subjectType == 'staff' && isAdmin() && canTakeStaffAttendance())
+          || (resource.data.subjectType == 'staff' && canTakeStaffAttendance())
           || (isReadingOwnStaffAttendance() && request.resource.data.subjectType == resource.data.subjectType && request.resource.data.subjectId == resource.data.subjectId)
         );
 

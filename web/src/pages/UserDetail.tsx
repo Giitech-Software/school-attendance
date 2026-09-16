@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { getUserById, upsertUser, type AppUser, type UserRole } from "../services/users";
 import useCurrentUser from "../hooks/useCurrentUser";
 import { allowsStudentAndParentFeatures } from "../services/tenantScope";
+import { listStaff, type Staff } from "../services/staff";
 
 const USER_ROLES: UserRole[] = ["parent", "teacher", "non_teaching_staff", "general_staff", "staff", "admin", "super_admin"];
 
@@ -28,6 +29,7 @@ export default function UserDetail() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [promoting, setPromoting] = useState(false);
+  const [linkedStaff, setLinkedStaff] = useState<Staff | null>(null);
   const { userDoc: currentUserDoc } = useCurrentUser();
   const allowsSchoolFeatures = allowsStudentAndParentFeatures(currentUserDoc);
   const isSuperAdmin = currentUserDoc?.role === "super_admin";
@@ -41,8 +43,15 @@ export default function UserDetail() {
     let active = true;
     if (!id) return;
     getUserById(id)
-      .then((row) => {
+      .then(async (row) => {
         if (active) setUser(row);
+        if (row) {
+          const rows = await listStaff();
+          const normalizedEmail = row.email?.trim().toLowerCase();
+          const match = rows.find((staff) => staff.userUid === (row.uid ?? row.id))
+            ?? rows.find((staff) => normalizedEmail && staff.email?.trim().toLowerCase() === normalizedEmail);
+          if (active) setLinkedStaff(match ?? null);
+        }
       })
       .catch((err) => {
         console.error(err);
@@ -219,9 +228,16 @@ export default function UserDetail() {
             Cancel
           </button>
           {isStaffAccount(user) && user.id ? (
-            <Link to="/staff/create" className="enterprise-button-secondary">
-              Create / Link Staff Profile
-            </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              {linkedStaff ? (
+                <span className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+                  Linked: {linkedStaff.staffId ?? linkedStaff.name}
+                </span>
+              ) : null}
+              <Link to={`/staff/create?userId=${encodeURIComponent(user.id)}`} className="enterprise-button-secondary">
+                {linkedStaff ? "Edit Linked Staff Profile" : "Create / Link Staff Profile"}
+              </Link>
+            </div>
           ) : null}
           {user.role !== "admin" && user.role !== "super_admin" ? (
             <button type="button" onClick={handlePromoteToAdmin} disabled={promoting} className="enterprise-button-danger">

@@ -4,6 +4,7 @@ import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
 export { verifyAttendancePresence } from "./handlers/verifyAttendancePresence";
 export { linkStaffAccount } from "./handlers/linkStaffAccount";
+export { updateOwnStaffProfilePhoto } from "./handlers/updateOwnStaffProfilePhoto";
 
 admin.initializeApp();
 

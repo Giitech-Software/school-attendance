@@ -14,6 +14,7 @@ import * as LocalAuthentication from "expo-local-authentication";
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { useCurrentStaff } from "../../src/hooks/useCurrentStaff";
 import { handleStaffBiometricCheck } from "../../src/services/staffBiometricHandler";
+import ImageCarousel from "../../components/ImageCarousel";
 
 export default function MyStaffAttendance() {
   const router = useRouter();
@@ -123,15 +124,18 @@ export default function MyStaffAttendance() {
 
   return (
     <ScrollView className="flex-1 bg-slate-300" contentContainerStyle={{ padding: 16 }}>
-      <View className="flex-row items-center mb-4">
+      <View className="-mx-4 mb-0 flex-row items-center bg-slate-900 px-4 py-3">
         <Pressable onPress={() => router.back()} className="p-1 mr-2" hitSlop={8}>
-          <MaterialIcons name="arrow-back" size={26} color="#0f172a" />
+          <MaterialIcons name="arrow-back" size={26} color="#ffffff" />
         </Pressable>
-        {staff.profilePhotoUrl ? <Image source={{ uri: staff.profilePhotoUrl }} className="mr-3 h-12 w-12 rounded-full" /> : null}
-        <Text className="text-2xl font-extrabold text-slate-900">My Attendance</Text>
+        <Text className="text-2xl font-extrabold text-white">My Attendance</Text>
+      </View>
+      <View className="-mx-4 -mt-0.5 m-0 p-0">
+        <ImageCarousel images={[require("../../assets/images/attendance-1.jpg"), require("../../assets/images/attendance-2.jpg"), require("../../assets/images/attendance-3.jpg")]} height={220} />
       </View>
 
       <View className="bg-white rounded-2xl p-5 shadow mb-4">
+        {staff.profilePhotoUrl ? <Image source={{ uri: staff.profilePhotoUrl }} className="mb-3 h-20 w-20 rounded-full self-center" /> : null}
         <Text className="text-lg font-bold text-slate-900">{staff.name}</Text>
         <Text className="text-slate-500 mt-1">Staff ID: {staff.staffId ?? staff.id}</Text>
       </View>

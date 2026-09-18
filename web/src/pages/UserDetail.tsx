@@ -181,10 +181,6 @@ export default function UserDetail() {
                   <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">Email</dt>
                   <dd className="break-all font-semibold text-slate-800">{user.email ?? "N/A"}</dd>
                 </div>
-                <div>
-                  <dt className="text-xs font-bold uppercase tracking-wide text-slate-400">UID</dt>
-                  <dd className="break-all font-mono text-xs text-slate-700">{user.uid ?? user.id ?? "N/A"}</dd>
-                </div>
               </dl>
             </div>
 

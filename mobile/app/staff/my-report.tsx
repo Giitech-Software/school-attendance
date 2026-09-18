@@ -16,6 +16,7 @@ import { listWeeks } from "../../src/services/weeks";
 import useCurrentUser from "../../src/hooks/useCurrentUser";
 import { allowsStudentAndParentFeatures } from "../../src/services/tenantScope";
 import Svg, { Circle } from "react-native-svg";
+import ImageCarousel from "../../components/ImageCarousel";
 
 function getLast30Days() {
   const today = new Date();
@@ -218,11 +219,14 @@ export default function MyStaffReport() {
 
   return (
     <View className="flex-1 bg-slate-300 p-4">
-      <View className="flex-row items-center mb-4">
+      <View className="-mx-4 mb-0 flex-row items-center bg-slate-900 px-4 py-3">
         <Pressable onPress={() => router.back()} className="p-1 mr-2" hitSlop={8}>
-          <MaterialIcons name="arrow-back" size={26} color="#0f172a" />
+          <MaterialIcons name="arrow-back" size={26} color="#ffffff" />
         </Pressable>
-        <Text className="text-2xl font-extrabold text-slate-900">My Report</Text>
+        <Text className="text-2xl font-extrabold text-white">My Report</Text>
+      </View>
+      <View className="-mx-4 -mt-0.5 m-0 p-0">
+        <ImageCarousel images={[require("../../assets/images/reports-1.jpg"), require("../../assets/images/reports-2.jpg"), require("../../assets/images/reports-3.jpg"), require("../../assets/images/reports-4.jpg")]} height={220} />
       </View>
 
       <View className="bg-white rounded-2xl p-5 shadow mb-4">

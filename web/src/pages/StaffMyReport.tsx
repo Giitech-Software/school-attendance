@@ -8,6 +8,7 @@ import type { AttendanceRecord, Week } from "../types";
 import AttendancePieChart from "../components/AttendancePieChart";
 import useCurrentUser from "../hooks/useCurrentUser";
 import { allowsStudentAndParentFeatures } from "../services/tenantScope";
+import ImageCarousel from "../components/ImageCarousel";
 
 function getLast30Days() {
   const today = new Date();
@@ -46,7 +47,7 @@ function formatMaybeTime(value?: string | null) {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-type ReportMode = "last30" | "week" | "term" | "year";
+type ReportMode = "last30" | "week" | "daily" | "monthly" | "term" | "year";
 type StaffSummary = ReturnType<typeof buildStaffSummary>;
 
 export default function StaffMyReport() {
@@ -182,11 +183,15 @@ export default function StaffMyReport() {
     }
   }
 
-  async function showRange(mode: "term" | "year") {
+  async function showRange(mode: "daily" | "monthly" | "term" | "year") {
     if (!staff?.id) return;
     const year = new Date().getFullYear();
-    const fromIso = mode === "term" && termLabel ? termLabel.split(": ")[1]?.split(" to ")[0] : `${year}-01-01`;
-    const toIso = mode === "term" && termLabel ? termLabel.split(" to ")[1] : `${year}-12-31`;
+    const today = new Date();
+    const todayIso = today.toISOString().slice(0, 10);
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
+    const fromIso = mode === "daily" ? todayIso : mode === "monthly" ? monthStart : mode === "term" && termLabel ? termLabel.split(": ")[1]?.split(" to ")[0] : `${year}-01-01`;
+    const toIso = mode === "daily" ? todayIso : mode === "monthly" ? monthEnd : mode === "term" && termLabel ? termLabel.split(" to ")[1] : `${year}-12-31`;
     if (!fromIso || !toIso) return;
     try {
       setReportMode(mode);
@@ -218,7 +223,7 @@ export default function StaffMyReport() {
 
   return (
     <div className="space-y-3">
-      <section className="enterprise-panel overflow-hidden">
+      <section className="enterprise-panel -mx-3 -mt-3 m-0 overflow-hidden rounded-none p-0 sm:-mx-4 lg:-mx-5">
         <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-900 px-4 py-3 text-white sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -232,6 +237,10 @@ export default function StaffMyReport() {
         </div>
       </section>
 
+      <section className="enterprise-panel -mx-3 overflow-hidden rounded-none sm:-mx-4 lg:-mx-5">
+        <ImageCarousel images={[{ src: "/reports-1.webp", alt: "Attendance report overview" }, { src: "/reports-2.webp", alt: "Attendance report analysis" }, { src: "/reports-3.webp", alt: "Attendance report summary" }, { src: "/reports-4.webp", alt: "Attendance report insights" }]} />
+      </section>
+
       {error ? <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div> : null}
 
       <section className="enterprise-panel p-4">
@@ -240,7 +249,7 @@ export default function StaffMyReport() {
           <p className="text-sm text-slate-500">
             {reportMode === "week" && selectedWeek
               ? `Week ${selectedWeek.weekNumber}: ${selectedWeek.startDate} to ${selectedWeek.endDate}`
-              : reportMode === "term" ? termLabel ?? "Current term" : reportMode === "year" ? `Year ${new Date().getFullYear()}` : "Last 30 days"}
+              : reportMode === "daily" ? "Today" : reportMode === "monthly" ? "Current month" : reportMode === "term" ? termLabel ?? "Current term" : reportMode === "year" ? `Year ${new Date().getFullYear()}` : "Last 30 days"}
           </p>
         </div>
         <div className="mt-4">
@@ -257,6 +266,8 @@ export default function StaffMyReport() {
             >
               Last 30 days
             </button>
+            <button type="button" onClick={() => showRange("daily")} className={`shrink-0 rounded-md border px-3 py-2 text-xs font-bold ${reportMode === "daily" ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"}`}>Daily</button>
+            <button type="button" onClick={() => showRange("monthly")} className={`shrink-0 rounded-md border px-3 py-2 text-xs font-bold ${reportMode === "monthly" ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"}`}>Monthly</button>
             {allowsSchoolFeatures ? <button type="button" onClick={() => showRange("term")} disabled={!termLabel} className={`shrink-0 rounded-md border px-3 py-2 text-xs font-bold ${reportMode === "term" ? "border-primary bg-primary text-white" : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"}`}>
               Term
             </button> : null}

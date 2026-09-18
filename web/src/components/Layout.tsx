@@ -4,6 +4,7 @@ import { signOutUser } from "../services/auth";
 import useCurrentUser from "../hooks/useCurrentUser";
 import { autoMarkAbsentsForToday } from "../services/autoMarkAbsent";
 import { allowsStudentAndParentFeatures } from "../services/tenantScope";
+import { useCurrentStaff } from "../hooks/useCurrentStaff";
 
 const mainLinks = [
   { to: "/", label: "Home" },
@@ -17,6 +18,7 @@ const mainLinks = [
 ];
 
 const adminLinks = [
+  { to: "/staff/admin-profile", label: "My Profile" },
   { to: "/admin/classes", label: "Classes", schoolOnly: true },
   { to: "/terms", label: "Terms", schoolOnly: true },
   { to: "/users", label: "Users" },
@@ -49,6 +51,7 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { authUser, userDoc, loading } = useCurrentUser();
+  const { staff: currentStaff } = useCurrentStaff();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrollState, setScrollState] = useState({ canUp: false, canDown: false });
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem("astem-sidebar-collapsed") === "true");
@@ -63,6 +66,12 @@ export default function Layout() {
     [allowsSchoolFeatures, isAdmin, isSuperAdmin]
   );
   const visibleAdminLinks = isAdmin ? adminLinks.filter((link) => !link.schoolOnly || allowsSchoolFeatures) : [];
+  const isStaffUser = ["teacher", "staff", "non_teaching_staff", "general_staff"].includes(userDoc?.role ?? "");
+  const visibleStaffLinks = !isAdmin && isStaffUser ? [
+    { to: "/staff/my-attendance", label: "My Attendance" },
+    { to: "/staff/my-report", label: "My Report" },
+    { to: "/staff/my-profile", label: "My Profile" },
+  ] : [];
 
   useEffect(() => {
     if (loading || isPublicRoute) return;
@@ -127,8 +136,15 @@ export default function Layout() {
   }
 
   const pageTitle = getPageTitle(location.pathname);
-  const accountLabel = userDoc?.displayName ?? authUser.email ?? "Signed in user";
+  const rawAccountLabel = userDoc?.displayName?.trim() ?? "";
+  const looksLikeFirebaseId = /^[A-Za-z0-9]{16,}$/.test(rawAccountLabel);
+  const accountLabel = (isAdmin && userDoc?.tenantName?.trim())
+    || (!looksLikeFirebaseId && rawAccountLabel)
+    || userDoc?.tenantName?.trim()
+    || authUser.email
+    || "Signed in user";
   const avatarText = initialsFromEmail(authUser.email);
+  const sidebarPhotoUrl = currentStaff?.profilePhotoUrl ?? userDoc?.profilePhotoUrl ?? null;
 
   const sidebar = (
     <aside className="flex h-full flex-col bg-white">
@@ -157,6 +173,19 @@ export default function Layout() {
           </div>
         </div>
 
+        {visibleStaffLinks.length ? (
+          <div>
+            {!sidebarCollapsed ? <p className="px-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Self service</p> : null}
+            <div className="mt-2 space-y-1">
+              {visibleStaffLinks.map((link) => (
+                <NavLink key={link.to} to={link.to} className={(state) => `${navLinkClass(state)} ${sidebarCollapsed ? "justify-center px-2" : ""}`} title={sidebarCollapsed ? link.label : undefined}>
+                  {sidebarCollapsed ? link.label.charAt(0) : link.label}
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         {visibleAdminLinks.length ? (
           <div>
             {!sidebarCollapsed ? <p className="px-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Admin</p> : null}
@@ -173,7 +202,12 @@ export default function Layout() {
 
       <div className={`border-t border-slate-200 ${sidebarCollapsed ? "p-2" : "p-2.5"}`}>
         <div className={`rounded-md border border-slate-200 bg-slate-50 ${sidebarCollapsed ? "p-2 text-center" : "p-2.5"}`}>
-          {!sidebarCollapsed ? <p className="truncate text-xs font-bold text-slate-900">{accountLabel}</p> : <span className="text-xs font-extrabold text-slate-700">{avatarText}</span>}
+          {!sidebarCollapsed ? (
+            <div className="flex items-center gap-2">
+              {sidebarPhotoUrl ? <img src={sidebarPhotoUrl} alt={`${accountLabel} profile`} className="h-14 w-14 shrink-0 rounded-full object-cover ring-2 ring-primary/20 shadow-sm" /> : <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-extrabold text-white">{avatarText}</span>}
+              <p className="truncate text-xs font-bold text-slate-900">{accountLabel}</p>
+            </div>
+          ) : sidebarPhotoUrl ? <img src={sidebarPhotoUrl} alt={`${accountLabel} profile`} className="mx-auto h-12 w-12 rounded-full object-cover ring-2 ring-primary/20 shadow-sm" /> : <span className="text-xs font-extrabold text-slate-700">{avatarText}</span>}
           {!sidebarCollapsed ? (
           <div className="mt-2 flex items-center justify-between gap-2">
             <span className="rounded bg-emerald-100 px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-emerald-700">

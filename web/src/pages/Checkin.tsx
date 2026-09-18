@@ -121,11 +121,12 @@ export default function Checkin() {
     (async () => {
       try {
         setLoading(true);
+        const selfOnlyStaff = actor === "staff" && userDoc?.canTakeSelfAttendance === true && userDoc?.canTakeStaffAttendance !== true && !isAdmin;
         const [classRows, attendanceRows, studentRows, staffRows, attendanceSettings] = await Promise.all([
-          listClasses(),
-          getAttendanceForDate(todayISO()),
-          listStudents().catch(() => []),
-          listStaff().catch(() => []),
+          actor === "student" ? listClasses() : Promise.resolve([]),
+          selfOnlyStaff ? Promise.resolve([]) : getAttendanceForDate(todayISO()),
+          actor === "student" ? listStudents().catch(() => []) : Promise.resolve([]),
+          selfOnlyStaff ? Promise.resolve([]) : listStaff().catch(() => []),
           getAttendanceSettings(),
         ]);
         if (!active) return;
@@ -146,7 +147,7 @@ export default function Checkin() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [actor, userDoc?.canTakeSelfAttendance, userDoc?.canTakeStaffAttendance, isAdmin]);
 
   useEffect(() => {
     let active = true;
@@ -252,7 +253,7 @@ export default function Checkin() {
         throw new Error("You can only record attendance for your own staff profile.");
       }
       const movementReason = await promptMovementReason(nextMode);
-      await registerStaffAttendance({ staffId: staff.id, mode: nextMode, method: "manual", biometric: false, movementReason });
+      await registerStaffAttendance({ staffId: staff.id, mode: nextMode, method: "manual", biometric: false, movementReason, selfOnly });
       setStaffMembers((current) => (current.some((item) => item.id === staff.id || item.staffId === staff.staffId) ? current : [...current, staff]));
       setSuccess(`${staff.name ?? staff.staffId ?? "Staff member"} checked ${nextMode === "in" ? "in" : "out"} successfully.`);
       setSuccessStaffPhoto(staff.profilePhotoUrl ?? null);
@@ -314,8 +315,8 @@ export default function Checkin() {
   if (!canRecord) return <div className="enterprise-panel p-6 text-center"><h1 className="text-xl font-extrabold text-slate-950">Attendance access unavailable</h1><p className="mt-2 text-sm text-slate-700">{actor === "staff" ? "An administrator must enable staff check-in and check-out for your account." : "An administrator must enable student attendance access for your account."}</p></div>;
 
   return (
-    <div className="-m-3 min-w-0 space-y-3 sm:-m-4 lg:-m-5">
-      <section className="enterprise-panel rounded-none overflow-hidden">
+    <div className="min-w-0 space-y-3">
+      <section className="enterprise-panel -mx-3 rounded-none overflow-hidden sm:-mx-4 lg:-mx-5">
         <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-900 px-3 py-3 text-white sm:px-4 md:flex-row md:items-center md:justify-between">
           <div className="flex min-w-0 items-center gap-2">
             <Link to="/attendance" className="shrink-0 rounded-lg border border-white/20 px-2.5 py-1 text-sm font-semibold text-white hover:bg-white/10" aria-label="Back to attendance">

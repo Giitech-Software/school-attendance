@@ -142,8 +142,8 @@ export default function Reports() {
   const tiles = reportType === "student" && allowsSchoolFeatures ? studentLinks : staffLinks.filter((link) => !link.schoolOnly || allowsSchoolFeatures);
 
   return (
-    <div className="-m-3 space-y-3 sm:-m-4 lg:-m-5">
-      <section className="enterprise-panel rounded-none overflow-hidden">
+    <div className="space-y-3">
+      <section className="enterprise-panel -mx-3 rounded-none overflow-hidden sm:-mx-4 lg:-mx-5">
         <div className="grid gap-0">
           <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-900 px-3 py-3 text-white sm:px-4 lg:border-b-0">
             <Link to="/" className="shrink-0 rounded-lg border border-white/20 px-2.5 py-1 text-sm font-semibold text-white hover:bg-white/10" aria-label="Back home">Back</Link>

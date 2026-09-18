@@ -9,6 +9,8 @@ type AttendanceTotalsCardsProps = {
   rows: AttendanceTotalRow[];
   subjectLabel: string;
   groupLabel?: string;
+  onSelectMetric?: (metric: "present" | "late" | "attended" | "absent" | null) => void;
+  selectedMetric?: string | null;
 };
 
 export function getAttendanceTotals(rows: AttendanceTotalRow[]) {
@@ -31,7 +33,7 @@ export function getAttendanceTotals(rows: AttendanceTotalRow[]) {
   };
 }
 
-export default function AttendanceTotalsCards({ rows, subjectLabel, groupLabel }: AttendanceTotalsCardsProps) {
+export default function AttendanceTotalsCards({ rows, subjectLabel, groupLabel, onSelectMetric, selectedMetric }: AttendanceTotalsCardsProps) {
   const totals = getAttendanceTotals(rows);
 
   return (
@@ -40,22 +42,22 @@ export default function AttendanceTotalsCards({ rows, subjectLabel, groupLabel }
         <p>{groupLabel ?? `Total ${subjectLabel}`}</p>
         <strong>{rows.length}</strong>
       </div>
-      <div className="report-summary-card">
+      <button type="button" onClick={() => onSelectMetric?.("present")} className={`report-summary-card text-left ${selectedMetric === "present" ? "ring-2 ring-emerald-400" : ""}`}>
         <p>Present</p>
         <strong className="text-emerald-700">{totals.present}</strong>
-      </div>
-      <div className="report-summary-card">
+      </button>
+      <button type="button" onClick={() => onSelectMetric?.("late")} className={`report-summary-card text-left ${selectedMetric === "late" ? "ring-2 ring-amber-400" : ""}`}>
         <p>Late</p>
         <strong className="text-amber-700">{totals.late}</strong>
-      </div>
-      <div className="report-summary-card" title="Attended (Present + Late)">
+      </button>
+      <button type="button" onClick={() => onSelectMetric?.("attended")} className={`report-summary-card text-left ${selectedMetric === "attended" ? "ring-2 ring-sky-400" : ""}`} title="Attended (Present + Late)">
         <p>T</p>
         <strong className="text-sky-700">{totals.attended}</strong>
-      </div>
-      <div className="report-summary-card">
+      </button>
+      <button type="button" onClick={() => onSelectMetric?.("absent")} className={`report-summary-card text-left ${selectedMetric === "absent" ? "ring-2 ring-red-400" : ""}`}>
         <p>Absent</p>
         <strong className="text-red-600">{totals.absent}</strong>
-      </div>
+      </button>
       <div className="report-summary-card">
         <p>Attendance %</p>
         <strong className="text-slate-900">{totals.percentagePresent.toFixed(1)}%</strong>

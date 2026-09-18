@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useCurrentStaff } from "../hooks/useCurrentStaff";
 import useCurrentUser from "../hooks/useCurrentUser";
+import ImageCarousel from "../components/ImageCarousel";
 
 export default function StaffMyAttendance() {
   const { staff, loading } = useCurrentStaff();
@@ -56,20 +57,20 @@ export default function StaffMyAttendance() {
 
   return (
     <div className="space-y-3">
-      <section className="enterprise-panel overflow-hidden">
+      <section className="enterprise-panel -mx-3 -mt-3 m-0 overflow-hidden rounded-none p-0 sm:-mx-4 lg:-mx-5">
         <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-900 px-4 py-3 text-white sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-2">
             <Link to="/" className="rounded-lg border border-white/20 px-2.5 py-1 text-sm font-semibold text-white hover:bg-white/10">Back</Link>
-            {staff.profilePhotoUrl ? <img src={staff.profilePhotoUrl} alt="Staff profile" className="h-10 w-10 shrink-0 rounded-full object-cover ring-2 ring-white/20" /> : null}
             <div>
             <h1 className="text-xl font-extrabold">My Attendance</h1>
             <p className="mt-1 text-xs text-white/70">Check in or check out using your approved staff profile.</p>
             </div>
           </div>
-          <Link to="/staff/my-report" className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-dark">
-            My Report
-          </Link>
         </div>
+      </section>
+
+      <section className="enterprise-panel -mx-3 overflow-hidden rounded-none sm:-mx-4 lg:-mx-5">
+        <ImageCarousel images={[{ src: "/attendance-1.webp", alt: "Attendance check-in" }, { src: "/attendance-2.webp", alt: "Attendance verification" }, { src: "/attendance-3.webp", alt: "Attendance register" }, { src: "/attendance-4.webp", alt: "Attendance operations" }]} />
       </section>
 
       <section className="grid gap-3 sm:grid-cols-3">

@@ -33,9 +33,15 @@ const STAFF_COLLECTION = "staff";
 export async function uploadStaffProfilePhoto(staffId: string, uri: string): Promise<string> {
   const response = await fetch(uri);
   const blob = await response.blob();
-  const photoRef = ref(storage, `staff-profile-photos/${staffId}.jpg`);
+  const photoRef = ref(storage, `staff-profile-photos/${staffId}`);
   await uploadBytes(photoRef, blob, { contentType: "image/jpeg", cacheControl: "public,max-age=86400" });
   return getDownloadURL(photoRef);
+}
+
+export async function updateOwnStaffProfilePhoto(staffId: string, uri: string): Promise<string> {
+  const url = await uploadStaffProfilePhoto(staffId, uri);
+  await httpsCallable(getFunctions(app), "updateOwnStaffProfilePhoto")({ staffId, profilePhotoUrl: url });
+  return url;
 }
 
 export type StaffRoleType =
@@ -223,7 +229,9 @@ export async function getStaffById(id: string): Promise<Staff | null> {
   if (!snap.exists()) return null;
   const data = snap.data();
   if (!belongsToTenant(data, await getTenantScope())) return null;
-  return { id: snap.id, ...data } as Staff;
+  const staff = { id: snap.id, ...data } as Staff;
+  try { staff.profilePhotoUrl = await getDownloadURL(ref(storage, `staff-profile-photos/${snap.id}`)); } catch { staff.profilePhotoUrl = undefined; }
+  return staff;
 }
 
 export async function listLegacyStaff(): Promise<Staff[]> {

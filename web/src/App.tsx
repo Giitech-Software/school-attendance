@@ -21,6 +21,8 @@ import StaffBulkImport from "./pages/StaffBulkImport";
 import StaffDetail from "./pages/StaffDetail";
 import StaffMyAttendance from "./pages/StaffMyAttendance";
 import StaffMyReport from "./pages/StaffMyReport";
+import StaffMyProfile from "./pages/StaffMyProfile";
+import AdminMyProfile from "./pages/AdminMyProfile";
 import Terms from "./pages/Terms";
 import TermCreate from "./pages/TermCreate";
 import TermDetail from "./pages/TermDetail";
@@ -123,6 +125,8 @@ export default function App() {
             <Route path="groups" element={<AdminOnlyPage><StaffGroups /></AdminOnlyPage>} />
             <Route path="my-attendance" element={<StaffMyAttendance />} />
             <Route path="my-report" element={<StaffMyReport />} />
+            <Route path="my-profile" element={<StaffMyProfile />} />
+            <Route path="admin-profile" element={<AdminMyProfile />} />
             <Route path="register-face" element={<RegisterFaceStaff />} />
             <Route path=":id" element={<StaffDetail />} />
           </Route>

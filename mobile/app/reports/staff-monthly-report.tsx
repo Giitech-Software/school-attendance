@@ -43,6 +43,8 @@ export default function StaffMonthlyReport() {
   >([]);
   const [selectedMonth, setSelectedMonth] = useState<any | null>(null);
   const [staffRows, setStaffRows] = useState<any[]>([]);
+  const [metricFilter, setMetricFilter] = useState<string | null>(null);
+  const visibleStaffRows = staffRows.filter((row) => !metricFilter || (metricFilter === "present" ? row.presentCount > 0 : metricFilter === "late" ? row.lateCount > 0 : metricFilter === "attended" ? row.attendedSessions > 0 : row.absentCount > 0));
   const [exportingPdf, setExportingPdf] = useState(false);
 
   /* Load months */
@@ -186,17 +188,17 @@ export default function StaffMonthlyReport() {
         Staff ({staffRows.length})
       </Text>
 
-{staffRows.length > 0 ? <AttendanceTotalsCards rows={staffRows} label="Staff" periodFrom={selectedMonth?.fromIso} periodTo={selectedMonth?.toIso} /> : null}
+{staffRows.length > 0 ? <><AttendanceTotalsCards rows={staffRows} label="Staff" periodFrom={selectedMonth?.fromIso} periodTo={selectedMonth?.toIso} selectedMetric={metricFilter} onSelectMetric={setMetricFilter} />{metricFilter ? <Pressable onPress={() => setMetricFilter(null)}><Text className="text-blue-700 font-semibold mb-2">Clear staff filter</Text></Pressable> : null}</> : null}
 <Text className="text-sm text-slate-700 mb-2">
         P = Present - L = Late - T = Attended - A = Absent
       </Text>
 
-      {staffRows.length === 0 ? (
+      {visibleStaffRows.length === 0 ? (
         <Text className="text-slate-500">
           No data for selected month.
         </Text>
       ) : (
-        staffRows.map((item) => (
+        visibleStaffRows.map((item) => (
           <Pressable
             key={item.staffId}
             onPress={() =>

@@ -146,9 +146,21 @@ service cloud.firestore {
             && callerUser().email is string
             && get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.email == callerUser().email
           )
-        )
+        );
+    }
+
+    function isUpdatingOwnStaffAttendance() {
+      return isStaffRole()
+        && callerUser().canTakeSelfAttendance == true
+        && resource.data.subjectType == 'staff'
+        && request.resource.data.subjectType == 'staff'
+        && request.resource.data.subjectId == resource.data.subjectId
+        && resource.data.subjectId is string
         && exists(/databases/$(database)/documents/staff/$(resource.data.subjectId))
-        && get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.userUid == request.auth.uid;
+        && (
+          get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.userUid == request.auth.uid
+          || get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.email == callerUser().email
+        );
     }
 
     function isReadingWardAttendance() {
@@ -365,11 +377,13 @@ service cloud.firestore {
         && (!(request.resource.data.keys().hasAny(['email'])) || request.resource.data.email is string)
         && (!(request.resource.data.keys().hasAny(['staffId'])) || request.resource.data.staffId is string);
 
-      allow update: if isAdmin()
+      allow update: if (isAdmin()
         && sameTenantUpdate()
         && request.resource.data.name is string
         && (!(request.resource.data.keys().hasAny(['email'])) || request.resource.data.email is string)
-        && (!(request.resource.data.keys().hasAny(['staffId'])) || request.resource.data.staffId is string);
+        && (!(request.resource.data.keys().hasAny(['staffId'])) || request.resource.data.staffId is string))
+        || (isOwnStaffDoc()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['profilePhotoUrl']));
 
       allow delete: if isAdmin() && sameTenantResource();
     }
@@ -410,7 +424,7 @@ service cloud.firestore {
           || (resource.data.subjectType == 'student' && canTakeStudentAttendance())
           || (!attendanceUsesGeofenceBypass() && resource.data.subjectType == 'student' && isAssignedToClassDoc(resource.data.classDocId) && request.resource.data.classDocId == resource.data.classDocId)
           || (resource.data.subjectType == 'staff' && canTakeStaffAttendance())
-          || (isReadingOwnStaffAttendance() && request.resource.data.subjectType == resource.data.subjectType && request.resource.data.subjectId == resource.data.subjectId)
+          || isUpdatingOwnStaffAttendance()
         );
 
       allow delete: if isAdmin() && sameTenantResource();

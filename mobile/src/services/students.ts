@@ -149,7 +149,7 @@ export async function findStudentByFingerprint(fingerprintId: string): Promise<S
 }
 export async function uploadStudentProfilePhoto(studentId: string, uri: string): Promise<string> {
   const blob = await (await fetch(uri)).blob();
-  const photoRef = ref(storage, `student-profile-photos/${studentId}.jpg`);
+  const photoRef = ref(storage, `student-profile-photos/${studentId}`);
   await uploadBytes(photoRef, blob, { contentType: "image/jpeg", cacheControl: "public,max-age=86400" });
   return getDownloadURL(photoRef);
 }

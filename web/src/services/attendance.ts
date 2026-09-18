@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, query, runTransaction, serverTimestamp, updateDoc, where } from "firebase/firestore";
+import { collection, doc, getDocs, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
 import { db } from "../firebase";
 import type { AttendanceRecord } from "../types";
 import { assertAttendanceCheckInOpen, getAttendanceSettings } from "./attendanceSettings";
@@ -129,6 +129,7 @@ async function writeAttendance(record: Partial<AttendanceRecord> & {
   subjectId: string;
   date: string;
   type: "in" | "out";
+  selfOnly?: boolean;
 }) {
   const now = new Date().toISOString();
   const location = await buildPresenceAudit(now);
@@ -154,6 +155,11 @@ async function writeAttendance(record: Partial<AttendanceRecord> & {
     location,
   }, scope);
   const ref = doc(attendanceCollection, stableAttendanceId(record.subjectType, record.subjectId, record.date));
+  if (record.selfOnly) {
+    const { selfOnly: _selfOnly, ...createPayload } = payload as any;
+    await setDoc(ref, createPayload);
+    return normalizeAttendance({ id: ref.id, ...createPayload, createdAt: now });
+  }
   await runTransaction(db, async (transaction) => {
     const existing = await transaction.get(ref);
     if (existing.exists()) {

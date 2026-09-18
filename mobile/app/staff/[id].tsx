@@ -10,6 +10,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
 import { listStaffGroups, type StaffGroup } from "../../src/services/staffGroups";
 import useCurrentUser from "../../src/hooks/useCurrentUser";
+import { userFacingError } from "../../src/services/userFacingError";
 
 export default function StaffDetail() {
   const { id } = useLocalSearchParams();
@@ -36,7 +37,7 @@ export default function StaffDetail() {
         setStaff(s);
       } catch (err: any) {
         console.error(err);
-        Alert.alert("Failed to load staff", err?.message ?? String(err));
+        Alert.alert("Unable to load staff", userFacingError(err, "Check your internet connection and try again."));
       } finally {
         setLoading(false);
       }
@@ -52,7 +53,7 @@ export default function StaffDetail() {
       router.back();
     } catch (err: any) {
       console.error(err);
-      Alert.alert("Save failed", err?.message ?? String(err));
+      Alert.alert("Save failed", userFacingError(err, "Check your internet connection and try again."));
     } finally {
       setSaving(false);
     }
@@ -68,7 +69,7 @@ export default function StaffDetail() {
       await upsertStaff({ ...staff, profilePhotoUrl });
       setStaff({ ...staff, profilePhotoUrl });
       setCameraOpen(false);
-    } catch (err: any) { Alert.alert("Photo upload failed", err?.message ?? "Could not save profile photo."); }
+    } catch (err: any) { Alert.alert("Photo upload failed", userFacingError(err, "Check your internet connection and try again.")); }
     finally { setPhotoUploading(false); }
   }
 

@@ -208,6 +208,7 @@ useFocusEffect(
     ? [
         { title: "My Attendance", subtitle: "Check in, check out, and view today", icon: "how-to-reg", iconBackground: "#D1FAE5", iconColor: "#047857", onPress: () => router.push("/staff/my-attendance" as any) },
         { title: "My Report", subtitle: "Review your attendance history", icon: "insights", iconBackground: "#E0E7FF", iconColor: "#4338CA", onPress: () => router.push("/staff/my-report" as any) },
+        { title: "My Profile", subtitle: "View and update your profile picture", icon: "account-circle", iconBackground: "#FCE7F3", iconColor: "#BE185D", onPress: () => router.push("/staff/my-profile" as any) },
       ]
     : [];
 

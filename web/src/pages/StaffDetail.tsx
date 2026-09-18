@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { getStaffById, STAFF_ROLE_OPTIONS, uploadStaffProfilePhoto, upsertStaff, type Staff } from "../services/staff";
 import { listStaffGroups, type StaffGroup } from "../services/staffGroups";
 import useCurrentUser from "../hooks/useCurrentUser";
+import { userFacingError } from "../services/userFacingError";
 
 export default function StaffDetail() {
   const { id } = useParams<{ id: string }>();
@@ -26,7 +27,7 @@ export default function StaffDetail() {
       })
       .catch((err) => {
         console.error(err);
-        alert("Unable to load staff details.");
+        alert(userFacingError(err, "Unable to load staff details. Check your internet connection and try again."));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -50,7 +51,7 @@ export default function StaffDetail() {
       });
       navigate("/staff");
     } catch (err: any) {
-      alert(err?.message ?? "Save failed.");
+      alert(userFacingError(err, "Could not save staff details. Check your internet connection and try again."));
     } finally {
       setSaving(false);
     }
@@ -64,7 +65,7 @@ export default function StaffDetail() {
       const profilePhotoUrl = await uploadStaffProfilePhoto(staff.id, file);
       setStaff({ ...staff, profilePhotoUrl });
       await upsertStaff({ ...staff, profilePhotoUrl });
-    } catch (err: any) { alert(err?.message ?? "Profile photo upload failed."); }
+    } catch (err: any) { alert(userFacingError(err, "Profile photo upload failed. Check your internet connection and try again.")); }
     finally { setPhotoUploading(false); event.target.value = ""; }
   }
 

@@ -22,6 +22,21 @@ service firebase.storage {
       return isSuperAdmin() || (isAdmin() && caller().tenantId == tenantId);
     }
 
+    function isOwnStaffProfilePhoto(staffId) {
+      return signedIn()
+        && firestore.exists(/databases/(default)/documents/staff/$(staffId))
+        && (
+          firestore.get(/databases/(default)/documents/staff/$(staffId)).data.userUid == request.auth.uid
+          || firestore.get(/databases/(default)/documents/staff/$(staffId)).data.uid == request.auth.uid
+          || firestore.get(/databases/(default)/documents/staff/$(staffId)).data.userId == request.auth.uid
+          || (
+            firestore.get(/databases/(default)/documents/staff/$(staffId)).data.email is string
+            && caller().email is string
+            && firestore.get(/databases/(default)/documents/staff/$(staffId)).data.email == caller().email
+          )
+        );
+    }
+
     function validThumbnail() {
       return request.resource.size < 2 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
@@ -29,11 +44,21 @@ service firebase.storage {
 
     match /staff-profile-photos/{staffId} {
       allow read: if signedIn();
-      allow write: if isAdmin()
-        && validThumbnail()
-        && sameTenant(firestore.get(/databases/(default)/documents/staff/$(staffId)).data.tenantId);
-      allow delete: if isAdmin()
-        && sameTenant(firestore.get(/databases/(default)/documents/staff/$(staffId)).data.tenantId);
+      allow write: if validThumbnail()
+        && firestore.exists(/databases/(default)/documents/staff/$(staffId))
+        && (
+          isAdmin()
+          || isOwnStaffProfilePhoto(staffId)
+          || (
+            signedIn()
+            && firestore.get(/databases/(default)/documents/staff/$(staffId)).data.email is string
+            && request.auth.token.email is string
+            && firestore.get(/databases/(default)/documents/staff/$(staffId)).data.email == request.auth.token.email
+          )
+        );
+      allow delete: if (isAdmin()
+        && sameTenant(firestore.get(/databases/(default)/documents/staff/$(staffId)).data.tenantId))
+        || isOwnStaffProfilePhoto(staffId);
     }
 
     match /student-profile-photos/{studentId} {
@@ -43,6 +68,14 @@ service firebase.storage {
         && sameTenant(firestore.get(/databases/(default)/documents/students/$(studentId)).data.tenantId);
       allow delete: if isAdmin()
         && sameTenant(firestore.get(/databases/(default)/documents/students/$(studentId)).data.tenantId);
+    }
+
+    match /user-profile-photos/{uid} {
+      allow read: if signedIn();
+      allow write: if signedIn()
+        && request.auth.uid == uid
+        && validThumbnail();
+      allow delete: if signedIn() && request.auth.uid == uid;
     }
   }
 }

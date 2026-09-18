@@ -57,6 +57,8 @@ export default function StaffWeeklyReport() {
   const [weeks, setWeeks] = useState<any[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<any | null>(null);
   const [staffRows, setStaffRows] = useState<any[]>([]);
+  const [metricFilter, setMetricFilter] = useState<string | null>(null);
+  const visibleStaffRows = staffRows.filter((row) => !metricFilter || (metricFilter === "present" ? row.presentCount > 0 : metricFilter === "late" ? row.lateCount > 0 : metricFilter === "attended" ? row.attendedSessions > 0 : row.absentCount > 0));
   const [exportingWeeklyPdf, setExportingWeeklyPdf] = useState(false);
 
   /* LOAD WEEKS */
@@ -232,19 +234,19 @@ export default function StaffWeeklyReport() {
         Staff ({staffRows.length})
       </Text>
 
-{staffRows.length > 0 ? <AttendanceTotalsCards rows={staffRows} label="Staff" periodFrom={selectedWeek?.startDate} periodTo={selectedWeek?.endDate} /> : null}
+{staffRows.length > 0 ? <><AttendanceTotalsCards rows={staffRows} label="Staff" periodFrom={selectedWeek?.startDate} periodTo={selectedWeek?.endDate} selectedMetric={metricFilter} onSelectMetric={setMetricFilter} />{metricFilter ? <Pressable onPress={() => setMetricFilter(null)}><Text className="text-blue-700 font-semibold mb-2">Clear staff filter</Text></Pressable> : null}</> : null}
 <Text className="text-ml text-slate-700 mb-2">
         P = Present - L = Late - T = Attended - A = Absent
       </Text>
 
       {loading ? (
         <ActivityIndicator className="mt-4" />
-      ) : staffRows.length === 0 ? (
+      ) : visibleStaffRows.length === 0 ? (
         <Text className="text-slate-500 mt-3">
           No weekly attendance records found.
         </Text>
       ) : (
-        staffRows.map((item) => (
+        visibleStaffRows.map((item) => (
           <Pressable
             key={item.staffId}
             onPress={() =>

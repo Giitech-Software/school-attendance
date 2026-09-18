@@ -14,6 +14,8 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { storage } from "../firebase";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { belongsToTenant, getTenantScope, tenantConstraints, withTenantScope } from "./tenantScope";
 
 export type UserRole =
@@ -42,10 +44,17 @@ export type AppUser = {
   tenantName?: string | null;
   tenantType?: string | null;
   tenantInviteCode?: string | null;
+  profilePhotoUrl?: string | null;
   createdAt?: any;
 };
 
 const usersCollection = collection(db, "users");
+
+export async function uploadOwnProfilePhoto(uid: string, file: File): Promise<string> {
+  const photoRef = ref(storage, `user-profile-photos/${uid}`);
+  await uploadBytes(photoRef, file, { contentType: file.type || "image/jpeg", cacheControl: "public,max-age=86400" });
+  return getDownloadURL(photoRef);
+}
 
 function normalizeUser(id: string, data: any): AppUser {
   const normalizedRole = data.role === "superadmin" ? "super_admin" : data.role;
@@ -65,6 +74,7 @@ function normalizeUser(id: string, data: any): AppUser {
     tenantName: data.tenantName ?? null,
     tenantType: data.tenantType ?? null,
     tenantInviteCode: data.tenantInviteCode ?? null,
+    profilePhotoUrl: data.profilePhotoUrl ?? null,
   };
 }
 
@@ -142,7 +152,11 @@ export async function getUserByUid(uid: string): Promise<AppUser | null> {
     const snap = await getDocs(query(usersCollection, where("uid", "==", uid)));
     if (snap.empty) return null;
     const d = snap.docs[0];
-    return normalizeUser(d.id, d.data());
+    const user = normalizeUser(d.id, d.data());
+    if (!user.profilePhotoUrl) {
+      try { user.profilePhotoUrl = await getDownloadURL(ref(storage, `user-profile-photos/${d.id}`)); } catch { user.profilePhotoUrl = null; }
+    }
+    return user;
   } catch (err: any) {
     console.error("getUserByUid error:", err.code ?? err);
     throw err;

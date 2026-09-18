@@ -5,6 +5,8 @@ import {
   query,
   where,
   getDocs,
+  getDoc,
+  doc,
 } from "firebase/firestore";
 import { db } from "../../app/firebase";
 import { getTenantScope, tenantConstraints } from "./tenantScope";
@@ -36,8 +38,13 @@ function isLate(checkInIso: string, lateAfter: string): boolean {
  */
 export async function findStaffAttendanceForDate(
   staffId: string,
-  date: string
+  date: string,
+  selfOnly = false
 ): Promise<AttendanceRecord | null> {
+  if (selfOnly) {
+    const snap = await getDoc(doc(collection(db, "attendance"), `${encodeURIComponent("staff")}_${encodeURIComponent(staffId)}_${date}`));
+    return snap.exists() ? ({ id: snap.id, ...(snap.data() as any) } as AttendanceRecord) : null;
+  }
   const q = query(
     collection(db, "attendance"),
     where("subjectType", "==", "staff"),
@@ -64,16 +71,18 @@ export async function registerStaffAttendance({
   method = "qr",
   biometric = false,
   movementReason,
+  selfOnly = false,
 }: {
   staffId: string;
   mode: "in" | "out";
   method?: "qr" | "fingerprint" | "face" | "manual";
   biometric?: boolean;
   movementReason?: string | null;
+  selfOnly?: boolean;
 }): Promise<AttendanceRecord> {
   const date = todayISO();
 
-  const existing = await findStaffAttendanceForDate(staffId, date);
+  const existing = await findStaffAttendanceForDate(staffId, date, selfOnly);
   await assertStaffAttendanceDayAllowed();
 
   /* ===============================
@@ -115,6 +124,7 @@ export async function registerStaffAttendance({
       lateMinutes:
         movementRequirement?.kind === "late" ? movementRequirement.minutes : null,
       status, // ✅ THIS is what was missing
+      selfOnly,
     },
   });
 }

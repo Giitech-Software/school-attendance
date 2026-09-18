@@ -29,7 +29,7 @@ export async function uploadStudentProfilePhoto(studentId: string, file: File): 
   const canvas = document.createElement("canvas"); canvas.width = Math.max(1, Math.round(bitmap.width * scale)); canvas.height = Math.max(1, Math.round(bitmap.height * scale));
   canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not compress profile photo.")), "image/jpeg", 0.72));
-  const photoRef = ref(storage, `student-profile-photos/${studentId}.jpg`);
+  const photoRef = ref(storage, `student-profile-photos/${studentId}`);
   await uploadBytes(photoRef, blob, { contentType: "image/jpeg", cacheControl: "public,max-age=86400" });
   return getDownloadURL(photoRef);
 }

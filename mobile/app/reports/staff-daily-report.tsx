@@ -13,7 +13,6 @@ import { exportDailyStaffAttendance } from "../../src/services/exports/exportDai
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
 import AttendanceTotalsCards from "../../components/AttendanceTotalsCards";
-import { autoMarkAbsentStaff } from "../../src/services/autoMarkAbsent";
 
 /* - */
 /* HELPERS */
@@ -45,6 +44,8 @@ export default function StaffDailyReport() {
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
   const [staffRows, setStaffRows] = useState<any[]>([]);
+  const [metricFilter, setMetricFilter] = useState<string | null>(null);
+  const visibleStaffRows = staffRows.filter((row) => !metricFilter || (metricFilter === "present" ? row.presentCount > 0 : metricFilter === "late" ? row.lateCount > 0 : metricFilter === "attended" ? row.attendedSessions > 0 : row.absentCount > 0));
 
   /* - */
   /* LOAD DAYS */
@@ -66,7 +67,6 @@ export default function StaffDailyReport() {
       try {
         setLoading(true);
 
-        await autoMarkAbsentStaff({ dateIso: selectedDay });
         const rows = await getStaffGlobalSummary(selectedDay, selectedDay);
 
 
@@ -173,17 +173,17 @@ export default function StaffDailyReport() {
         Staff ({staffRows.length})
       </Text>
 
-{staffRows.length > 0 ? <AttendanceTotalsCards rows={staffRows} label="Staff" periodFrom={selectedDay ?? undefined} periodTo={selectedDay ?? undefined} /> : null}
+{staffRows.length > 0 ? <><AttendanceTotalsCards rows={staffRows} label="Staff" periodFrom={selectedDay ?? undefined} periodTo={selectedDay ?? undefined} selectedMetric={metricFilter} onSelectMetric={setMetricFilter} />{metricFilter ? <Pressable onPress={() => setMetricFilter(null)}><Text className="text-blue-700 font-semibold mb-2">Clear staff filter</Text></Pressable> : null}</> : null}
 <Text className="text-ml text-slate-700 mb-2">
         P = Present - L = Late - T = Attended - A = Absent
       </Text>
 
-      {staffRows.length === 0 ? (
+      {visibleStaffRows.length === 0 ? (
         <Text className="text-slate-500">
           No attendance records for this day.
         </Text>
       ) : (
-        staffRows.map((item) => (
+        visibleStaffRows.map((item) => (
           <Pressable
             key={item.staffId}
             onPress={() =>

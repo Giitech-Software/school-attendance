@@ -4,6 +4,7 @@ import { belongsToTenant, getTenantScope, requireAdminTenantScope, sortByCreated
 import { deleteFace } from "./faceService";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { storage } from "../firebase";
+import { getFunctions, httpsCallable } from "firebase/functions";
 
 export type Staff = {
   id?: string;
@@ -35,9 +36,15 @@ export async function uploadStaffProfilePhoto(staffId: string, file: File): Prom
   canvas.height = Math.max(1, Math.round(bitmap.height * scale));
   canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not compress profile photo.")), "image/jpeg", 0.72));
-  const photoRef = ref(storage, `staff-profile-photos/${staffId}.jpg`);
+  const photoRef = ref(storage, `staff-profile-photos/${staffId}`);
   await uploadBytes(photoRef, blob, { contentType: "image/jpeg", cacheControl: "public,max-age=86400" });
   return getDownloadURL(photoRef);
+}
+
+export async function updateOwnStaffProfilePhoto(staffId: string, file: File): Promise<string> {
+  const url = await uploadStaffProfilePhoto(staffId, file);
+  await httpsCallable(getFunctions(), "updateOwnStaffProfilePhoto")({ staffId, profilePhotoUrl: url });
+  return url;
 }
 
 export type StaffRoleType = "teacher" | "non_teaching_staff" | "staff" | "general_staff";
@@ -90,7 +97,9 @@ export async function getStaffById(id: string): Promise<Staff | null> {
   if (!snap.exists()) return null;
   const data = snap.data();
   if (!belongsToTenant(data, await getTenantScope())) return null;
-  return { id: snap.id, ...(data as any) } as Staff;
+  const staff = { id: snap.id, ...(data as any) } as Staff;
+  try { staff.profilePhotoUrl = await getDownloadURL(ref(storage, `staff-profile-photos/${snap.id}`)); } catch { staff.profilePhotoUrl = undefined; }
+  return staff;
 }
 
 export async function getStaffByStaffId(staffId: string): Promise<Staff | null> {

@@ -2,6 +2,7 @@
 
 import {
   updateDoc,
+  setDoc,
   doc,
   getDoc,
   runTransaction,
@@ -36,6 +37,7 @@ export async function recordAttendanceCore({
     type: "in" | "out";
     method?: "qr" | "fingerprint" | "face" | "manual";
     biometric?: boolean;
+    selfOnly?: boolean;
   };
 }): Promise<AttendanceRecord> {
   // 🔒 SECURITY: Validate user location before recording attendance
@@ -138,6 +140,11 @@ export async function recordAttendanceCore({
     attendanceCollection,
     stableAttendanceId(record.subjectType, record.subjectId, record.date)
   );
+  if (record.selfOnly) {
+    const { selfOnly: _selfOnly, ...createData } = data as any;
+    await setDoc(ref, createData);
+    return { ...createData, id: ref.id, createdAt: new Date().toISOString() } as AttendanceRecord;
+  }
   await runTransaction(db, async (transaction) => {
     const existing = await transaction.get(ref);
     if (existing.exists()) {

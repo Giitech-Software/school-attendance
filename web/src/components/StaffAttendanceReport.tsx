@@ -5,7 +5,6 @@ import { exportReportCsv, openReportPdf } from "../services/reportExport";
 import AttendanceTotalsCards from "./AttendanceTotalsCards";
 import AttendancePieChart from "./AttendancePieChart";
 import AttendanceAuditPanel from "./AttendanceAuditPanel";
-import { autoMarkAbsentStaff } from "../services/autoMarkAbsent";
 import { listStaffGroups, type StaffGroup } from "../services/staffGroups";
 
 interface StaffAttendanceReportProps {
@@ -28,6 +27,7 @@ export default function StaffAttendanceReport({ title, description, initialFrom,
   const [error, setError] = useState<string | null>(null);
   const [groups, setGroups] = useState<StaffGroup[]>([]);
   const [groupFilter, setGroupFilter] = useState("");
+  const [metricFilter, setMetricFilter] = useState<"present" | "late" | "attended" | "absent" | null>(null);
   useEffect(() => { listStaffGroups().then(setGroups).catch(console.error); }, []);
 
   useEffect(() => {
@@ -46,9 +46,6 @@ export default function StaffAttendanceReport({ title, description, initialFrom,
     setLoading(true);
 
     try {
-      if (from === to) {
-        await autoMarkAbsentStaff({ dateIso: to });
-      }
       const rows = await getStaffGlobalSummary(from, to);
       setResults(rows);
     } catch (err: any) {
@@ -61,7 +58,10 @@ export default function StaffAttendanceReport({ title, description, initialFrom,
 
   const exportSubtitle = rangeLabel(from, to);
   const exportFilename = `${title}-${from}-${to}`.replace(/\s+/g, "-");
-  const visibleResults = results?.filter(row => !groupFilter || row.staffGroupId === groupFilter) ?? null;
+  const visibleResults = results?.filter(row =>
+    (!groupFilter || row.staffGroupId === groupFilter) &&
+    (!metricFilter || (metricFilter === "present" ? row.presentCount > 0 : metricFilter === "late" ? row.lateCount > 0 : metricFilter === "attended" ? row.attendedSessions > 0 : row.absentCount > 0))
+  ) ?? null;
 
   return (
     <div className="space-y-3">
@@ -107,7 +107,9 @@ export default function StaffAttendanceReport({ title, description, initialFrom,
                 Export CSV
               </button>
             </div>
-            <><AttendanceTotalsCards rows={visibleResults} subjectLabel="Staff" groupLabel="Selected staff group" /><AttendancePieChart present={visibleResults.reduce((n, r) => n + r.presentCount, 0)} late={visibleResults.reduce((n, r) => n + r.lateCount, 0)} absent={visibleResults.reduce((n, r) => n + r.absentCount, 0)} /><AttendanceAuditPanel periodFrom={from} periodTo={to} /></>
+            <AttendanceTotalsCards rows={results ?? []} subjectLabel="Staff" groupLabel="Selected staff group" selectedMetric={metricFilter} onSelectMetric={(metric) => setMetricFilter(metric)} />
+            {metricFilter ? <button type="button" onClick={() => setMetricFilter(null)} className="mt-2 text-sm font-semibold text-primary hover:underline">Clear staff status filter</button> : null}
+            <><AttendancePieChart present={visibleResults.reduce((n, r) => n + r.presentCount, 0)} late={visibleResults.reduce((n, r) => n + r.lateCount, 0)} absent={visibleResults.reduce((n, r) => n + r.absentCount, 0)} /><AttendanceAuditPanel periodFrom={from} periodTo={to} /></>
             <div className="mt-3 rounded-lg border border-sky-100 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-800">Early departures: {visibleResults.reduce((total, row) => total + (row.earlyDepartureCount ?? 0), 0)}</div>
 
             <div className="mt-3 grid gap-3 md:hidden">

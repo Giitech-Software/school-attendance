@@ -220,7 +220,9 @@ export default function CheckinScreen() {
     setClassesLoading(true);
     try {
       const data =
-        actor === "student" && !canUseAllStudentClasses
+        actor === "staff"
+          ? []
+          : actor === "student" && !canUseAllStudentClasses
           ? assignedStudentClasses
           : await listClasses();
       setClasses(data);
@@ -239,11 +241,10 @@ export default function CheckinScreen() {
 
   async function tryFingerprint(actorId: string, checkType: "in" | "out") {
   if (actor === "staff") {
-    Alert.alert(
-      "Use QR or face recognition",
-      "Staff attendance for other people should be recorded with QR code or face recognition."
-    );
-    return;
+    if (!currentStaff?.id || currentStaff.id !== actorId) {
+      Alert.alert("Use QR or face recognition", "Device biometric attendance is available for your own staff profile only.");
+      return;
+    }
   }
 
   const attendanceCheck = isAttendanceAllowed(actor, allowStaffWeekendAttendance);
@@ -312,7 +313,7 @@ export default function CheckinScreen() {
     // ===============================
     else {
       // Find staff locally
-      const staff = staffMembers.find((s) => s.id === actorId);
+      const staff = currentStaff?.id === actorId ? currentStaff : staffMembers.find((s) => s.id === actorId);
 
       // ✅ NEW: Enrollment Verification
       if (!staff || !staff.fingerprintId) {
@@ -410,6 +411,7 @@ export default function CheckinScreen() {
         method: "manual",
         biometric: false,
         movementReason,
+        selfOnly,
       });
 
       setConfirmation({
@@ -457,7 +459,7 @@ export default function CheckinScreen() {
           <ImageCarousel images={[require("../../assets/images/attendance-1.jpg"), require("../../assets/images/attendance-2.jpg"), require("../../assets/images/attendance-3.jpg"), require("../../assets/images/attendance-4.jpg")]} height={300} />
         </View>
 
-        {actor === "student" ? (
+        {actor === "student" || actor === "staff" ? (
           <View className="mb-4 mt-4">
             <Text className="text-sm font-semibold mb-2">Choose class</Text>
             {classesLoading ? <ActivityIndicator /> : (
@@ -472,7 +474,7 @@ export default function CheckinScreen() {
             <MaterialCommunityIcons name="fingerprint" size={28} color="#2563EB" />
           </View>
           <View className="flex-1">
-            <Text className="text-lg font-semibold text-dark">{actor === "student" ? "Student Biometric Attendance" : "Staff Biometric Attendance"}</Text>
+          <Text className="text-lg font-semibold text-dark">{actor === "student" ? "Student Biometric Attendance" : "Staff Device Biometric Attendance"}</Text>
             <Text className="text-sm text-neutral mt-1">
               {showBiometric ? "Tap to record attendance via fingerprint." : "Check-in or check-out using fingerprint."}
             </Text>
@@ -639,9 +641,11 @@ export default function CheckinScreen() {
         </View>
       </View>
 
-      {showBiometric && actor === "student" ? (
+      {showBiometric ? (
         <View className="flex-1">
-          {students.length === 0 ? (
+          {actor === "staff" ? (
+            currentStaff?.id ? <View className="p-4"><StaffRow staff={currentStaff} onCheckIn={() => tryFingerprint(currentStaff.id!, "in")} onCheckOut={() => tryFingerprint(currentStaff.id!, "out")} /></View> : <View className="flex-1 justify-center items-center px-6"><Text className="text-lg font-semibold text-dark">Staff profile not linked</Text></View>
+          ) : students.length === 0 ? (
             <View className="flex-1 justify-center items-center px-6">
               <MaterialCommunityIcons name="account-off-outline" size={64} color="#64748B" />
               <Text className="mt-4 text-lg font-semibold text-dark">No students found</Text>

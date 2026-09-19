@@ -326,7 +326,7 @@ export default function Home() {
         </section>
 
         <div className="bg-white">
-          <ImageCarousel images={[{ src: "/home-banner-1.webp", alt: "Attendance workflow" }, { src: "/home-banner-2.webp", alt: "Attendance overview" }, { src: "/home-banner-3.webp", alt: "Secure attendance records" }, { src: "/home-banner-4.webp", alt: "Attendance operations" }, { src: "/home-banner-5.webp", alt: "Attendance management" }]} />
+          <ImageCarousel images={[{ src: "/home-banner-1.webp", alt: "Attendance workflow" }, { src: "/home-banner-2.webp", alt: "Attendance overview" }, { src: "/home-banner-3.webp", alt: "Secure attendance records" }, { src: "/home-banner-4.webp", alt: "Attendance operations" }, { src: "/home-banner-5.webp", alt: "Attendance management" }, { src: "/home-banner-6.webp", alt: "Attendance insights" }]} />
         </div>
 
         <main className="space-y-5 px-4 py-4 sm:px-6">

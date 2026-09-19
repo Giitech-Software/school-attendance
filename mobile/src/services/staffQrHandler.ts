@@ -38,5 +38,6 @@ export async function handleStaffQrScan({
     mode,
     method: "qr",
     biometric: false,
+    selfOnly: true,
   });
 }

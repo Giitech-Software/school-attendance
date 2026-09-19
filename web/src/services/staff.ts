@@ -117,6 +117,35 @@ export async function getStaffByStaffId(staffId: string): Promise<Staff | null> 
   return getStaffById(staffId.trim());
 }
 
+export async function getStaffByUserUid(userUid: string): Promise<Staff | null> {
+  if (!userUid) return null;
+  const scope = await getTenantScope();
+  const snap = await getDocs(query(
+    collection(db, STAFF_COLLECTION),
+    where("userUid", "==", userUid),
+    ...tenantConstraints(scope),
+    limit(1),
+  ));
+  if (snap.empty) return null;
+  const row = snap.docs[0];
+  return { id: row.id, ...(row.data() as any) } as Staff;
+}
+
+export async function getOwnStaffByStaffId(userUid: string, staffId: string): Promise<Staff | null> {
+  if (!userUid || !staffId.trim()) return null;
+  const scope = await getTenantScope();
+  const snap = await getDocs(query(
+    collection(db, STAFF_COLLECTION),
+    where("userUid", "==", userUid),
+    where("staffId", "==", staffId.trim().toUpperCase()),
+    ...tenantConstraints(scope),
+    limit(1),
+  ));
+  if (snap.empty) return null;
+  const row = snap.docs[0];
+  return { id: row.id, ...(row.data() as any) } as Staff;
+}
+
 async function ensureStaffIdIsAvailable(staffId: string): Promise<void> {
   const scope = await getTenantScope();
   const existingQuery = query(collection(db, STAFF_COLLECTION), where("staffId", "==", staffId), ...tenantConstraints(scope), limit(1));

@@ -83,6 +83,10 @@ export default function UsersList() {
   }
 
   function confirmDelete(user: AppUser) {
+    if (user.role === "super_admin" || user.role === "superadmin") {
+      Alert.alert("Protected account", "Superadmin accounts cannot be deleted.");
+      return;
+    }
     Alert.alert(
       "Delete User",
       `Are you sure you want to delete ${user.displayName ?? user.email ?? "this user"}?\n\nThis action cannot be undone.`,
@@ -155,9 +159,7 @@ export default function UsersList() {
               )}
 
               {/* DELETE */}
-              <Pressable onPress={() => confirmDelete(item)} className="p-2 rounded">
-                <Text className="text-red-500 font-semibold">Delete</Text>
-              </Pressable>
+              {item.role === "super_admin" || item.role === "superadmin" ? <Text className="p-2 text-slate-400 font-semibold">Protected</Text> : <Pressable onPress={() => confirmDelete(item)} className="p-2 rounded"><Text className="text-red-500 font-semibold">Delete</Text></Pressable>}
             </View>
           </View>
         )}

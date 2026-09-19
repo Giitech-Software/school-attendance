@@ -198,6 +198,7 @@ export async function registerStaffAttendance({
     biometric,
     earlyCheckoutReason: movementRequirement?.kind === "early_checkout" ? cleanedReason : null,
     earlyCheckoutMinutes: movementRequirement?.kind === "early_checkout" ? movementRequirement.minutes : null,
+    selfOnly,
   } as any);
 }
 

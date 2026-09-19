@@ -4,9 +4,10 @@ import React, { useEffect } from 'react';
 import { Stack, usePathname, useRouter } from 'expo-router';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { View, Text, StatusBar, useColorScheme } from 'react-native';
+import { View, Text, StatusBar, useColorScheme, AppState } from 'react-native';
 import Avatar from '../components/Avatar';
 import { auth } from './firebase';
+import { signOutUser } from '../src/services/auth';
 import { getUserById } from "@/src/services/users";
 
 import '../global.css';
@@ -63,6 +64,15 @@ function AppHeader() {
 export default function RootLayout() {
   const router = useRouter();
   const pathname = usePathname();
+
+  useEffect(() => {
+    const publicPath = pathname?.startsWith('/(auth)') || ['/login', '/signup', '/forgot-password', '/pending-approval', '/post-login', '/verify-email'].includes(pathname ?? '');
+    if (publicPath || !auth.currentUser) return;
+    let timer = setTimeout(() => { void signOutUser().then(() => router.replace('/(auth)/login' as any)); }, 5 * 60 * 1000);
+    const reset = () => { clearTimeout(timer); timer = setTimeout(() => { void signOutUser().then(() => router.replace('/(auth)/login' as any)); }, 5 * 60 * 1000); };
+    const subscription = AppState.addEventListener('change', (state) => state === 'active' ? reset() : undefined);
+    return () => { clearTimeout(timer); subscription.remove(); };
+  }, [pathname]);
 
   // ✅ STEP 4 — PROTECT BACK NAVIGATION (ROOT SAFETY NET)
   useEffect(() => {

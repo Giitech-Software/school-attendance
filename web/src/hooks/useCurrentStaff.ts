@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import useCurrentUser from "./useCurrentUser";
-import { getStaffById, getStaffByStaffId, listStaff, type Staff } from "../services/staff";
+import { getStaffById, getStaffByStaffId, getStaffByUserUid, type Staff } from "../services/staff";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import app from "../firebase";
 
@@ -23,12 +23,15 @@ export function useCurrentStaff() {
     (async () => {
       try {
         setLoading(true);
-        // Link the account first. This also works for staff who cannot list the
-        // tenant's staff collection under the least-privilege rules.
-        const linkResult = await httpsCallable<{}, { staffDocId?: string }>(getFunctions(app), "linkStaffAccount")({});
-        const linkedDocId = linkResult.data.staffDocId;
-        const linkedStaff = linkedDocId ? await getStaffById(linkedDocId) : null;
-        const staffRows = linkedStaff ? [linkedStaff] : await listStaff();
+        // Resolve the user's own staff record through a constrained query first.
+        // This does not require permission to list the tenant's staff.
+        let linkedStaff = await getStaffByUserUid(authUser.uid);
+        if (!linkedStaff) {
+          const linkResult = await httpsCallable<{}, { staffDocId?: string }>(getFunctions(app), "linkStaffAccount")({});
+          const linkedDocId = linkResult.data.staffDocId;
+          linkedStaff = linkedDocId ? await getStaffById(linkedDocId) : null;
+        }
+        const staffRows = linkedStaff ? [linkedStaff] : [];
         let found =
           linkedStaff ??
           staffRows.find((row) => row.userUid === authUser.uid) ??

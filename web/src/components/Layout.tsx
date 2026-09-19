@@ -67,6 +67,7 @@ export default function Layout() {
   );
   const visibleAdminLinks = isAdmin ? adminLinks.filter((link) => !link.schoolOnly || allowsSchoolFeatures) : [];
   const isStaffUser = ["teacher", "staff", "non_teaching_staff", "general_staff"].includes(userDoc?.role ?? "");
+  const isSelfAttendanceRoute = location.pathname === "/attendance/checkin" && new URLSearchParams(location.search).get("self") === "1";
   const visibleStaffLinks = !isAdmin && isStaffUser ? [
     { to: "/staff/my-attendance", label: "My Attendance" },
     { to: "/staff/my-report", label: "My Report" },
@@ -90,6 +91,15 @@ export default function Layout() {
   useEffect(() => {
     localStorage.setItem("astem-sidebar-collapsed", String(sidebarCollapsed));
   }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    if (isPublicRoute || loading || !authUser) return;
+    let timer = window.setTimeout(() => { void signOutUser().finally(() => navigate("/login", { replace: true })); }, 5 * 60 * 1000);
+    const reset = () => { window.clearTimeout(timer); timer = window.setTimeout(() => { void signOutUser().finally(() => navigate("/login", { replace: true })); }, 5 * 60 * 1000); };
+    const events = ["pointerdown", "keydown", "touchstart", "scroll", "mousemove"];
+    events.forEach((event) => window.addEventListener(event, reset, { passive: true }));
+    return () => { window.clearTimeout(timer); events.forEach((event) => window.removeEventListener(event, reset)); };
+  }, [authUser, isPublicRoute, loading, navigate]);
 
   useEffect(() => {
     const updateScrollState = () => {
@@ -166,7 +176,7 @@ export default function Layout() {
           {!sidebarCollapsed ? <p className="px-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Main</p> : null}
           <div className="mt-2 space-y-1">
             {visibleMainLinks.map((link) => (
-              <NavLink key={link.to} to={link.to} end={link.to === "/"} className={(state) => `${navLinkClass(state)} ${sidebarCollapsed ? "justify-center px-2" : ""}`} title={sidebarCollapsed ? link.label : undefined}>
+              <NavLink key={link.to} to={link.to} end={link.to === "/"} className={(state) => `${navLinkClass({ isActive: state.isActive && !(link.to === "/attendance/checkin" && isSelfAttendanceRoute) })} ${sidebarCollapsed ? "justify-center px-2" : ""}`} title={sidebarCollapsed ? link.label : undefined}>
                 {sidebarCollapsed ? link.label.charAt(0) : link.label}
               </NavLink>
             ))}
@@ -178,7 +188,7 @@ export default function Layout() {
             {!sidebarCollapsed ? <p className="px-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Self service</p> : null}
             <div className="mt-2 space-y-1">
               {visibleStaffLinks.map((link) => (
-                <NavLink key={link.to} to={link.to} className={(state) => `${navLinkClass(state)} ${sidebarCollapsed ? "justify-center px-2" : ""}`} title={sidebarCollapsed ? link.label : undefined}>
+                <NavLink key={link.to} to={link.to} className={(state) => `${navLinkClass({ isActive: state.isActive || (link.to === "/staff/my-attendance" && isSelfAttendanceRoute) })} ${sidebarCollapsed ? "justify-center px-2" : ""}`} title={sidebarCollapsed ? link.label : undefined}>
                   {sidebarCollapsed ? link.label.charAt(0) : link.label}
                 </NavLink>
               ))}

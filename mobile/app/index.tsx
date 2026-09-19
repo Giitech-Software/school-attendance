@@ -402,7 +402,7 @@ useFocusEffect(
       {/* Content area */}
       <ScrollView contentContainerStyle={{ padding: 16 }} className="flex-1">
         <View className="-mx-4 -mt-4 bg-white">
-          <ImageCarousel images={[require("../assets/images/home-banner-1.jpg"), require("../assets/images/home-banner-2.jpg"), require("../assets/images/home-banner-3.jpg"), require("../assets/images/home-banner-4.jpg"), require("../assets/images/home-banner-5.jpg")]} height={280} />
+          <ImageCarousel images={[require("../assets/images/home-banner-1.jpg"), require("../assets/images/home-banner-2.jpg"), require("../assets/images/home-banner-3.jpg"), require("../assets/images/home-banner-4.jpg"), require("../assets/images/home-banner-5.jpg"), require("../assets/images/home-banner-6.jpg")]} height={280} />
         </View>
         <LandingActionGroup title="My workspace" description="Your attendance and personal records." actions={personalActions} />
         <LandingActionGroup title="Attendance operations" description="Start and manage authorised attendance activities." actions={attendanceActions} />

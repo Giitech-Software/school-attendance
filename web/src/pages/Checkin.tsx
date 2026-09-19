@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { listClasses, type ClassRecord } from "../services/classes";
 import { listStudents, type Student } from "../services/students";
 import { getAttendanceForDate, registerAttendanceUnified, todayISO } from "../services/attendance";
-import { getStaffByStaffId, listStaff, type Staff } from "../services/staff";
+import { getOwnStaffByStaffId, getStaffByStaffId, listStaff, type Staff } from "../services/staff";
 import { registerStaffAttendance } from "../services/staffAttendance";
 import { getAttendanceSettings } from "../services/attendanceSettings";
 import type { AttendanceRecord } from "../types";
@@ -86,6 +86,7 @@ export default function Checkin() {
   const { staff: currentStaff } = useCurrentStaff();
   const [searchParams, setSearchParams] = useSearchParams();
   const actor = searchParams.get("actor") === "staff" ? "staff" : "student";
+  const explicitSelfService = searchParams.get("self") === "1";
   const initialMode = searchParams.get("mode") === "out" ? "out" : "in";
   const [mode, setMode] = useState<"in" | "out">(initialMode);
   const [classes, setClasses] = useState<ClassRecord[]>([]);
@@ -121,12 +122,26 @@ export default function Checkin() {
     (async () => {
       try {
         setLoading(true);
-        const selfOnlyStaff = actor === "staff" && userDoc?.canTakeSelfAttendance === true && userDoc?.canTakeStaffAttendance !== true && !isAdmin;
+        const selfOnlyStaff = actor === "staff" && userDoc?.canTakeSelfAttendance === true && userDoc?.canTakeStaffAttendance !== true && !isAdmin && (explicitSelfService || actor === "staff");
+        if (selfOnlyStaff) {
+          if (!active) return;
+          const attendanceSettings = await getAttendanceSettings().catch(() => null);
+          if (!active) return;
+          setClasses([]);
+          setAllStudents([]);
+          setStaffMembers([]);
+          setTodayAttendance([]);
+          // If settings cannot be read, do not block self-service initialization.
+          // The attendance service still validates the configured rules before writing.
+          setAllowStaffWeekendAttendance(attendanceSettings?.allowStaffWeekendAttendance ?? true);
+          setLoading(false);
+          return;
+        }
         const [classRows, attendanceRows, studentRows, staffRows, attendanceSettings] = await Promise.all([
           actor === "student" ? listClasses() : Promise.resolve([]),
-          selfOnlyStaff ? Promise.resolve([]) : getAttendanceForDate(todayISO()),
+          getAttendanceForDate(todayISO()),
           actor === "student" ? listStudents().catch(() => []) : Promise.resolve([]),
-          selfOnlyStaff ? Promise.resolve([]) : listStaff().catch(() => []),
+          listStaff().catch(() => []),
           getAttendanceSettings(),
         ]);
         if (!active) return;
@@ -242,11 +257,13 @@ export default function Checkin() {
       const staffCode = staffIdInput.trim();
       const normalizedStaffCode = staffCode.toUpperCase();
       const ownIds = [currentStaff?.id, currentStaff?.staffId].filter(Boolean).map((value) => String(value).toUpperCase());
-      const selfOnly = userDoc?.canTakeSelfAttendance === true && userDoc?.canTakeStaffAttendance !== true && !isAdmin;
+      const selfOnly = userDoc?.canTakeSelfAttendance === true && userDoc?.canTakeStaffAttendance !== true && !isAdmin && (explicitSelfService || actor === "staff");
+      const ownUid = userDoc?.uid ?? userDoc?.id;
+      if (selfOnly && !ownUid) throw new Error("Your account identity could not be verified. Please sign in again.");
       const staff = ownIds.includes(normalizedStaffCode)
         ? currentStaff
         : selfOnly
-          ? null
+          ? await getOwnStaffByStaffId(ownUid as string, staffCode)
           : await getStaffByStaffId(staffCode);
       if (!staff?.id) throw new Error(`No staff record found for ID: ${staffCode}`);
       if (!isAdmin && userDoc?.canTakeStaffAttendance !== true && staff.userUid !== (userDoc.uid ?? userDoc.id)) {
@@ -258,7 +275,7 @@ export default function Checkin() {
       setSuccess(`${staff.name ?? staff.staffId ?? "Staff member"} checked ${nextMode === "in" ? "in" : "out"} successfully.`);
       setSuccessStaffPhoto(staff.profilePhotoUrl ?? null);
       setStaffIdInput("");
-      await refreshAttendance();
+      if (!selfOnly) await refreshAttendance();
     } catch (err: any) {
       setError(userFacingError(err, "Could not record staff attendance."));
     } finally {

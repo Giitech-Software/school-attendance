@@ -362,6 +362,7 @@ try {
       method: "qr",
       biometric: false,
       movementReason,
+      selfOnly: true,
     });
 
     Alert.alert(

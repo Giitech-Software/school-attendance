@@ -49,8 +49,8 @@ export default function StaffMyAttendance() {
     {
       title: "Staff ID Attendance",
       text: "Use your staff ID on the web check-in screen.",
-      inHref: "/attendance/checkin?actor=staff&mode=in",
-      outHref: "/attendance/checkin?actor=staff&mode=out",
+      inHref: "/attendance/checkin?actor=staff&mode=in&self=1",
+      outHref: "/attendance/checkin?actor=staff&mode=out&self=1",
       meta: "Manual ID",
     },
   ];

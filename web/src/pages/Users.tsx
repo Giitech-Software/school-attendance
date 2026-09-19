@@ -50,6 +50,10 @@ export default function Users() {
 
   async function handleDelete(user: AppUser) {
     if (!user.id) return;
+    if (user.role === "super_admin") {
+      alert("Superadmin accounts cannot be deleted.");
+      return;
+    }
     if (!window.confirm(`Delete ${user.displayName ?? user.email ?? "this user"}?\n\nThis action cannot be undone.`)) return;
 
     setDeletingId(user.id);
@@ -137,9 +141,7 @@ export default function Users() {
                           Wards
                         </Link>
                       ) : null}
-                      <button type="button" onClick={() => handleDelete(user)} disabled={deletingId === user.id} className="enterprise-button-danger">
-                        {deletingId === user.id ? "Deleting..." : "Delete"}
-                      </button>
+                      {user.role === "super_admin" ? <span className="rounded-lg bg-slate-100 px-3.5 py-2 text-sm font-semibold text-slate-500">Protected</span> : <button type="button" onClick={() => handleDelete(user)} disabled={deletingId === user.id} className="enterprise-button-danger">{deletingId === user.id ? "Deleting..." : "Delete"}</button>}
                     </div>
                   </div>
                 </div>

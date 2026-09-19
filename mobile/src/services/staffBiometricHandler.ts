@@ -39,5 +39,6 @@ export async function handleStaffBiometricCheck({
     method,
     biometric: true,
     movementReason,
+    selfOnly: true,
   });
 }

@@ -136,7 +136,7 @@ async function writeAttendance(record: Partial<AttendanceRecord> & {
   const scope = await getTenantScope();
 
   if (record.id) {
-    const { id, createdAt, ...updateFields } = record;
+    const { id, createdAt, selfOnly: _selfOnly, ...updateFields } = record as any;
     if (record.type === "out") updateFields.checkOutTime = now;
     if (record.type === "in" && !record.checkInTime) updateFields.checkInTime = now;
     updateFields.location = location;

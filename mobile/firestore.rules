@@ -126,6 +126,8 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/staff/$(request.resource.data.subjectId))
         && (
           get(/databases/$(database)/documents/staff/$(request.resource.data.subjectId)).data.userUid == request.auth.uid
+          || get(/databases/$(database)/documents/staff/$(request.resource.data.subjectId)).data.uid == request.auth.uid
+          || get(/databases/$(database)/documents/staff/$(request.resource.data.subjectId)).data.userId == request.auth.uid
           || (
             get(/databases/$(database)/documents/staff/$(request.resource.data.subjectId)).data.email is string
             && callerUser().email is string
@@ -136,11 +138,14 @@ service cloud.firestore {
 
     function isReadingOwnStaffAttendance() {
       return isStaffRole()
+        && callerUser().canTakeSelfAttendance == true
         && resource.data.subjectType == 'staff'
         && resource.data.subjectId is string
         && exists(/databases/$(database)/documents/staff/$(resource.data.subjectId))
         && (
           get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.userUid == request.auth.uid
+          || get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.uid == request.auth.uid
+          || get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.userId == request.auth.uid
           || (
             get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.email is string
             && callerUser().email is string
@@ -159,7 +164,13 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/staff/$(resource.data.subjectId))
         && (
           get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.userUid == request.auth.uid
-          || get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.email == callerUser().email
+          || get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.uid == request.auth.uid
+          || get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.userId == request.auth.uid
+          || (
+            get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.email is string
+            && callerUser().email is string
+            && get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.email == callerUser().email
+          )
         );
     }
 
@@ -321,6 +332,8 @@ service cloud.firestore {
       allow delete: if isAdmin()
         && sameTenantResource()
         && resource.data.role != 'admin'
+        && resource.data.role != 'super_admin'
+        && resource.data.role != 'superadmin'
         && request.auth.uid != uid;
     }
 
@@ -347,10 +360,10 @@ service cloud.firestore {
 
     // -------------------- STUDENTS --------------------
     match /students/{studentId} {
-      allow get: if (isAdmin() && sameTenantResource())
+      allow get: if ((isAdmin() || canTakeStudentAttendance()) && sameTenantResource())
         || isAssignedToClassDoc(resource.data.classDocId)
         || isParentOfStudent(studentId);
-      allow list: if (isAdmin() && sameTenantResource())
+      allow list: if ((isAdmin() || canTakeStudentAttendance()) && sameTenantResource())
         || isAssignedToClassDoc(resource.data.classDocId);
 
       allow create: if isAdmin()
@@ -398,11 +411,14 @@ service cloud.firestore {
 
     match /attendance/{recId} {
       allow get: if ((isAdmin() || canTakeStaffAttendance()) && (resource == null || sameTenantResource()))
+        || (resource == null && isStaffRole() && callerUser().canTakeSelfAttendance == true)
+        || (resource == null && canTakeStudentAttendance())
         || (resource.data.subjectType == 'student' && isAssignedToClassDoc(resource.data.classDocId))
         || isReadingOwnStaffAttendance()
         || isReadingWardAttendance();
 
       allow list: if ((isAdmin() || canTakeStaffAttendance()) && sameTenantResource())
+        || (canTakeStudentAttendance() && sameTenantResource())
         || (resource.data.subjectType == 'student' && isAssignedToClassDoc(resource.data.classDocId))
         || isReadingOwnStaffAttendance()
         || isReadingWardAttendance();
@@ -418,12 +434,13 @@ service cloud.firestore {
         );
 
       allow update: if validAttendanceShape()
-        && sameTenantUpdate()
         && (
-          isAdmin()
-          || (resource.data.subjectType == 'student' && canTakeStudentAttendance())
-          || (!attendanceUsesGeofenceBypass() && resource.data.subjectType == 'student' && isAssignedToClassDoc(resource.data.classDocId) && request.resource.data.classDocId == resource.data.classDocId)
-          || (resource.data.subjectType == 'staff' && canTakeStaffAttendance())
+          (sameTenantUpdate() && (
+            isAdmin()
+            || (resource.data.subjectType == 'student' && canTakeStudentAttendance())
+            || (!attendanceUsesGeofenceBypass() && resource.data.subjectType == 'student' && isAssignedToClassDoc(resource.data.classDocId) && request.resource.data.classDocId == resource.data.classDocId)
+            || (resource.data.subjectType == 'staff' && canTakeStaffAttendance())
+          ))
           || isUpdatingOwnStaffAttendance()
         );
 

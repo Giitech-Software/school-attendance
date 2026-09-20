@@ -211,6 +211,13 @@ export default function UserDetail() {
                 >
                   {user.canTakeSelfAttendance ? "Can take self attendance" : "Cannot take self attendance"}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setUser({ ...user, canRegisterStaff: !user.canRegisterStaff })}
+                  className={`rounded-lg border px-3 py-2 text-left text-sm font-semibold ${user.canRegisterStaff ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-600"}`}
+                >
+                  {user.canRegisterStaff ? "Can register staff" : "Cannot register staff"}
+                </button>
               </div>
             </div>
           </aside>

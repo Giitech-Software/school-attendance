@@ -12,7 +12,7 @@ import {
 import { useRouter, useLocalSearchParams  } from "expo-router";
 import { getAttendanceSummary } from "../../src/services/attendanceSummary";
 import { MaterialIcons } from "@expo/vector-icons";
-import Svg, { Circle } from "react-native-svg";
+import Svg, { Circle, Path } from "react-native-svg";
 import { getStaffGlobalSummary, } from "../../src/services/staffAttendanceSummary";
 import useCurrentUser from "../../src/hooks/useCurrentUser";
 import { allowsStudentAndParentFeatures } from "../../src/services/tenantScope";
@@ -246,6 +246,7 @@ if (userDoc?.role !== "admin" && userDoc?.role !== "super_admin") {
 </View>
 
       <View className="mt-1.5 flex-row flex-wrap justify-between">
+        <Tile title="Weekend Staff Reports" subtitle="Present, late, absent and trends" color="bg-cyan-600" hidden={reportType === "student"} onPress={() => router.push("/reports/staff-weekend-report" as any)} />
         <Tile
           title="Daily Attendance"
           subtitle={reportType === "student" ? "Preview by day - Last 5 school days" : `Preview by day - ${personnelLabel.toLowerCase()}`}
@@ -342,7 +343,29 @@ if (userDoc?.role !== "admin" && userDoc?.role !== "super_admin") {
       <Text className="mt-1 text-2xl font-extrabold text-emerald-600">
         {totals.present}
       </Text>
+  </View>
+
+  <View className="mt-3 flex-row flex-wrap justify-between">
+    <View className="mb-3 w-full rounded-xl border border-slate-200 bg-white p-3">
+      <Text className="text-xs font-extrabold uppercase tracking-wide text-slate-500">Status comparison</Text>
+      <View className="mt-3 h-32 flex-row items-end justify-around border-b border-slate-200">
+        {[["Present", totals.present, "bg-emerald-500"], ["Late", totals.late, "bg-amber-500"], ["Absent", totals.absent, "bg-red-500"]].map(([label, value, color]) => {
+          const height = Math.max(6, (Number(value) / Math.max(1, totals.present + totals.late + totals.absent)) * 100);
+          return <View key={String(label)} className="h-full flex-1 items-center justify-end"><Text className="text-[10px] font-bold text-slate-500">{String(value)}</Text><View className={`mt-1 w-10 rounded-t-md ${color}`} style={{ height: `${height}%` }} /><Text className="mt-1 text-[10px] font-bold text-slate-500">{String(label)}</Text></View>;
+        })}
+      </View>
     </View>
+    <View className="mb-3 w-full rounded-xl border border-slate-200 bg-white p-3">
+      <Text className="text-xs font-extrabold uppercase tracking-wide text-slate-500">Attendance trend</Text>
+      <Svg width="100%" height={130} viewBox="0 0 240 130">
+        <Circle cx="12" cy="112" r="5" fill="#2563eb" />
+        <Circle cx="120" cy={112 - (totals.attended / Math.max(1, totals.present + totals.late + totals.absent)) * 85} r="5" fill="#2563eb" />
+        <Circle cx="228" cy={112 - (totals.pct / 100) * 85} r="5" fill="#2563eb" />
+        <Path d={`M 12 112 L 120 ${112 - (totals.attended / Math.max(1, totals.present + totals.late + totals.absent)) * 85} L 228 ${112 - (totals.pct / 100) * 85}`} stroke="#2563eb" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      </Svg>
+      <View className="flex-row justify-between"><Text className="text-[10px] font-bold text-slate-500">Records</Text><Text className="text-[10px] font-bold text-slate-500">Attended</Text><Text className="text-[10px] font-bold text-slate-500">Rate</Text></View>
+    </View>
+  </View>
 
  {/* - NEW - LATE SUMMARY */}
     <View className="mb-3 w-[48%] rounded-xl border border-amber-100 border-l-4 bg-amber-50 p-3">

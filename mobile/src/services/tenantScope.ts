@@ -53,6 +53,17 @@ export async function requireAdminTenantScope(): Promise<TenantScope> {
   return scope;
 }
 
+export async function requireStaffRegistrationScope(): Promise<TenantScope> {
+  if (!auth.currentUser?.uid) throw new Error("Your session has expired. Please sign in again.");
+  const scope = await getTenantScope();
+  if (scope.role === "admin" || scope.role === "super_admin" || scope.role === "superadmin") return scope;
+  const snap = await getDoc(doc(db, "users", auth.currentUser.uid));
+  const data = snap.exists() ? snap.data() : null;
+  if (data?.approved !== true || data?.canRegisterStaff !== true) throw new Error("Staff registration permission is required.");
+  if (!scope.tenantId) throw new Error("Your account is not assigned to an organisation.");
+  return scope;
+}
+
 export function tenantConstraints(scope: TenantScope): QueryConstraint[] {
   return scope.isScoped && scope.tenantId ? [where("tenantId", "==", scope.tenantId)] : [];
 }

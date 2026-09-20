@@ -97,12 +97,13 @@ export async function searchFace(
    3️⃣ Delete Face (Optional cleanup)
    Only for staff (can extend for student if needed)
 ========================================================= */
-export async function deleteFace(faceId: string) {
+export async function deleteFace(faceId?: string, staffId?: string) {
   const response = await fetch(DELETE_STAFF_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       faceId,
+      staffId,
     }),
   });
 

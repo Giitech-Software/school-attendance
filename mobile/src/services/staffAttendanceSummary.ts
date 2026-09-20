@@ -4,6 +4,7 @@ import { db } from "../../app/firebase";
 import { getTenantScope, tenantConstraints } from "./tenantScope";
 import type { AttendanceRecord } from "./types";
 import { getAttendanceSettings } from "./attendanceSettings";
+import { getHolidaysInRange } from "./holidays";
 
 const attendanceCollection = collection(db, "attendance");
 const staffCollection = collection(db, "staff");
@@ -104,11 +105,14 @@ export async function getStaffAttendanceInRange(
 }
 
 /** Compute Summary for all Staff */
-export async function getStaffGlobalSummary(fromIso: string, toIso: string) {
+export async function getStaffGlobalSummary(fromIso: string, toIso: string, includeWeekends = false) {
   const staffSnap = await getDocs(query(staffCollection, ...tenantConstraints(await getTenantScope())));
   const allStaff = staffSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter((staff: any) => staff.isActive !== false);
   const attendanceSettings = await getAttendanceSettings();
-  const expectedDates = getStaffAttendanceDaysInRange(fromIso, toIso, attendanceSettings.allowStaffWeekendAttendance);
+  const holidays = await getHolidaysInRange(fromIso, toIso).catch(() => []);
+  const holidayDates = new Set(holidays.map((holiday) => holiday.date));
+  const expectedDates = getStaffAttendanceDaysInRange(fromIso, toIso, includeWeekends || attendanceSettings.allowStaffWeekendAttendance)
+    .filter((date) => !holidayDates.has(date));
 
   const summaries = await Promise.all(allStaff.map(async (s: any) => {
     const records = await getStaffAttendanceInRange(s.id, fromIso, toIso);

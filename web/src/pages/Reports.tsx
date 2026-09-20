@@ -47,6 +47,7 @@ const studentLinks = [
 ];
 
 const staffLinks = [
+  { title: "Weekend Attendance", subtitle: "Separate Saturday and Sunday staff records", href: "/reports/staff-weekend", tone: "border-l-cyan-500 text-cyan-600" },
   { title: "Daily Attendance", subtitle: "Preview by day - staff", href: "/reports/staff-daily", tone: "border-l-purple-500 text-purple-600" },
   { title: "Weekly Reports", subtitle: "Staff attendance grouped by week", href: "/reports/staff-weekly", tone: "border-l-indigo-500 text-indigo-600" },
   { title: "Monthly Reports", subtitle: "Staff attendance grouped by month", href: "/reports/staff-monthly", tone: "border-l-teal-500 text-teal-600" },
@@ -226,6 +227,26 @@ export default function Reports() {
               <div className="mt-3 rounded-lg bg-slate-900 p-4 text-white">
                 <p className="text-xs text-white/70">Attendance %</p>
                 <p className="text-3xl font-extrabold">{totals.pct.toFixed(1)}%</p>
+              </div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-slate-200 bg-white p-3">
+                  <p className="text-xs font-extrabold uppercase tracking-wide text-slate-500">Status comparison</p>
+                  <div className="mt-3 flex h-28 items-end justify-around gap-3 border-b border-slate-200">
+                    {[["Present", totals.present, "bg-emerald-500"], ["Late", totals.late, "bg-amber-500"], ["Absent", totals.absent, "bg-red-500"]].map(([label, value, color]) => {
+                      const height = `${Math.max(6, (Number(value) / Math.max(1, totals.present + totals.late + totals.absent)) * 100)}%`;
+                      return <div key={String(label)} className="flex h-full flex-1 flex-col items-center justify-end gap-1"><span className="text-[10px] font-bold text-slate-500">{String(value)}</span><span className={`w-full max-w-10 rounded-t-md ${color}`} style={{ height }} /><span className="text-[10px] font-bold text-slate-500">{String(label)}</span></div>;
+                    })}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-3">
+                  <p className="text-xs font-extrabold uppercase tracking-wide text-slate-500">Attendance trend</p>
+                  <svg viewBox="0 0 240 120" className="mt-2 h-28 w-full" role="img" aria-label="Attendance status trend">
+                    <polyline points={`10,105 120,${105 - (totals.attended / Math.max(1, totals.present + totals.late + totals.absent)) * 85} 230,${105 - (totals.pct / 100) * 85}`} fill="none" stroke="#2563eb" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                    {["10,105", `120,${105 - (totals.attended / Math.max(1, totals.present + totals.late + totals.absent)) * 85}`, `230,${105 - (totals.pct / 100) * 85}`].map((point) => { const [cx, cy] = point.split(","); return <circle key={point} cx={cx} cy={cy} r="5" fill="#2563eb" />; })}
+                    <line x1="10" y1="105" x2="230" y2="105" stroke="#e2e8f0" strokeWidth="2" />
+                  </svg>
+                  <div className="flex justify-between text-[10px] font-bold text-slate-500"><span>Records</span><span>Attended</span><span>Rate</span></div>
+                </div>
               </div>
             </>
           )}

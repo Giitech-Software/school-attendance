@@ -104,6 +104,8 @@ export default function Checkin() {
   const [successStaffPhoto, setSuccessStaffPhoto] = useState<string | null>(null);
   const [allowStaffWeekendAttendance, setAllowStaffWeekendAttendance] = useState(false);
   const isAdmin = userDoc?.role === "admin" || userDoc?.role === "super_admin";
+  const selfServiceStaff = actor === "staff" && userDoc?.canTakeSelfAttendance === true && userDoc?.canTakeStaffAttendance !== true && !isAdmin;
+  const selfQuery = selfServiceStaff ? "&self=1" : "";
   const canRecord = isAdmin || (userDoc?.approved === true && (actor === "staff" ? (userDoc.canTakeStaffAttendance === true || userDoc.canTakeSelfAttendance === true) : userDoc.canTakeStudentAttendance === true));
 
   const attendanceCheck = isAttendanceAllowed(actor, allowStaffWeekendAttendance);
@@ -277,6 +279,15 @@ export default function Checkin() {
       setStaffIdInput("");
       if (!selfOnly) await refreshAttendance();
     } catch (err: any) {
+      console.error("[attendance:ui] staff attendance action failed", {
+        operation: nextMode === "in" ? "check-in" : "check-out",
+        actor,
+        selfOnly: userDoc?.canTakeSelfAttendance === true && userDoc?.canTakeStaffAttendance !== true && !isAdmin,
+        staffIdInput: staffIdInput.trim(),
+        errorCode: err?.code,
+        errorMessage: err?.message,
+        error: err,
+      });
       setError(userFacingError(err, "Could not record staff attendance."));
     } finally {
       setSubmitting(false);
@@ -345,7 +356,7 @@ export default function Checkin() {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-            <Link to={`/attendance/qr?actor=${actor}&mode=${mode}${qrClassQuery}`} className="inline-flex items-center justify-center rounded-lg bg-secondary px-3 py-2 text-xs font-extrabold text-primary">
+            <Link to={`/attendance/qr?actor=${actor}&mode=${mode}${qrClassQuery}${selfQuery}`} className="inline-flex items-center justify-center rounded-lg bg-secondary px-3 py-2 text-xs font-extrabold text-primary">
               QR Scanner
             </Link>
             <Link to="/attendance" className="inline-flex items-center justify-center rounded-lg border border-white/20 px-3 py-2 text-xs font-semibold text-white hover:bg-white/10">
@@ -423,8 +434,8 @@ export default function Checkin() {
 
           {actor === "student" ? (
             <div className="enterprise-panel min-w-0 overflow-hidden p-3 sm:p-4">
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto]">
-                <select value={selectedStudentId} onChange={(event) => setSelectedStudentId(event.target.value)} disabled={loading || students.length === 0} className="enterprise-input sm:col-span-2 lg:col-span-1">
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-[1fr_auto_auto]">
+                <select value={selectedStudentId} onChange={(event) => setSelectedStudentId(event.target.value)} disabled={loading || students.length === 0} className="enterprise-input col-span-2 lg:col-span-1">
                   <option value="">Choose a student</option>
                   {students.map((student) => (
                     <option key={student.id} value={student.id}>
@@ -442,7 +453,7 @@ export default function Checkin() {
             </div>
           ) : null}
 
-          <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+          <div className="grid min-w-0 grid-cols-2 gap-3">
             {actor === "student" ? (
               <>
                 <div className={actionCardClass("primary") + " opacity-75"}>
@@ -461,23 +472,23 @@ export default function Checkin() {
               </>
             ) : null}
 
-            <Link to={`/attendance/qr?actor=${actor}&mode=in${qrClassQuery}`} className={actionCardClass("primary")}>
+            <Link to={`/attendance/qr?actor=${actor}&mode=in${qrClassQuery}${selfQuery}`} className={actionCardClass("primary")}>
               <h2 className="break-words text-base font-semibold text-dark">Scan QR Code (In)</h2>
               <p className="mt-1 break-words text-sm text-neutral">Check-in via QR scan.</p>
             </Link>
 
-            <Link to={`/attendance/qr?actor=${actor}&mode=out${qrClassQuery}`} className={actionCardClass("sky")}>
+            <Link to={`/attendance/qr?actor=${actor}&mode=out${qrClassQuery}${selfQuery}`} className={actionCardClass("sky")}>
               <h2 className="break-words text-base font-semibold text-dark">Scan QR Code (Out)</h2>
               <p className="mt-1 break-words text-sm text-neutral">Check-out via QR scan.</p>
             </Link>
 
             {actor === "staff" ? (
               <>
-                <Link to="/attendance/face?actor=staff&mode=in" className={actionCardClass("emerald")}>
+                <Link to={`/attendance/face?actor=staff&mode=in${selfQuery}`} className={actionCardClass("emerald")}>
                   <h2 className="break-words text-base font-semibold text-dark">Staff Face Check-In</h2>
                   <p className="mt-1 break-words text-sm text-neutral">Check-in using facial recognition.</p>
                 </Link>
-                <Link to="/attendance/face?actor=staff&mode=out" className={actionCardClass("slate")}>
+                <Link to={`/attendance/face?actor=staff&mode=out${selfQuery}`} className={actionCardClass("slate")}>
                   <h2 className="break-words text-base font-semibold text-dark">Staff Face Check-Out</h2>
                   <p className="mt-1 break-words text-sm text-neutral">Check-out using facial recognition.</p>
                 </Link>

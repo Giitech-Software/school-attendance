@@ -1,6 +1,7 @@
+//web/src/services/staff.ts
 import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { db } from "../firebase";
-import { belongsToTenant, getTenantScope, requireAdminTenantScope, sortByCreatedAtDesc, tenantConstraints, withTenantScope } from "./tenantScope";
+import { belongsToTenant, getTenantScope, requireStaffRegistrationScope, sortByCreatedAtDesc, tenantConstraints, withTenantScope } from "./tenantScope";
 import { deleteFace } from "./faceService";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { storage } from "../firebase";
@@ -167,7 +168,7 @@ async function generateStaffId(roleType: string): Promise<string> {
 }
 
 export async function createStaff(data: Omit<Staff, "id" | "createdAt">): Promise<Staff> {
-  const scope = await requireAdminTenantScope();
+  const scope = await requireStaffRegistrationScope();
   const roleType = data.roleType ?? data.role ?? "staff";
   const staffId = data.staffId?.trim() || (await generateStaffId(roleType));
 
@@ -187,6 +188,6 @@ export async function upsertStaff(staff: Staff): Promise<void> {
 export async function deleteStaff(id: string): Promise<void> {
   const staffSnap = await getDoc(doc(db, STAFF_COLLECTION, id));
   const faceId = staffSnap.exists() ? (staffSnap.data() as Staff).faceId : undefined;
-  if (faceId) await deleteFace(faceId);
+  await deleteFace(faceId, id);
   await deleteDoc(doc(db, STAFF_COLLECTION, id));
 }

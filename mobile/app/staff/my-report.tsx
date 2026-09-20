@@ -15,7 +15,7 @@ import { listTerms } from "../../src/services/terms";
 import { listWeeks } from "../../src/services/weeks";
 import useCurrentUser from "../../src/hooks/useCurrentUser";
 import { allowsStudentAndParentFeatures } from "../../src/services/tenantScope";
-import Svg, { Circle } from "react-native-svg";
+import Svg, { Circle, Path } from "react-native-svg";
 import ImageCarousel from "../../components/ImageCarousel";
 
 function getLast30Days() {
@@ -225,7 +225,7 @@ export default function MyStaffReport() {
         </Pressable>
         <Text className="text-2xl font-extrabold text-white">My Report</Text>
       </View>
-      <View className="-mx-4 -mt-0.5 m-0 p-0">
+      <View className="m-0 p-0" style={{ marginHorizontal: -16, marginTop: -16 }}>
         <ImageCarousel images={[require("../../assets/images/reports-1.jpg"), require("../../assets/images/reports-2.jpg"), require("../../assets/images/reports-3.jpg"), require("../../assets/images/reports-4.jpg")]} height={220} />
       </View>
 
@@ -348,6 +348,18 @@ export default function MyStaffReport() {
             </Text>
           </View>
         </View>
+      </View>
+
+      <View className="bg-white rounded-2xl p-4 shadow mb-4">
+        <Text className="text-xs font-extrabold uppercase tracking-wide text-slate-500">Status comparison</Text>
+        <View className="mt-3 h-32 flex-row items-end justify-around border-b border-slate-200">
+          {[['Present', safeSummary.presentCount, 'bg-emerald-500'], ['Late', safeSummary.lateCount, 'bg-amber-500'], ['Absent', safeSummary.absentCount, 'bg-red-500']].map(([label, value, color]) => { const height = Math.max(6, (Number(value) / Math.max(1, safeSummary.presentCount + safeSummary.lateCount + safeSummary.absentCount)) * 100); return <View key={String(label)} className="h-full flex-1 items-center justify-end"><Text className="text-[10px] font-bold text-slate-500">{String(value)}</Text><View className={`mt-1 w-10 rounded-t-md ${color}`} style={{ height: `${height}%` }} /><Text className="mt-1 text-[10px] font-bold text-slate-500">{String(label)}</Text></View>; })}
+        </View>
+      </View>
+      <View className="bg-white rounded-2xl p-4 shadow mb-4">
+        <Text className="text-xs font-extrabold uppercase tracking-wide text-slate-500">Attendance trend</Text>
+        <Svg width="100%" height={130} viewBox="0 0 240 130"><Circle cx="12" cy="112" r="5" fill="#2563eb" /><Circle cx="120" cy={112 - (attendedCount / Math.max(1, safeSummary.presentCount + safeSummary.lateCount + safeSummary.absentCount)) * 85} r="5" fill="#2563eb" /><Circle cx="228" cy={112 - (Number(safeSummary.percentagePresent) / 100) * 85} r="5" fill="#2563eb" /><Path d={`M 12 112 L 120 ${112 - (attendedCount / Math.max(1, safeSummary.presentCount + safeSummary.lateCount + safeSummary.absentCount)) * 85} L 228 ${112 - (Number(safeSummary.percentagePresent) / 100) * 85}`} stroke="#2563eb" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round" /></Svg>
+        <View className="flex-row justify-between"><Text className="text-[10px] font-bold text-slate-500">Records</Text><Text className="text-[10px] font-bold text-slate-500">Attended</Text><Text className="text-[10px] font-bold text-slate-500">Rate</Text></View>
       </View>
 
       <View className="bg-white rounded-2xl p-4 shadow mb-4">

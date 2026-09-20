@@ -13,6 +13,7 @@ import {
   type TenantType,
 } from "../services/tenants";
 import { listLegacyStaff, migrateLegacyStaffToTenant, type Staff } from "../services/staff";
+import { createSystemAlert } from "../services/systemAlerts";
 
 const tenantTypes: { label: string; value: TenantType }[] = [
   { label: "School", value: "school" },
@@ -63,6 +64,9 @@ export default function SuperAdminTenants() {
   const [contactPhone, setContactPhone] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
   const [adminEmailByTenant, setAdminEmailByTenant] = useState<Record<string, string>>({});
+  const [alertTitle, setAlertTitle] = useState("");
+  const [alertBody, setAlertBody] = useState("");
+  const [alertEndsAt, setAlertEndsAt] = useState("");
 
   const isSuperAdmin = userDoc?.role === "super_admin";
   const activeCount = useMemo(() => tenants.filter((tenant) => tenant.status === "active").length, [tenants]);
@@ -109,6 +113,15 @@ export default function SuperAdminTenants() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleCreateAlert(event: FormEvent) {
+    event.preventDefault();
+    if (!alertTitle.trim() || !alertBody.trim()) return;
+    try {
+      await createSystemAlert({ title: alertTitle.trim(), body: alertBody.trim(), endsAt: alertEndsAt ? new Date(`${alertEndsAt}T23:59:59`).toISOString() : null });
+      setAlertTitle(""); setAlertBody(""); setAlertEndsAt(""); setMessage("System alert published to all homepages.");
+    } catch (err: any) { setError(err?.message ?? "Failed to publish system alert."); }
   }
 
   async function handleStatusChange(tenant: Tenant, nextStatus: TenantStatus) {
@@ -191,6 +204,17 @@ export default function SuperAdminTenants() {
             {error ?? message}
           </div>
         )}
+
+        <section className="rounded-lg border border-amber-200 bg-amber-50 p-4 shadow-sm">
+          <h2 className="text-lg font-extrabold text-amber-950">Homepage system alert</h2>
+          <p className="mt-1 text-sm text-amber-900">Publish an operational notice, such as a planned upgrade, across all tenant homepages.</p>
+          <form onSubmit={handleCreateAlert} className="mt-3 grid gap-2 lg:grid-cols-[1fr_2fr_auto_auto] lg:items-end">
+            <label><span className="auth-label">Title</span><input value={alertTitle} onChange={(event) => setAlertTitle(event.target.value)} className="enterprise-input mt-1" placeholder="Planned system upgrade" /></label>
+            <label><span className="auth-label">Message</span><input value={alertBody} onChange={(event) => setAlertBody(event.target.value)} className="enterprise-input mt-1" placeholder="The system will be unavailable..." /></label>
+            <label><span className="auth-label">Ends</span><input type="date" value={alertEndsAt} onChange={(event) => setAlertEndsAt(event.target.value)} className="enterprise-input mt-1" /></label>
+            <button type="submit" className="enterprise-button-primary">Publish alert</button>
+          </form>
+        </section>
 
         <section className="grid grid-cols-2 gap-3 bg-slate-100 p-3 lg:grid-cols-4">
           {[

@@ -237,7 +237,7 @@ export default function StaffMyReport() {
         </div>
       </section>
 
-      <section className="enterprise-panel -mx-3 overflow-hidden rounded-none sm:-mx-4 lg:-mx-5">
+      <section className="enterprise-panel -mx-3 overflow-hidden rounded-none sm:-mx-4 lg:-mx-5" style={{ marginTop: "-0.75rem" }}>
         <ImageCarousel images={[{ src: "/reports-1.webp", alt: "Attendance report overview" }, { src: "/reports-2.webp", alt: "Attendance report analysis" }, { src: "/reports-3.webp", alt: "Attendance report summary" }, { src: "/reports-4.webp", alt: "Attendance report insights" }]} />
       </section>
 
@@ -311,6 +311,20 @@ export default function StaffMyReport() {
       </section>
 
       <AttendancePieChart present={summary.presentCount} late={summary.lateCount} absent={summary.absentCount} title={`${reportMode === "term" ? "Term" : reportMode === "year" ? "Year" : "Current period"} attendance distribution`} />
+
+      <section className="grid gap-3 sm:grid-cols-2">
+        <div className="enterprise-panel p-4">
+          <p className="text-xs font-extrabold uppercase tracking-wide text-slate-500">Status comparison</p>
+          <div className="mt-3 flex h-28 items-end justify-around gap-3 border-b border-slate-200">
+            {[["Present", summary.presentCount, "bg-emerald-500"], ["Late", summary.lateCount, "bg-amber-500"], ["Absent", summary.absentCount, "bg-red-500"]].map(([label, value, color]) => { const height = `${Math.max(6, (Number(value) / Math.max(1, summary.presentCount + summary.lateCount + summary.absentCount)) * 100)}%`; return <div key={String(label)} className="flex h-full flex-1 flex-col items-center justify-end gap-1"><span className="text-[10px] font-bold text-slate-500">{String(value)}</span><span className={`w-full max-w-10 rounded-t-md ${color}`} style={{ height }} /><span className="text-[10px] font-bold text-slate-500">{String(label)}</span></div>; })}
+          </div>
+        </div>
+        <div className="enterprise-panel p-4">
+          <p className="text-xs font-extrabold uppercase tracking-wide text-slate-500">Attendance trend</p>
+          <svg viewBox="0 0 240 120" className="mt-2 h-28 w-full" role="img" aria-label="Personal attendance trend"><polyline points={`10,105 120,${105 - (summary.attendedSessions / Math.max(1, summary.presentCount + summary.lateCount + summary.absentCount)) * 85} 230,${105 - (summary.percentagePresent / 100) * 85}`} fill="none" stroke="#2563eb" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" /><line x1="10" y1="105" x2="230" y2="105" stroke="#e2e8f0" strokeWidth="2" /></svg>
+          <div className="flex justify-between text-[10px] font-bold text-slate-500"><span>Records</span><span>Attended</span><span>Rate</span></div>
+        </div>
+      </section>
 
       {allowsSchoolFeatures ? <section className="enterprise-panel p-3 sm:p-4">
         <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">

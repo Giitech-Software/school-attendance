@@ -1,6 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { deleteStaff, listStaff, type Staff } from "../services/staff";
+import useCurrentUser from "../hooks/useCurrentUser";
 
 function enrollmentTone(staff: Staff) {
   const face = Boolean(staff.faceId || staff.faceEnrolled);
@@ -20,6 +21,9 @@ function enrollmentLabel(staff: Staff) {
 }
 
 export default function Staff() {
+  const { userDoc } = useCurrentUser();
+  const isAdmin = userDoc?.role === "admin" || userDoc?.role === "super_admin" || (userDoc?.role as string | undefined) === "superadmin";
+  const canRegisterStaff = isAdmin || (userDoc?.approved === true && userDoc?.canRegisterStaff === true);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -95,9 +99,7 @@ export default function Staff() {
               Import
             </Link>
             <Link to="/staff/groups" className="rounded-lg border border-white/20 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10">Groups</Link>
-            <Link to="/staff/create" className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-dark">
-              Add
-            </Link>
+            {canRegisterStaff ? <Link to="/staff/create" className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-dark">Register staff</Link> : null}
             <Link to="/attendance/staff-qr-generator" className="rounded-lg border border-white/20 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10">
               Staff QRs
             </Link>
@@ -160,15 +162,11 @@ export default function Staff() {
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2 lg:justify-end">
-                      <Link to={`/staff/${item.id}`} className="enterprise-button-secondary">
-                        Edit
-                      </Link>
+                      {isAdmin ? <Link to={`/staff/${item.id}`} className="enterprise-button-secondary">Edit</Link> : null}
                       <Link to={`/reports/staff/${item.id}`} className="rounded-lg bg-slate-900 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">
                         Report
                       </Link>
-                      <button type="button" onClick={() => handleDelete(item)} disabled={deletingId === item.id} className="enterprise-button-danger">
-                        {deletingId === item.id ? "Deleting..." : "Delete"}
-                      </button>
+                      {isAdmin ? <button type="button" onClick={() => handleDelete(item)} disabled={deletingId === item.id} className="enterprise-button-danger">{deletingId === item.id ? "Deleting..." : "Delete"}</button> : null}
                     </div>
                   </div>
                 </div>

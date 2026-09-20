@@ -5,6 +5,7 @@ import { useAssignedStudentClasses } from "../hooks/useAssignedStudentClasses";
 import { getAttendanceSettings } from "../services/attendanceSettings";
 import { allowsStudentAndParentFeatures } from "../services/tenantScope";
 import ImageCarousel from "../components/ImageCarousel";
+import { getActiveSystemAlerts, type SystemAlert } from "../services/systemAlerts";
 
 function formatTime(time?: string) {
   if (!time) return "--";
@@ -173,6 +174,8 @@ export default function Home() {
   const { userDoc, loading } = useCurrentUser();
   const [actor, setActor] = useState<"student" | "staff">("student");
   const [settings, setSettings] = useState({ lateAfter: "08:00", closeAfter: "16:00", timezone: "Africa/Accra" });
+  const [systemAlerts, setSystemAlerts] = useState<SystemAlert[]>([]);
+  const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([]);
   const { hasAssignedClasses } = useAssignedStudentClasses(
     userDoc?.approved === true || userDoc?.role === "admin" || userDoc?.role === "super_admin" ? userDoc?.uid ?? userDoc?.id : null
   );
@@ -189,6 +192,8 @@ export default function Home() {
       active = false;
     };
   }, []);
+
+  useEffect(() => { getActiveSystemAlerts().then(setSystemAlerts).catch(() => setSystemAlerts([])); }, []);
 
   const isAdmin = userDoc?.role === "admin" || userDoc?.role === "super_admin";
   const isApproved = isAdmin || userDoc?.approved === true;
@@ -299,6 +304,7 @@ export default function Home() {
   return (
     <div className="-m-3 min-h-[calc(100vh-5rem)] bg-blue-900 text-slate-950 sm:-m-4 lg:-m-5">
       <div className="mx-auto max-w-6xl">
+        {systemAlerts.filter((alert) => !dismissedAlerts.includes(alert.id ?? "")).length ? <div className="space-y-2 px-3 pt-3 sm:px-6">{systemAlerts.filter((alert) => !dismissedAlerts.includes(alert.id ?? "")).map((alert) => <div key={alert.id} className="border-l-4 border-red-700 bg-red-50 px-4 py-3 text-red-950 shadow-sm"><div className="flex items-start justify-between gap-3"><div><p className="font-extrabold">{alert.title}</p><p className="mt-1 text-sm">{alert.body}</p>{alert.endsAt ? <p className="mt-2 text-xs font-bold text-red-700">Ends: {new Date(alert.endsAt).toLocaleString()}</p> : null}</div><button type="button" onClick={() => setDismissedAlerts((current) => [...current, alert.id ?? ""])} className="rounded-md border border-red-300 px-2 py-1 text-xs font-bold text-red-700 hover:bg-red-100" aria-label="Close alert">Close</button></div></div>)}</div> : null}
         <section className="bg-slate-800 px-4 py-3 text-white sm:px-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="min-w-0 flex-1">

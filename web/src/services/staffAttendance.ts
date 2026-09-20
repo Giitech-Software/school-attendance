@@ -1,5 +1,5 @@
 import { query, where, getDocs, getDoc, doc, collection } from "firebase/firestore";
-import { db } from "../firebase";
+import { auth, db } from "../firebase";
 import type { AttendanceRecord } from "../types";
 import type { AppUser } from "./users";
 import { listUsersByRole } from "./users";
@@ -154,8 +154,31 @@ export async function registerStaffAttendance({
   selfOnly?: boolean;
 }): Promise<AttendanceRecord> {
   const date = todayISO();
-  const existing = await findStaffAttendanceForDate(staffId, date, selfOnly);
-  await assertStaffAttendanceDayAllowed();
+  let existing: AttendanceRecord | null;
+  try {
+    existing = await findStaffAttendanceForDate(staffId, date, selfOnly);
+  } catch (error) {
+    console.error("[attendance:self] failed while reading today's staff record", {
+      operation: "get-attendance-record",
+      staffId,
+      date,
+      selfOnly,
+      error,
+    });
+    throw error;
+  }
+  try {
+    await assertStaffAttendanceDayAllowed();
+  } catch (error) {
+    console.error("[attendance:self] failed while reading attendance settings", {
+      operation: "get-attendance-settings",
+      staffId,
+      date,
+      selfOnly,
+      error,
+    });
+    throw error;
+  }
 
   if (mode === "in") {
     if (existing?.checkInTime) throw new Error("Staff already checked-in today.");
@@ -164,7 +187,8 @@ export async function registerStaffAttendance({
     const movementRequirement = getMovementReasonRequirement(settings, "in", new Date(now));
     const cleanedReason = cleanMovementReason(movementReason);
     if (movementRequirement && !cleanedReason) throw new Error("A movement book entry is required for this late arrival.");
-    return recordAttendance({
+    try {
+      return await recordAttendance({
       subjectType: "staff",
       subjectId: staffId,
       staffId,
@@ -176,22 +200,50 @@ export async function registerStaffAttendance({
       lateReason: movementRequirement?.kind === "late" ? cleanedReason : null,
       lateMinutes: movementRequirement?.kind === "late" ? movementRequirement.minutes : null,
       selfOnly,
-    } as any);
+      } as any);
+    } catch (error) {
+      console.error("[attendance:self] failed while checking staff in", {
+        operation: "create-attendance",
+        staffId,
+        date,
+        selfOnly,
+        error,
+      });
+      throw error;
+    }
   }
 
   if (!existing) throw new Error("Staff must check-in before checking-out.");
   if (existing.checkOutTime) throw new Error("Staff already checked-out today.");
+
+  const checkoutAuthorizationContext = {
+    operation: "update-attendance",
+    attendanceId: existing.id,
+    requestedStaffId: staffId,
+    existingSubjectType: existing.subjectType,
+    existingSubjectId: existing.subjectId,
+    existingStaffId: existing.staffId,
+    existingTenantId: (existing as any).tenantId,
+    requestSubjectId: existing.subjectId ?? staffId,
+    selfOnly,
+    authUid: auth.currentUser?.uid ?? null,
+    authEmail: auth.currentUser?.email ?? null,
+    storedSubjectId: String(existing.subjectId ?? ""),
+    storedStaffId: String(existing.staffId ?? ""),
+  };
+  console.info("[attendance:self] checkout authorization context", JSON.stringify(checkoutAuthorizationContext));
 
   const settings = await getAttendanceSettings();
   const movementRequirement = getMovementReasonRequirement(settings, "out");
   const cleanedReason = cleanMovementReason(movementReason);
   if (movementRequirement && !cleanedReason) throw new Error("A movement book entry is required for this early departure.");
 
-  return recordAttendance({
-    ...existing,
-    subjectType: "staff",
-    subjectId: staffId,
-    staffId,
+  try {
+    return await recordAttendance({
+      ...existing,
+      subjectType: "staff",
+      subjectId: existing.subjectId ?? staffId,
+      staffId: existing.staffId ?? staffId,
     date,
     type: "out",
     method: existing.method ?? method,
@@ -199,6 +251,17 @@ export async function registerStaffAttendance({
     earlyCheckoutReason: movementRequirement?.kind === "early_checkout" ? cleanedReason : null,
     earlyCheckoutMinutes: movementRequirement?.kind === "early_checkout" ? movementRequirement.minutes : null,
     selfOnly,
-  } as any);
+    } as any);
+  } catch (error) {
+    console.error("[attendance:self] failed while checking staff out", {
+      operation: "update-attendance",
+      attendanceId: existing.id,
+      staffId,
+      date,
+      selfOnly,
+      error,
+    });
+    throw error;
+  }
 }
 

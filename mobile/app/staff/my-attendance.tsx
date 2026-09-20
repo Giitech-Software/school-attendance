@@ -130,7 +130,7 @@ export default function MyStaffAttendance() {
         </Pressable>
         <Text className="text-2xl font-extrabold text-white">My Attendance</Text>
       </View>
-      <View className="-mx-4 -mt-0.5 m-0 p-0">
+      <View className="m-0 p-0" style={{ marginHorizontal: -16, marginTop: -16 }}>
         <ImageCarousel images={[require("../../assets/images/attendance-1.jpg"), require("../../assets/images/attendance-2.jpg"), require("../../assets/images/attendance-3.jpg")]} height={220} />
       </View>
 

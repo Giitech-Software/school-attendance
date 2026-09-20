@@ -13,7 +13,7 @@ const mainLinks = [
   { to: "/students", label: "Students", adminOnly: true, schoolOnly: true },
   { to: "/staff", label: "Staff", adminOnly: true },
   { to: "/admin", label: "Administration", adminOnly: true },
-  { to: "/messages", label: "Messages", adminOnly: true },
+  { to: "/messages", label: "Messages" },
   { to: "/super-admin", label: "Renting", superAdminOnly: true },
 ];
 
@@ -61,14 +61,16 @@ export default function Layout() {
   const isAdmin = userDoc?.role === "admin" || isSuperAdmin;
   const isApproved = isAdmin || userDoc?.approved === true;
   const allowsSchoolFeatures = allowsStudentAndParentFeatures(userDoc);
+  const canRegisterStaff = userDoc?.approved === true && userDoc?.canRegisterStaff === true;
   const visibleMainLinks = useMemo(
-    () => mainLinks.filter((link) => (!link.adminOnly || isAdmin) && (!link.superAdminOnly || isSuperAdmin) && (!link.schoolOnly || allowsSchoolFeatures)),
-    [allowsSchoolFeatures, isAdmin, isSuperAdmin]
+    () => mainLinks.filter((link) => (!link.adminOnly || isAdmin || (link.to === "/staff" && canRegisterStaff)) && (!link.superAdminOnly || isSuperAdmin) && (!link.schoolOnly || allowsSchoolFeatures)),
+    [allowsSchoolFeatures, canRegisterStaff, isAdmin, isSuperAdmin]
   );
   const visibleAdminLinks = isAdmin ? adminLinks.filter((link) => !link.schoolOnly || allowsSchoolFeatures) : [];
   const isStaffUser = ["teacher", "staff", "non_teaching_staff", "general_staff"].includes(userDoc?.role ?? "");
   const isSelfAttendanceRoute = location.pathname === "/attendance/checkin" && new URLSearchParams(location.search).get("self") === "1";
   const visibleStaffLinks = !isAdmin && isStaffUser ? [
+    ...(canRegisterStaff ? [{ to: "/staff", label: "Staff Directory" }] : []),
     { to: "/staff/my-attendance", label: "My Attendance" },
     { to: "/staff/my-report", label: "My Report" },
     { to: "/staff/my-profile", label: "My Profile" },

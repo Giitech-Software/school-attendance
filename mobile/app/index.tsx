@@ -24,6 +24,7 @@ import { getAttendanceSettings } from "../src/services/attendanceSettings";
 //import { autoMarkAbsentsForToday } from "../src/services/attendance"; // adjust path if needed
 import { autoMarkAbsentsForToday } from "../src/services/autoMarkAbsent";
 import { allowsStudentAndParentFeatures } from "../src/services/tenantScope";
+import { getActiveSystemAlerts, type SystemAlert } from "../src/services/systemAlerts";
 /* ---------- helpers ---------- */
 
 // Step 4 - formatTime helper (NOT inside component)
@@ -86,6 +87,9 @@ export default function Home(): JSX.Element {
   const [user, setUser] = useState<User | null | undefined>(undefined);
   const [signingOut, setSigningOut] = useState(false);
   const { userDoc } = useCurrentUser();
+  const [systemAlerts, setSystemAlerts] = useState<SystemAlert[]>([]);
+  const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([]);
+  useEffect(() => { getActiveSystemAlerts().then(setSystemAlerts).catch(() => setSystemAlerts([])); }, []);
   const { hasAssignedClasses: hasAssignedStudentClasses } =
     useAssignedStudentClasses(
       userDoc?.approved === true || userDoc?.role === "admin" || userDoc?.role === "super_admin"
@@ -241,6 +245,7 @@ useFocusEffect(
   edges={["left", "right", "bottom"]}
 >
 
+ {systemAlerts.filter((alert) => !dismissedAlerts.includes(alert.id)).length ? <View className="px-3 pt-3">{systemAlerts.filter((alert) => !dismissedAlerts.includes(alert.id)).map((alert) => <View key={alert.id} className="mb-2 border-l-4 border-red-700 bg-red-50 px-4 py-3"><View className="flex-row items-start justify-between"><View className="flex-1 pr-2"><Text className="font-extrabold text-red-950">{alert.title}</Text><Text className="mt-1 text-red-900">{alert.body}</Text>{alert.endsAt ? <Text className="mt-2 text-xs font-bold text-red-700">Ends: {new Date(alert.endsAt).toLocaleString()}</Text> : null}</View><Pressable onPress={() => setDismissedAlerts((current) => [...current, alert.id])} className="rounded-md border border-red-300 px-2 py-1"><Text className="text-xs font-bold text-red-700">Close</Text></Pressable></View></View>)}</View> : null}
 
  {/* Subtitle / Action Banner (NOT a header) */}
 <View style={{ backgroundColor: '#1e293b' }} className="px-6 py-2">

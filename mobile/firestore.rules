@@ -83,6 +83,11 @@ service cloud.firestore {
         || (isApproved() && callerUser().canTakeStaffAttendance == true);
     }
 
+    function canRegisterStaff() {
+      return isAdmin()
+        || (isApproved() && callerUser().canRegisterStaff == true);
+    }
+
     function isAssignedToClassDoc(classDocId) {
       return isApproved()
         && classDocId is string
@@ -120,7 +125,7 @@ service cloud.firestore {
     }
 
     function isWritingOwnStaffAttendance() {
-      return isStaffRole() && callerUser().canTakeSelfAttendance == true
+      return isApproved() && callerUser().canTakeSelfAttendance == true
         && request.resource.data.subjectType == 'staff'
         && request.resource.data.subjectId is string
         && exists(/databases/$(database)/documents/staff/$(request.resource.data.subjectId))
@@ -137,7 +142,7 @@ service cloud.firestore {
     }
 
     function isReadingOwnStaffAttendance() {
-      return isStaffRole()
+      return isApproved()
         && callerUser().canTakeSelfAttendance == true
         && resource.data.subjectType == 'staff'
         && resource.data.subjectId is string
@@ -155,23 +160,57 @@ service cloud.firestore {
     }
 
     function isUpdatingOwnStaffAttendance() {
-      return isStaffRole()
+      return isApproved()
         && callerUser().canTakeSelfAttendance == true
         && resource.data.subjectType == 'staff'
         && request.resource.data.subjectType == 'staff'
         && request.resource.data.subjectId == resource.data.subjectId
-        && resource.data.subjectId is string
-        && exists(/databases/$(database)/documents/staff/$(resource.data.subjectId))
         && (
-          get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.userUid == request.auth.uid
-          || get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.uid == request.auth.uid
-          || get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.userId == request.auth.uid
+          (
+            resource.data.subjectId is string
+            && exists(/databases/$(database)/documents/staff/$(resource.data.subjectId))
+            && (
+              get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.userUid == request.auth.uid
+              || get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.uid == request.auth.uid
+              || get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.userId == request.auth.uid
+              || (
+                get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.email is string
+                && callerUser().email is string
+                && get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.email == callerUser().email
+              )
+              || (
+                get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.email is string
+                && request.auth.token.email is string
+                && get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.email == request.auth.token.email
+              )
+            )
+          )
           || (
-            get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.email is string
-            && callerUser().email is string
-            && get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.email == callerUser().email
+            resource.data.staffId is string
+            && exists(/databases/$(database)/documents/staff/$(resource.data.staffId))
+            && (
+              get(/databases/$(database)/documents/staff/$(resource.data.staffId)).data.userUid == request.auth.uid
+              || get(/databases/$(database)/documents/staff/$(resource.data.staffId)).data.uid == request.auth.uid
+              || get(/databases/$(database)/documents/staff/$(resource.data.staffId)).data.userId == request.auth.uid
+              || (
+                get(/databases/$(database)/documents/staff/$(resource.data.staffId)).data.email is string
+                && callerUser().email is string
+                && get(/databases/$(database)/documents/staff/$(resource.data.staffId)).data.email == callerUser().email
+              )
+              || (
+                get(/databases/$(database)/documents/staff/$(resource.data.staffId)).data.email is string
+                && request.auth.token.email is string
+                && get(/databases/$(database)/documents/staff/$(resource.data.staffId)).data.email == request.auth.token.email
+              )
+            )
           )
         );
+    }
+
+    function isSelfStaffCheckout() {
+      return isUpdatingOwnStaffAttendance()
+        && request.resource.data.type == 'out'
+        && sameTenantUpdate();
     }
 
     function isReadingWardAttendance() {
@@ -306,9 +345,9 @@ service cloud.firestore {
         );
 
       allow get: if isSignedIn()
-        && (request.auth.uid == uid || (isAdmin() && sameTenantResource()));
+        && (request.auth.uid == uid || ((isAdmin() || canRegisterStaff()) && sameTenantResource()));
 
-      allow list: if isAdmin() && sameTenantResource();
+      allow list: if (isAdmin() || canRegisterStaff()) && sameTenantResource();
 
       allow update: if isSignedIn()
         && (
@@ -381,10 +420,10 @@ service cloud.firestore {
 
     // -------------------- STAFF --------------------
     match /staff/{staffId} {
-      allow get: if ((isAdmin() || canTakeStaffAttendance()) && sameTenantResource()) || isOwnStaffDoc();
-      allow list: if ((isAdmin() || canTakeStaffAttendance()) && sameTenantResource()) || isOwnStaffDoc();
+      allow get: if ((isAdmin() || canTakeStaffAttendance() || canRegisterStaff()) && sameTenantResource()) || isOwnStaffDoc();
+      allow list: if ((isAdmin() || canTakeStaffAttendance() || canRegisterStaff()) && sameTenantResource()) || isOwnStaffDoc();
 
-      allow create: if isAdmin()
+      allow create: if canRegisterStaff()
         && sameTenantCreate()
         && request.resource.data.name is string
         && (!(request.resource.data.keys().hasAny(['email'])) || request.resource.data.email is string)
@@ -433,15 +472,15 @@ service cloud.firestore {
           || isWritingOwnStaffAttendance()
         );
 
+      allow update: if isSelfStaffCheckout();
+
       allow update: if validAttendanceShape()
+        && sameTenantUpdate()
         && (
-          (sameTenantUpdate() && (
-            isAdmin()
-            || (resource.data.subjectType == 'student' && canTakeStudentAttendance())
-            || (!attendanceUsesGeofenceBypass() && resource.data.subjectType == 'student' && isAssignedToClassDoc(resource.data.classDocId) && request.resource.data.classDocId == resource.data.classDocId)
-            || (resource.data.subjectType == 'staff' && canTakeStaffAttendance())
-          ))
-          || isUpdatingOwnStaffAttendance()
+          isAdmin()
+          || (resource.data.subjectType == 'student' && canTakeStudentAttendance())
+          || (!attendanceUsesGeofenceBypass() && resource.data.subjectType == 'student' && isAssignedToClassDoc(resource.data.classDocId) && request.resource.data.classDocId == resource.data.classDocId)
+          || (resource.data.subjectType == 'staff' && canTakeStaffAttendance())
         );
 
       allow delete: if isAdmin() && sameTenantResource();
@@ -484,9 +523,13 @@ service cloud.firestore {
         && request.resource.data.senderUid == request.auth.uid
         && request.resource.data.subject is string
         && request.resource.data.body is string
-        && request.resource.data.recipient is string;
-      allow read: if isAdmin()
+        && (
+          (isSuperAdmin() && (request.resource.data.recipient == 'super_admin' || request.resource.data.recipient == 'all_tenants' || request.resource.data.recipient == 'tenant_admin'))
+          || (callerUser().role == 'admin' && (request.resource.data.recipient == 'super_admin' || (request.resource.data.recipient == 'tenant_staff' && request.resource.data.recipientTenantId == callerUser().tenantId)))
+        );
+      allow read: if isApproved()
         && (isSuperAdmin()
+          || (resource.data.recipient == 'tenant_staff' && resource.data.recipientTenantId == callerUser().tenantId)
           || resource.data.tenantId == callerUser().tenantId
           || resource.data.recipient == 'super_admin'
           || resource.data.recipient == 'all_tenants'
@@ -494,6 +537,14 @@ service cloud.firestore {
       allow update: if isAdmin()
         && (isSuperAdmin() || resource.data.tenantId == callerUser().tenantId);
       allow delete: if false;
+    }
+
+    match /systemAlerts/{alertId} {
+      allow create: if isSuperAdmin() && request.resource.data.senderUid == request.auth.uid;
+      // System alerts are intentionally readable by every approved user because
+      // Super Admin announcements must appear on every tenant homepage.
+      allow read: if isApproved();
+      allow update, delete: if isSuperAdmin();
     }
 
     // -------------------- WEEKS --------------------
@@ -521,6 +572,13 @@ service cloud.firestore {
     match /settings/{docId} {
       allow read: if isApproved();
       allow write: if isAdmin();
+    }
+
+    match /holidays/{holidayId} {
+      allow read: if isApproved() && sameTenantResource();
+      allow create: if isAdmin() && sameTenantRequest();
+      allow update: if isAdmin() && sameTenantUpdate();
+      allow delete: if isAdmin() && sameTenantResource();
     }
 
     // -------------------- WARDS --------------------

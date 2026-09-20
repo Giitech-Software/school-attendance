@@ -23,7 +23,7 @@ import { logAdminAction } from "./adminLogs";
 import { deleteFace } from "./faceService";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import app from "../../app/firebase";
-import { belongsToTenant, getTenantScope, requireAdminTenantScope, sortByCreatedAtDesc, tenantConstraints, withTenantScope } from "./tenantScope";
+import { belongsToTenant, getTenantScope, requireStaffRegistrationScope, sortByCreatedAtDesc, tenantConstraints, withTenantScope } from "./tenantScope";
 
 /* ============================
    COLLECTION
@@ -305,7 +305,7 @@ export async function linkStaffAccount(): Promise<string | null> {
 export async function createStaff(
   data: Omit<Staff, "id" | "createdAt">
 ): Promise<Staff> {
-  const scope = await requireAdminTenantScope();
+  const scope = await requireStaffRegistrationScope();
   const roleType = data.roleType ?? data.role ?? "staff";
   const staffId = data.staffId?.trim() || await generateStaffId(roleType);
 
@@ -378,7 +378,7 @@ export async function upsertStaff(staff: Staff): Promise<void> {
 export async function deleteStaff(id: string): Promise<void> {
   const staffSnap = await getDoc(doc(db, STAFF_COLLECTION, id));
   const faceId = staffSnap.exists() ? (staffSnap.data() as Staff).faceId : undefined;
-  if (faceId) await deleteFace(faceId);
+  await deleteFace(faceId, id);
   await deleteDoc(doc(db, STAFF_COLLECTION, id));
   await logAdminAction({
     action: "DELETE_STAFF",

@@ -6,12 +6,14 @@ import { listStaff, deleteStaff } from "../../src/services/staff";
 import type { Staff } from "../../src/services/types";
 import { MaterialIcons } from "@expo/vector-icons";
 import AppInput from "@/components/AppInput";
-import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
+import useCurrentUser from "../../src/hooks/useCurrentUser";
 import { listStaffGroups, type StaffGroup } from "../../src/services/staffGroups";
 
 export default function StaffList() {
   const router = useRouter();
-  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
+  const { userDoc, loading: adminLoading } = useCurrentUser();
+  const isAdmin = userDoc?.role === "admin" || userDoc?.role === "super_admin" || userDoc?.role === "superadmin";
+  const canRegisterStaff = isAdmin || (userDoc?.approved === true && userDoc?.canRegisterStaff === true);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -71,7 +73,7 @@ const [search, setSearch] = useState("");
     );
   }
 
-  if (adminLoading || !adminReady || loading) {
+  if (adminLoading || !canRegisterStaff || loading) {
     return (
       <View className="flex-1 justify-center items-center bg-white">
         <ActivityIndicator />
@@ -108,12 +110,7 @@ const filteredStaff = staffList.filter((s) => {
           >
             <Text className="text-white font-medium">Import</Text>
           </Pressable>
-          <Pressable
-            onPress={() => router.push("/staff/create")}
-            className="bg-primary py-2 px-3 rounded-xl"
-          >
-            <Text className="text-white font-medium">Add</Text>
-          </Pressable>
+          {canRegisterStaff ? <Pressable onPress={() => router.push("/staff/create")} className="bg-primary py-2 px-3 rounded-xl"><Text className="text-white font-medium">Register staff</Text></Pressable> : null}
         </View>
       </View>
 <AppInput
@@ -187,28 +184,13 @@ const filteredStaff = staffList.filter((s) => {
               {/* Actions */}
               <View className="flex-row items-center space-x-2">
                 {/* Edit */}
-                <Pressable
-                  onPress={() =>
-                    router.push({
-                      pathname: "/staff/[id]",
-                      params: { id: item.id! },
-                    })
-                  }
-                  className="p-2"
-                >
-                  <MaterialIcons name="edit" size={20} color="#1E3A8A" />
-                </Pressable>
+                {isAdmin ? <Pressable onPress={() => router.push({ pathname: "/staff/[id]", params: { id: item.id! } })} className="p-2"><MaterialIcons name="edit" size={20} color="#1E3A8A" /></Pressable> : null}
 
                 {/* Delete */}
-                <Pressable
-                  onPress={() => handleDelete(item.id!, item.name)}
-                  className="p-2"
-                >
-                  <MaterialIcons name="delete" size={20} color="#EF4444" />
-                </Pressable>
+                {isAdmin ? <Pressable onPress={() => handleDelete(item.id!, item.name)} className="p-2"><MaterialIcons name="delete" size={20} color="#EF4444" /></Pressable> : null}
 
                 {/* Face Enroll / Update */}
-                <Pressable
+                {isAdmin ? <Pressable
                   onPress={() =>
                     router.push(`/staff/register-face?staffId=${item.id}`)
                   }
@@ -219,10 +201,10 @@ const filteredStaff = staffList.filter((s) => {
                     size={20}
                   color={face ? "#16A34A" : "#9333EA"}
                   />
-                </Pressable>
+                </Pressable> : null}
 
                 {/* Fingerprint Register / Update */}
-<Pressable
+{isAdmin ? <Pressable
   onPress={() =>
     router.push(`/staff/enroll-biometric?id=${item.id}`)
   }
@@ -233,7 +215,7 @@ const filteredStaff = staffList.filter((s) => {
     size={20}
     color={fingerprint ? "#16A34A" : "#2563EB"}
   />
-</Pressable>
+</Pressable> : null}
     </View>
             </View>
           );

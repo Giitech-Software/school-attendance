@@ -136,11 +136,12 @@ async function writeAttendance(record: Partial<AttendanceRecord> & {
   const scope = await getTenantScope();
 
   if (record.id) {
-    const { id, createdAt, selfOnly: _selfOnly, ...updateFields } = record as any;
+    const { id, createdAt, selfOnly, ...updateFields } = record as any;
     if (record.type === "out") updateFields.checkOutTime = now;
     if (record.type === "in" && !record.checkInTime) updateFields.checkInTime = now;
-    updateFields.location = location;
+    if (!selfOnly) updateFields.location = location;
     const scopedUpdate = withTenantScope(updateFields, scope);
+    console.info("[attendance:write] update payload", JSON.stringify(scopedUpdate));
     await updateDoc(doc(db, "attendance", id), scopedUpdate);
     return normalizeAttendance({ id, ...scopedUpdate });
   }

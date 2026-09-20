@@ -45,6 +45,7 @@ import ReportsStaffWeekly from "./pages/ReportsStaffWeekly";
 import ReportsStaffMonthly from "./pages/ReportsStaffMonthly";
 import ReportsStaffTermly from "./pages/ReportsStaffTermly";
 import ReportsStaffYearly from "./pages/ReportsStaffYearly";
+import ReportsStaffWeekend from "./pages/ReportsStaffWeekend";
 import ReportsStudentDetail from "./pages/ReportsStudentDetail";
 import AdminIndex from "./pages/AdminIndex";
 import AdminClasses from "./pages/AdminClasses";
@@ -97,6 +98,14 @@ function AdminOnlyPage({ children }: { children: ReactNode }) {
 
   return <>{children}</>;
 }
+
+function StaffRegistrationPage({ children }: { children: ReactNode }) {
+  const { userDoc, loading } = useCurrentUser();
+  const allowed = userDoc?.role === "admin" || userDoc?.role === "super_admin" || (userDoc?.approved === true && userDoc?.canRegisterStaff === true);
+  if (loading) return <div className="enterprise-panel p-4 text-sm text-slate-600">Checking access...</div>;
+  if (!allowed) return <div className="enterprise-panel p-6 text-center"><h1 className="text-xl font-extrabold text-slate-950">Staff registration access required</h1><p className="mt-2 text-sm text-slate-600">An administrator must enable staff registration for your account.</p></div>;
+  return <>{children}</>;
+}
 export default function App() {
   return (
     <BrowserRouter>
@@ -120,7 +129,7 @@ export default function App() {
 
           <Route path="staff">
             <Route index element={<Staff />} />
-            <Route path="create" element={<AdminOnlyPage><StaffCreate /></AdminOnlyPage>} />
+            <Route path="create" element={<StaffRegistrationPage><StaffCreate /></StaffRegistrationPage>} />
             <Route path="bulk-import" element={<AdminOnlyPage><StaffBulkImport /></AdminOnlyPage>} />
             <Route path="groups" element={<AdminOnlyPage><StaffGroups /></AdminOnlyPage>} />
             <Route path="my-attendance" element={<StaffMyAttendance />} />
@@ -150,8 +159,9 @@ export default function App() {
             <Route path="staff-qr-generator" element={<AttendanceStaffQrGenerator />} />
           </Route>
 
-          <Route path="reports" element={<AdminOnlyPage><Outlet /></AdminOnlyPage>}>
+            <Route path="reports" element={<AdminOnlyPage><Outlet /></AdminOnlyPage>}>
             <Route index element={<Reports />} />
+            <Route path="all" element={<Reports />} />
             <Route path="daily" element={<SchoolOnlyPage><ReportsDaily /></SchoolOnlyPage>} />
             <Route path="weekly" element={<SchoolOnlyPage><ReportsWeekly /></SchoolOnlyPage>} />
             <Route path="monthly" element={<SchoolOnlyPage><ReportsMonthly /></SchoolOnlyPage>} />
@@ -164,11 +174,12 @@ export default function App() {
             <Route path="staff-monthly" element={<ReportsStaffMonthly />} />
             <Route path="staff-termly" element={<SchoolOnlyPage><ReportsStaffTermly /></SchoolOnlyPage>} />
             <Route path="staff-yearly" element={<ReportsStaffYearly />} />
+            <Route path="staff-weekend" element={<ReportsStaffWeekend />} />
             <Route path="student/:id" element={<SchoolOnlyPage><ReportsStudentDetail /></SchoolOnlyPage>} />
           </Route>
 
           <Route path="super-admin" element={<SuperAdminTenants />} />
-          <Route path="messages" element={<AdminOnlyPage><Messages /></AdminOnlyPage>} />
+          <Route path="messages" element={<Messages />} />
           <Route path="admin">
             <Route index element={<AdminIndex />} />
             <Route path="classes" element={<SchoolOnlyPage><AdminClasses /></SchoolOnlyPage>} />

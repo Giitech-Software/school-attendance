@@ -3,11 +3,14 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { createStaff, listStaff, STAFF_ROLE_OPTIONS, type StaffRoleType, upsertStaff } from "../services/staff";
 import { getUserByEmail, getUserById, upsertUser } from "../services/users";
 import { listStaffGroups, type StaffGroup } from "../services/staffGroups";
+import useCurrentUser from "../hooks/useCurrentUser";
 
 type StaffIdMode = "auto" | "manual";
 
 export default function StaffCreate() {
   const navigate = useNavigate();
+  const { userDoc } = useCurrentUser();
+  const isAdmin = userDoc?.role === "admin" || userDoc?.role === "super_admin";
   const [searchParams] = useSearchParams();
   const userId = searchParams.get("userId");
   const [name, setName] = useState("");
@@ -67,7 +70,7 @@ export default function StaffCreate() {
         : await createStaff(staffData);
       if (existingStaff) await upsertStaff(staff);
 
-      if (linkedUser?.id) {
+      if (linkedUser?.id && isAdmin) {
         await upsertUser({
           uid: linkedUser.uid ?? linkedUser.id,
           id: linkedUser.id,

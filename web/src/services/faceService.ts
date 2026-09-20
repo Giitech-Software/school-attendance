@@ -66,11 +66,11 @@ export async function searchFace(base64Image: string, subjectType: FaceSubjectTy
   };
 }
 
-export async function deleteFace(faceId: string): Promise<{ success?: boolean }> {
+export async function deleteFace(faceId?: string, staffId?: string): Promise<{ success?: boolean }> {
   const response = await fetch(DELETE_STAFF_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ faceId }),
+    body: JSON.stringify({ faceId, staffId }),
   });
 
   if (!response.ok) throw new Error(await readError(response, "Face delete failed"));

@@ -10,6 +10,7 @@ import { getStaffById, getStaffByStaffId } from "../services/staff";
 import { registerStaffAttendance } from "../services/staffAttendance";
 import { getAttendanceSettings } from "../services/attendanceSettings";
 import { useCurrentStaff } from "../hooks/useCurrentStaff";
+import useCurrentUser from "../hooks/useCurrentUser";
 import { getTenantScope, tenantConstraints } from "../services/tenantScope";
 
 type ParsedQr = {
@@ -103,8 +104,13 @@ export default function AttendanceQR() {
   const [searchParams, setSearchParams] = useSearchParams();
   const actor = searchParams.get("actor") === "staff" ? "staff" : "student";
   const mode = searchParams.get("mode") === "out" ? "out" : "in";
-  const isSelfServiceStaff = actor === "staff" && searchParams.get("self") === "1";
   const { staff: currentStaff } = useCurrentStaff();
+  const { userDoc } = useCurrentUser();
+  const isAdmin = userDoc?.role === "admin" || userDoc?.role === "super_admin";
+  const isSelfServiceStaff = actor === "staff"
+    && userDoc?.canTakeSelfAttendance === true
+    && userDoc?.canTakeStaffAttendance !== true
+    && !isAdmin;
   const [classes, setClasses] = useState<ClassRecord[]>([]);
   const [selectedClassId, setSelectedClassId] = useState(searchParams.get("classId") ?? "");
   const [loading, setLoading] = useState(false);
@@ -197,7 +203,11 @@ export default function AttendanceQR() {
         const scannedId = parsed.staffId ?? parsed.userId ?? parsed.studentId;
         if (!scannedId) throw new Error("This QR code does not contain a staff ID.");
 
-        let staff = await getStaffByStaffId(scannedId);
+        let staff = isSelfServiceStaff ? currentStaff : await getStaffByStaffId(scannedId);
+        if (isSelfServiceStaff && staff) {
+          const ownIds = [staff.id, staff.staffId].filter(Boolean);
+          if (!ownIds.includes(scannedId)) throw new Error("This QR code does not match your staff profile.");
+        }
         if (!staff && scannedId) staff = await getStaffById(scannedId);
         if (!staff?.id) throw new Error(`No staff record found for ID: ${scannedId}`);
 
@@ -208,7 +218,8 @@ export default function AttendanceQR() {
           }
         }
 
-        await registerStaffAttendance({ staffId: staff.id, mode, method: "qr", biometric: false, movementReason });
+        const selfOnly = isSelfServiceStaff;
+        await registerStaffAttendance({ staffId: staff.id, mode, method: "qr", biometric: false, movementReason, selfOnly });
         setSuccess(`${staff.name ?? "Staff member"} checked ${mode === "in" ? "in" : "out"} successfully.`);
       } else {
         const scannedId = parsed.studentId ?? parsed.userId;

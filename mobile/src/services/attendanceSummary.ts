@@ -4,6 +4,7 @@ import { query, where, getDocs, collection, getDoc, doc } from "firebase/firesto
 import { db } from "../../app/firebase";
 import { belongsToTenant, getTenantScope, tenantConstraints } from "./tenantScope";
 import type { AttendanceRecord } from "./types";
+import { getHolidaysInRange } from "./holidays";
 
 const attendanceCollection = collection(db, "attendance");
 const studentsCollection = collection(db, "students");
@@ -251,7 +252,9 @@ export async function computeClassSummary(
     }
 
     // 3️⃣ Compute summary per student
-    const expectedDates = getSchoolDaysInRange(fromIso, toIso);
+    const holidays = await getHolidaysInRange(fromIso, toIso).catch(() => []);
+    const holidayDates = new Set(holidays.map((holiday) => holiday.date));
+    const expectedDates = getSchoolDaysInRange(fromIso, toIso).filter((date) => !holidayDates.has(date));
     for (const [studentId, recs] of byStudent.entries()) {
       out.push({
         ...summarizeRecords(studentId, recs, expectedDates),
@@ -295,7 +298,9 @@ export async function getAttendanceSummary(
   }
 
   try {
-    const expectedDates = getSchoolDaysInRange(fromIso, toIso);
+    const holidays = await getHolidaysInRange(fromIso, toIso).catch(() => []);
+    const holidayDates = new Set(holidays.map((holiday) => holiday.date));
+    const expectedDates = getSchoolDaysInRange(fromIso, toIso).filter((date) => !holidayDates.has(date));
 
     /* -------------------------------------------- */
     /* STEP 1: Load students (with optional classId) */

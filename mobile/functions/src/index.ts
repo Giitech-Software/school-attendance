@@ -86,11 +86,32 @@ async (req, res): Promise<void> => {
     const existingMatch = searchResult.FaceMatches?.[0];
 
     if (existingMatch && existingMatch.Similarity && existingMatch.Similarity > 90) {
-      res.status(409).json({
-        error: "Face already registered",
-        similarity: existingMatch.Similarity,
-      });
-      return;
+      const existingFaceId = existingMatch.Face?.FaceId;
+      if (existingMatch.Face?.ExternalImageId === staffId && existingFaceId) {
+        await admin.firestore().collection("staff").doc(staffId).set({
+          faceId: existingFaceId,
+          biometricEnabled: true,
+        }, { merge: true });
+        res.json({ success: true, faceId: existingFaceId, relinked: true });
+        return;
+      }
+      const previousStaffId = existingMatch.Face?.ExternalImageId;
+      if (existingFaceId && previousStaffId) {
+        const previousStaff = await admin.firestore().collection("staff").doc(previousStaffId).get();
+        if (!previousStaff.exists) {
+          const { DeleteFacesCommand } = await import("@aws-sdk/client-rekognition");
+          await rekognition.send(new DeleteFacesCommand({
+            CollectionId: aws.collectionId,
+            FaceIds: [existingFaceId],
+          }));
+        } else {
+          res.status(409).json({
+            error: "Face already registered to an existing staff profile",
+            similarity: existingMatch.Similarity,
+          });
+          return;
+        }
+      }
     }
 
     /* =====================================
@@ -225,11 +246,11 @@ export const deleteStaffFace = onRequest(
   },
   async (req, res): Promise<void> => {
     try {
-      const { faceId } = req.body;
+      const { faceId, staffId } = req.body;
       const aws = getAwsConfig();
 
-      if (!faceId) {
-        res.status(400).json({ error: "Missing faceId" });
+      if (!faceId && !staffId) {
+        res.status(400).json({ error: "Missing faceId or staffId" });
         return;
       }
 
@@ -239,12 +260,20 @@ export const deleteStaffFace = onRequest(
         credentials: aws.credentials,
       });
 
-      await rekognition.send(
-        new DeleteFacesCommand({
-          CollectionId: aws.collectionId,
-          FaceIds: [faceId],
-        })
-      );
+      let faceIds = faceId ? [faceId] : [];
+      if (staffId) {
+        const { ListFacesCommand } = await import("@aws-sdk/client-rekognition");
+        const faces = await rekognition.send(new ListFacesCommand({ CollectionId: aws.collectionId, MaxResults: 100 }));
+        faceIds = Array.from(new Set([
+          ...faceIds,
+          ...(faces.Faces ?? [])
+            .filter((face) => face.ExternalImageId === staffId && face.FaceId)
+            .map((face) => face.FaceId as string),
+        ]));
+      }
+      if (faceIds.length) {
+        await rekognition.send(new DeleteFacesCommand({ CollectionId: aws.collectionId, FaceIds: faceIds }));
+      }
 
       res.json({ success: true });
       return;

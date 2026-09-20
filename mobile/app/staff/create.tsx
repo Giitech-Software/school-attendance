@@ -12,14 +12,15 @@ import {
 import { getUserByEmail, upsertUser } from "../../src/services/users";
 import { MaterialIcons } from "@expo/vector-icons";
 import AppInput from "@/components/AppInput";
-import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
+import useCurrentUser from "../../src/hooks/useCurrentUser";
 import { listStaffGroups, type StaffGroup } from "../../src/services/staffGroups";
 
 type StaffIdMode = "auto" | "manual";
 
 export default function StaffCreate() {
   const router = useRouter();
-  const { loading: adminLoading, ready: adminReady } = useRequireAdmin();
+  const { userDoc, loading: adminLoading } = useCurrentUser();
+  const adminReady = !adminLoading && (userDoc?.role === "admin" || userDoc?.role === "super_admin" || (userDoc?.approved === true && userDoc?.canRegisterStaff === true));
 
   const [name, setName] = useState("");
   const [staffId, setStaffId] = useState("");

@@ -69,7 +69,7 @@ export default function StaffMyAttendance() {
         </div>
       </section>
 
-      <section className="enterprise-panel -mx-3 overflow-hidden rounded-none sm:-mx-4 lg:-mx-5">
+      <section className="enterprise-panel -mx-3 overflow-hidden rounded-none sm:-mx-4 lg:-mx-5" style={{ marginTop: "-0.75rem" }}>
         <ImageCarousel images={[{ src: "/attendance-1.webp", alt: "Attendance check-in" }, { src: "/attendance-2.webp", alt: "Attendance verification" }, { src: "/attendance-3.webp", alt: "Attendance register" }, { src: "/attendance-4.webp", alt: "Attendance operations" }]} />
       </section>
 

@@ -55,6 +55,7 @@ export type AppUser = {
   canTakeStaffAttendance?: boolean;
   canTakeStudentAttendance?: boolean;
   canTakeSelfAttendance?: boolean;
+  canRegisterStaff?: boolean;
 };
 
 const USERS_COLLECTION = "users";
@@ -91,6 +92,7 @@ export async function listUsers(): Promise<AppUser[]> {
         canTakeStaffAttendance: Boolean(data.canTakeStaffAttendance),
         canTakeStudentAttendance: Boolean(data.canTakeStudentAttendance),
         canTakeSelfAttendance: Boolean(data.canTakeSelfAttendance),
+        canRegisterStaff: Boolean(data.canRegisterStaff),
       } as AppUser;
     });
   } catch (err) {
@@ -233,6 +235,7 @@ export async function upsertUser(user: AppUser): Promise<string> {
       canTakeStudentAttendance: user.canTakeStudentAttendance,
     }),
     ...(user.canTakeSelfAttendance !== undefined && { canTakeSelfAttendance: user.canTakeSelfAttendance }),
+    ...(user.canRegisterStaff !== undefined && { canRegisterStaff: user.canRegisterStaff }),
 
     ...(user.wards !== undefined && {
       wards: user.wards,

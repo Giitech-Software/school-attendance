@@ -82,7 +82,7 @@ export async function recordAttendanceCore({
      UPDATE EXISTING RECORD
   =============================== */
   if (record.id) {
-    const { id, createdAt, ...updateFields } = record;
+    const { id, createdAt, selfOnly, ...updateFields } = record;
 
     if (record.type === "in" && !record.checkInTime) {
       updateFields.checkInTime = now;
@@ -96,11 +96,11 @@ export async function recordAttendanceCore({
 
     updateFields.biometric = record.biometric ?? false;
     updateFields.method = record.method ?? updateFields.method;
-    updateFields.location = locationAudit;
+    if (!selfOnly) updateFields.location = locationAudit;
 
     const ref = doc(db, collectionName, id);
     await updateDoc(ref, withTenantScope(updateFields, tenantScope));
-    await logAdminAction({
+    if (!selfOnly) await logAdminAction({
       action: record.type === "out" ? "CHECK_OUT" : "UPDATE_ATTENDANCE",
       targetType: "attendance",
       targetId: ref.id,
@@ -152,7 +152,7 @@ export async function recordAttendanceCore({
     }
     transaction.set(ref, data);
   });
-  await logAdminAction({
+  if (!record.selfOnly) await logAdminAction({
     action: "CHECK_IN",
     targetType: "attendance",
     targetId: ref.id,

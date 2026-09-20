@@ -188,6 +188,12 @@ export default function UserDetail() {
           {user.approved ? "Approved" : "Not Approved"}
         </Text>
       </Pressable>
+      <Pressable
+        onPress={() => setUser((prev) => prev ? { ...prev, canRegisterStaff: !prev.canRegisterStaff } : prev)}
+        className={`px-4 py-2 rounded ${user.canRegisterStaff ? "bg-green-600" : "bg-slate-500"}`}
+      >
+        <Text className="text-white">{user.canRegisterStaff ? "Can register staff" : "Cannot register staff"}</Text>
+      </Pressable>
     </View>
 
     <Text className="text-ml text-neutral-600 mb-1 mt-2">Attendance Permissions</Text>

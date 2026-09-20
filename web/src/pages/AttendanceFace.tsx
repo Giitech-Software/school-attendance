@@ -137,7 +137,8 @@ export default function AttendanceFace() {
         }
         const staff = await getStaffById(matchedStaffId);
         if (!staff?.id) throw new Error("Matched face is not registered as staff.");
-        await registerStaffAttendance({ staffId: staff.id, mode, method: "face", biometric: true, movementReason });
+        const selfOnly = isSelfServiceStaff;
+        await registerStaffAttendance({ staffId: staff.id, mode, method: "face", biometric: true, movementReason, selfOnly });
         setSuccess(`${staff.name ?? "Staff member"} checked ${mode === "in" ? "in" : "out"} by face${similarityLabel(result.similarity)}.`);
       } else {
         const student = await getStudentById(result.subjectId);

@@ -40,6 +40,7 @@ export type AppUser = {
   canTakeStaffAttendance?: boolean;
   canTakeStudentAttendance?: boolean;
   canTakeSelfAttendance?: boolean;
+  canRegisterStaff?: boolean;
   tenantId?: string | null;
   tenantName?: string | null;
   tenantType?: string | null;
@@ -70,6 +71,7 @@ function normalizeUser(id: string, data: any): AppUser {
     canTakeStaffAttendance: Boolean(data.canTakeStaffAttendance),
     canTakeStudentAttendance: Boolean(data.canTakeStudentAttendance),
     canTakeSelfAttendance: Boolean(data.canTakeSelfAttendance),
+    canRegisterStaff: Boolean(data.canRegisterStaff),
     tenantId: data.tenantId ?? null,
     tenantName: data.tenantName ?? null,
     tenantType: data.tenantType ?? null,
@@ -99,6 +101,7 @@ export async function upsertUser(profile: Partial<AppUser> & { uid: string }) {
           canTakeStudentAttendance: profile.canTakeStudentAttendance,
         }),
         ...(profile.canTakeSelfAttendance !== undefined && { canTakeSelfAttendance: profile.canTakeSelfAttendance }),
+        ...(profile.canRegisterStaff !== undefined && { canRegisterStaff: profile.canRegisterStaff }),
         ...(profile.tenantId !== undefined && { tenantId: profile.tenantId }),
         ...(profile.tenantName !== undefined && { tenantName: profile.tenantName }),
         ...(profile.tenantType !== undefined && { tenantType: profile.tenantType }),

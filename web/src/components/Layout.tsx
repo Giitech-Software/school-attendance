@@ -5,6 +5,7 @@ import useCurrentUser from "../hooks/useCurrentUser";
 import { autoMarkAbsentsForToday } from "../services/autoMarkAbsent";
 import { allowsStudentAndParentFeatures } from "../services/tenantScope";
 import { useCurrentStaff } from "../hooks/useCurrentStaff";
+import { listMessages } from "../services/messages";
 
 const mainLinks = [
   { to: "/", label: "Home" },
@@ -51,6 +52,8 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { authUser, userDoc, loading } = useCurrentUser();
+  const [newMessageCount, setNewMessageCount] = useState(0);
+  useEffect(() => { let active = true; void listMessages().then((rows) => { if (active) setNewMessageCount(rows.filter((row) => row.senderUid !== (userDoc?.uid ?? userDoc?.id)).length); }).catch(() => { if (active) setNewMessageCount(0); }); return () => { active = false; }; }, [userDoc?.uid, userDoc?.id, location.pathname]);
   const { staff: currentStaff } = useCurrentStaff();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrollState, setScrollState] = useState({ canUp: false, canDown: false });
@@ -179,7 +182,7 @@ export default function Layout() {
           <div className="mt-2 space-y-1">
             {visibleMainLinks.map((link) => (
               <NavLink key={link.to} to={link.to} end={link.to === "/"} className={(state) => `${navLinkClass({ isActive: state.isActive && !(link.to === "/attendance/checkin" && isSelfAttendanceRoute) })} ${sidebarCollapsed ? "justify-center px-2" : ""}`} title={sidebarCollapsed ? link.label : undefined}>
-                {sidebarCollapsed ? link.label.charAt(0) : link.label}
+                {sidebarCollapsed ? link.label.charAt(0) : link.label}{link.to === "/messages" && newMessageCount > 0 ? <span className="ml-2 inline-flex min-w-5 animate-pulse items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-extrabold text-white">{newMessageCount > 99 ? "99+" : newMessageCount}</span> : null}
               </NavLink>
             ))}
           </div>

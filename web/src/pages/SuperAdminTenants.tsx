@@ -13,7 +13,7 @@ import {
   type TenantType,
 } from "../services/tenants";
 import { listLegacyStaff, migrateLegacyStaffToTenant, type Staff } from "../services/staff";
-import { createSystemAlert } from "../services/systemAlerts";
+import { createSystemAlert, listSystemAlerts, setSystemAlertActive, updateSystemAlert, type SystemAlert } from "../services/systemAlerts";
 
 const tenantTypes: { label: string; value: TenantType }[] = [
   { label: "School", value: "school" },
@@ -67,6 +67,8 @@ export default function SuperAdminTenants() {
   const [alertTitle, setAlertTitle] = useState("");
   const [alertBody, setAlertBody] = useState("");
   const [alertEndsAt, setAlertEndsAt] = useState("");
+  const [systemAlerts, setSystemAlerts] = useState<SystemAlert[]>([]);
+  const [editingAlertId, setEditingAlertId] = useState<string | null>(null);
 
   const isSuperAdmin = userDoc?.role === "super_admin";
   const activeCount = useMemo(() => tenants.filter((tenant) => tenant.status === "active").length, [tenants]);
@@ -76,10 +78,11 @@ export default function SuperAdminTenants() {
     setLoading(true);
     setError(null);
     try {
-      const [tenantRows, userRows, legacyRows] = await Promise.all([listTenants(), listUsers(), listLegacyStaff()]);
+      const [tenantRows, userRows, legacyRows, alertRows] = await Promise.all([listTenants(), listUsers(), listLegacyStaff(), listSystemAlerts()]);
       setTenants(tenantRows);
       setLegacyStaff(legacyRows);
       setRegistrations(userRows.filter((user) => user.role !== "super_admin"));
+      setSystemAlerts(alertRows);
     } catch (err: any) {
       setError(err?.message ?? "Failed to load tenants.");
     } finally {
@@ -119,9 +122,17 @@ export default function SuperAdminTenants() {
     event.preventDefault();
     if (!alertTitle.trim() || !alertBody.trim()) return;
     try {
-      await createSystemAlert({ title: alertTitle.trim(), body: alertBody.trim(), endsAt: alertEndsAt ? new Date(`${alertEndsAt}T23:59:59`).toISOString() : null });
+      const input = { title: alertTitle.trim(), body: alertBody.trim(), endsAt: alertEndsAt ? new Date(`${alertEndsAt}T23:59:59`).toISOString() : null };
+      if (editingAlertId) await updateSystemAlert(editingAlertId, input); else await createSystemAlert(input);
+      setSystemAlerts((rows) => editingAlertId ? rows.map((row) => row.id === editingAlertId ? { ...row, ...input } : row) : [{ ...input, id: `local-${Date.now()}` }, ...rows]);
       setAlertTitle(""); setAlertBody(""); setAlertEndsAt(""); setMessage("System alert published to all homepages.");
+      setEditingAlertId(null);
     } catch (err: any) { setError(err?.message ?? "Failed to publish system alert."); }
+  }
+
+  async function handleHideAlert(id?: string) {
+    if (!id) return;
+    try { await setSystemAlertActive(id, false); setSystemAlerts((rows) => rows.filter((row) => row.id !== id)); setMessage("Alert hidden from all homepages."); } catch (err: any) { setError(err?.message ?? "Failed to hide alert."); }
   }
 
   async function handleStatusChange(tenant: Tenant, nextStatus: TenantStatus) {
@@ -212,8 +223,9 @@ export default function SuperAdminTenants() {
             <label><span className="auth-label">Title</span><input value={alertTitle} onChange={(event) => setAlertTitle(event.target.value)} className="enterprise-input mt-1" placeholder="Planned system upgrade" /></label>
             <label><span className="auth-label">Message</span><input value={alertBody} onChange={(event) => setAlertBody(event.target.value)} className="enterprise-input mt-1" placeholder="The system will be unavailable..." /></label>
             <label><span className="auth-label">Ends</span><input type="date" value={alertEndsAt} onChange={(event) => setAlertEndsAt(event.target.value)} className="enterprise-input mt-1" /></label>
-            <button type="submit" className="enterprise-button-primary">Publish alert</button>
+            <button type="submit" className="enterprise-button-primary">{editingAlertId ? "Save alert changes" : "Publish alert"}</button>
           </form>
+          {systemAlerts.length ? <div className="mt-4 space-y-2 border-t border-amber-200 pt-3">{systemAlerts.map((alert) => <div key={alert.id} className="flex items-start justify-between gap-3 rounded-lg bg-white/70 p-3"><div><p className="font-bold text-amber-950">{alert.title}</p><p className="text-sm text-amber-900">{alert.body}</p><p className="text-xs text-amber-700">{alert.endsAt ? `Ends ${new Date(alert.endsAt).toLocaleString()}` : "No expiry"}</p></div><div className="flex gap-3"><button type="button" onClick={() => { setEditingAlertId(alert.id ?? null); setAlertTitle(alert.title); setAlertBody(alert.body); setAlertEndsAt(alert.endsAt ? new Date(alert.endsAt).toISOString().slice(0, 10) : ""); }} className="text-xs font-bold text-amber-800 hover:underline">Edit</button><button type="button" onClick={() => void handleHideAlert(alert.id)} className="text-xs font-bold text-red-700 hover:underline">Hide</button></div></div>)}</div> : null}
         </section>
 
         <section className="grid grid-cols-2 gap-3 bg-slate-100 p-3 lg:grid-cols-4">

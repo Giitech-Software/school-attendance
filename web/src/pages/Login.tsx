@@ -69,7 +69,6 @@ export default function Login() {
     }
   }
 
-
   return (
     <div className="auth-shell">
       <AuthBrandHeader />
@@ -102,6 +101,7 @@ export default function Login() {
           <button type="submit" disabled={loading} className="enterprise-button-primary w-full py-3 text-base">
             {loading ? "Signing in..." : "Sign in"}
           </button>
+
         </form>
 
         <p className="mt-4 text-center text-sm text-slate-600">

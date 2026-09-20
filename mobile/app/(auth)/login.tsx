@@ -29,7 +29,7 @@ export default function Login() {
   if (!email.trim() || !password) {
     Alert.alert("Validation", "Email and password are required.");
     return;
-  }
+ }
 
   setLoading(true);
   try {
@@ -164,6 +164,7 @@ if (user.role === "parent" || (user.wards?.length ?? 0) > 0) {
               {loading ? "Signing in…" : "Sign in"}
             </Text>
           </Pressable>
+
 
           {/* Link to signup */}
           <View className="flex-row justify-center">

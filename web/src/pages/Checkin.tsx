@@ -155,7 +155,7 @@ export default function Checkin() {
         if (classRows.length > 0) setSelectedClassId((current) => current || classValue(classRows[0]));
       } catch (err: any) {
         console.error("load check-in data", err);
-        if (active) setError(err?.message ?? "Failed to load attendance data.");
+        if (active) setError(userFacingError(err, "Could not load attendance information."));
       } finally {
         if (active) setLoading(false);
       }
@@ -255,6 +255,7 @@ export default function Checkin() {
     setSubmitting(true);
     setError(null);
     setSuccess(null);
+    let attendanceStage = "staff profile lookup";
     try {
       const staffCode = staffIdInput.trim();
       const normalizedStaffCode = staffCode.toUpperCase();
@@ -271,16 +272,31 @@ export default function Checkin() {
       if (!isAdmin && userDoc?.canTakeStaffAttendance !== true && staff.userUid !== (userDoc.uid ?? userDoc.id)) {
         throw new Error("You can only record attendance for your own staff profile.");
       }
+      attendanceStage = "movement-reason prompt";
       const movementReason = await promptMovementReason(nextMode);
+      attendanceStage = "attendance write";
       await registerStaffAttendance({ staffId: staff.id, mode: nextMode, method: "manual", biometric: false, movementReason, selfOnly });
+      let successMessage = `${staff.name ?? staff.staffId ?? "Staff member"} checked ${nextMode === "in" ? "in" : "out"} successfully.`;
       setStaffMembers((current) => (current.some((item) => item.id === staff.id || item.staffId === staff.staffId) ? current : [...current, staff]));
-      setSuccess(`${staff.name ?? staff.staffId ?? "Staff member"} checked ${nextMode === "in" ? "in" : "out"} successfully.`);
       setSuccessStaffPhoto(staff.profilePhotoUrl ?? null);
       setStaffIdInput("");
-      if (!selfOnly) await refreshAttendance();
+      if (!selfOnly) {
+        attendanceStage = "attendance list refresh after successful write";
+        try {
+          await refreshAttendance();
+        } catch (refreshError) {
+          console.warn("[attendance:ui] checkout/write succeeded but attendance list refresh failed", {
+            operation: nextMode === "in" ? "check-in" : "check-out",
+            errorCode: (refreshError as any)?.code,
+          });
+          successMessage += " The attendance was saved, but the list could not refresh.";
+        }
+      }
+      setSuccess(successMessage);
     } catch (err: any) {
       console.error("[attendance:ui] staff attendance action failed", {
         operation: nextMode === "in" ? "check-in" : "check-out",
+        stage: attendanceStage,
         actor,
         selfOnly: userDoc?.canTakeSelfAttendance === true && userDoc?.canTakeStaffAttendance !== true && !isAdmin,
         staffIdInput: staffIdInput.trim(),

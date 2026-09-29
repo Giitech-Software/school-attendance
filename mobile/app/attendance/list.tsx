@@ -59,6 +59,19 @@ export default function AttendanceList() {
             <Text className="text-sm text-neutral mt-1">
               In: {item.checkInTime ?? "—"} • Out: {item.checkOutTime ?? "—"}
             </Text>
+            <Text className={`mt-1 text-xs font-semibold ${item.status === "late" ? "text-amber-700" : "text-slate-600"}`}>
+              Status: {item.status ?? "present"}
+            </Text>
+            {item.status === "late" || item.lateReason ? (
+              <Text className="mt-1 text-xs text-amber-700">
+                Movement book — late arrival: {item.lateReason || "reason not recorded"}
+              </Text>
+            ) : null}
+            {item.earlyCheckoutReason ? (
+              <Text className="mt-1 text-xs text-blue-700">
+                Movement book — early departure: {item.earlyCheckoutReason}
+              </Text>
+            ) : null}
           </View>
         )}
         ListEmptyComponent={<Text className="text-center text-neutral mt-8">No attendance recorded today.</Text>}

@@ -146,7 +146,10 @@ function detailRowsHtml(records: AttendanceDetailRecord[]) {
     .sort((a, b) => a.date.localeCompare(b.date))
     .map((record, index) => {
       const status = (record.status || (record.checkInTime ? "present" : "absent")).toLowerCase();
-      const movementEntry = [record.lateReason, record.earlyCheckoutReason].filter(Boolean).join(" / ") || "—";
+      const movementEntry = [
+        record.lateReason || (record.status === "late" ? "Late arrival (reason not recorded)" : null),
+        record.earlyCheckoutReason,
+      ].filter(Boolean).join(" / ") || "—";
       return `<tr>
         <td class="index">${index + 1}</td>
         <td>${escapeHtml(record.date)}</td>
@@ -194,7 +197,10 @@ function printableHtml(options: ExportOptions) {
     detailRows: options.detailRecords?.map((row) => ({
       date: row.date, status: row.status, checkInTime: row.checkInTime,
       checkOutTime: row.checkOutTime,
-      movementEntry: [row.lateReason, row.earlyCheckoutReason].filter(Boolean).join(" / ") || null,
+      movementEntry: [
+        row.lateReason || (row.status === "late" ? "Late arrival (reason not recorded)" : null),
+        row.earlyCheckoutReason,
+      ].filter(Boolean).join(" / ") || null,
     })),
     movementRows: options.movementRows,
     summary: { records: options.rows.length, present: totalPresent, late: totalLate, absent: totalAbsent, attended: totalAttended },
@@ -434,7 +440,16 @@ export async function openReportPdf(options: ExportOptions) {
         const subject = names.get(id);
         if (!subject) return [];
         const entries: EnterpriseMovementRow[] = [];
-        if (record.lateReason) entries.push({ ...subject, date: record.date, eventType: "Late arrival", reason: record.lateReason, checkInTime: record.checkInTime, checkOutTime: record.checkOutTime });
+        if (record.status === "late" || record.lateReason) {
+          entries.push({
+            ...subject,
+            date: record.date,
+            eventType: "Late arrival",
+            reason: record.lateReason || "Late arrival recorded (reason not captured)",
+            checkInTime: record.checkInTime,
+            checkOutTime: record.checkOutTime,
+          });
+        }
         if (record.earlyCheckoutReason) entries.push({ ...subject, date: record.date, eventType: "Early departure", reason: record.earlyCheckoutReason, checkInTime: record.checkInTime, checkOutTime: record.checkOutTime });
         return entries;
       });

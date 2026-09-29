@@ -2,7 +2,7 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "../firebase";
 import { getTenantScope, tenantConstraints } from "./tenantScope";
 
-export type AttendanceAuditRow = { personId: string; displayId?: string; late: number; early: number; missingSignOut: number; lastDate: string };
+export type AttendanceAuditRow = { personId: string; displayId?: string; displayName?: string; late: number; early: number; missingSignOut: number; lastDate: string };
 
 export async function getAttendanceAudit(fromIso: string, toIso: string): Promise<AttendanceAuditRow[]> {
   const scope = await getTenantScope();

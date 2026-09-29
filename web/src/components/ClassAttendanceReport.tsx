@@ -4,7 +4,7 @@ import { listClasses, type SchoolClass } from "../services/classes";
 import { getAttendanceSummary, type AttendanceSummary } from "../services/attendanceSummary";
 import { exportReportCsv, openReportPdf } from "../services/reportExport";
 import AttendanceTotalsCards from "./AttendanceTotalsCards";
-import AttendancePieChart from "./AttendancePieChart";
+import AttendanceOverviewCharts from "./AttendanceOverviewCharts";
 import AttendanceAuditPanel from "./AttendanceAuditPanel";
 import { autoMarkAbsentAllClasses } from "../services/autoMarkAbsent";
 
@@ -197,7 +197,11 @@ export default function ClassAttendanceReport({
           ) : null}
         </div>
 
-        {results && results.length > 0 ? <><AttendanceTotalsCards rows={results} subjectLabel="Students" groupLabel={selectedClassName} /><AttendancePieChart present={results.reduce((n, r) => n + r.presentCount, 0)} late={results.reduce((n, r) => n + r.lateCount, 0)} absent={results.reduce((n, r) => n + r.absentCount, 0)} /><AttendanceAuditPanel periodFrom={from} periodTo={to} /></> : null}
+        {results !== null ? <>
+          {results.length > 0 ? <AttendanceTotalsCards rows={results} subjectLabel="Students" groupLabel={selectedClassName} /> : null}
+          <AttendanceOverviewCharts present={results.reduce((n, r) => n + r.presentCount, 0)} late={results.reduce((n, r) => n + r.lateCount, 0)} absent={results.reduce((n, r) => n + r.absentCount, 0)} title={`${title} charts`} />
+          {results.length > 0 ? <AttendanceAuditPanel periodFrom={from} periodTo={to} /> : null}
+        </> : null}
         {results && results.length === 0 ? <p className="report-empty">No attendance records were found for the selected date range.</p> : null}
         {!results && !loading ? <p className="report-empty">Generate a report to view student attendance counts.</p> : null}
         {loading ? <p className="report-empty">Loading report...</p> : null}

@@ -1,6 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { getStudentById, listStudents } from "../services/students";
+import { getTenantScope } from "../services/tenantScope";
 import type { Student } from "../types";
 
 type QrPayload = {
@@ -70,7 +71,8 @@ export default function StudentQrGenerator() {
           if (active) setPayloadJson(JSON.stringify(payload));
         } else {
           const rows = await listStudents();
-          if (active) setStudents(rows);
+          const scope = await getTenantScope();
+          if (active) setStudents(scope.isSuperAdmin ? rows.filter((student) => Boolean(student.tenantId)) : rows);
         }
       } catch (err: any) {
         if (active) setError(err?.message ?? "Failed to load students.");

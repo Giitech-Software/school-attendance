@@ -5,8 +5,9 @@ import * as admin from "firebase-admin";
 export { verifyAttendancePresence } from "./handlers/verifyAttendancePresence";
 export { linkStaffAccount } from "./handlers/linkStaffAccount";
 export { updateOwnStaffProfilePhoto } from "./handlers/updateOwnStaffProfilePhoto";
+export { createFaceLivenessSession, getFaceLivenessSessionResults, getFaceLivenessCredentials } from "./handlers/faceLiveness";
 
-admin.initializeApp();
+if (!admin.apps.length) admin.initializeApp();
 
 /* ============================
    🔐 DEFINE SECRETS

@@ -11,6 +11,7 @@ import { getMovementReasonRequirement } from "../../src/services/movementPolicy"
 import { useRequireAttendanceAccess } from "../../src/hooks/useRouteAuthorization";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useMovementReasonPrompt } from "../../components/MovementReasonPrompt";
+import { runMobileFaceLiveness } from "../../src/services/faceLiveness";
 
 export default function StudentFaceCheckin({ classId }: { classId: string }) {
   const router = useRouter();
@@ -63,6 +64,8 @@ export default function StudentFaceCheckin({ classId }: { classId: string }) {
 
     try {
       setLoading(true);
+
+      await runMobileFaceLiveness();
 
       const photo = await cameraRef.current.takePictureAsync({
         base64: true,

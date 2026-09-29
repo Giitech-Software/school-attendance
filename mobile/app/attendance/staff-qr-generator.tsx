@@ -18,6 +18,8 @@ import { useRouter } from "expo-router";
 import { captureRef } from "react-native-view-shot";
 import { generateQrPayload } from "../../src/services/qr";
 import { listStaff } from "../../src/services/staff";
+import { getTenantScope } from "../../src/services/tenantScope";
+import { auth } from "../firebase";
 import AppInput from "@/components/AppInput";
 import { useRequireAdmin } from "../../src/hooks/useRouteAuthorization";
 
@@ -51,8 +53,13 @@ export default function StaffQrGenerator() {
     (async () => {
       try {
         const rows = await listStaff();
+        const scope = await getTenantScope();
+        const currentUid = auth.currentUser?.uid;
         setStaffList(
           rows
+            .filter((item) => Boolean(item.tenantId))
+            .filter((item) => !["super_admin", "superadmin"].includes((item.role ?? "").toLowerCase()))
+            .filter((item) => !scope.isSuperAdmin || item.userUid !== currentUid)
             .filter((item) => Boolean(item.id))
             .sort((a, b) => (a.name ?? a.staffId ?? "").localeCompare(b.name ?? b.staffId ?? ""))
         );

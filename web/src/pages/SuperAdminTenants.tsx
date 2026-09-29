@@ -216,8 +216,8 @@ export default function SuperAdminTenants() {
           </div>
         )}
 
-        <section className="rounded-lg border border-amber-200 bg-amber-50 p-4 shadow-sm">
-          <h2 className="text-lg font-extrabold text-amber-950">Homepage system alert</h2>
+        <details open className="rounded-lg border border-amber-200 bg-amber-50 p-4 shadow-sm">
+          <summary className="cursor-pointer list-none text-lg font-extrabold text-amber-950">Homepage system alert <span className="float-right text-sm font-semibold text-amber-700">Open / close</span></summary>
           <p className="mt-1 text-sm text-amber-900">Publish an operational notice, such as a planned upgrade, across all tenant homepages.</p>
           <form onSubmit={handleCreateAlert} className="mt-3 grid gap-2 lg:grid-cols-[1fr_2fr_auto_auto] lg:items-end">
             <label><span className="auth-label">Title</span><input value={alertTitle} onChange={(event) => setAlertTitle(event.target.value)} className="enterprise-input mt-1" placeholder="Planned system upgrade" /></label>
@@ -226,7 +226,7 @@ export default function SuperAdminTenants() {
             <button type="submit" className="enterprise-button-primary">{editingAlertId ? "Save alert changes" : "Publish alert"}</button>
           </form>
           {systemAlerts.length ? <div className="mt-4 space-y-2 border-t border-amber-200 pt-3">{systemAlerts.map((alert) => <div key={alert.id} className="flex items-start justify-between gap-3 rounded-lg bg-white/70 p-3"><div><p className="font-bold text-amber-950">{alert.title}</p><p className="text-sm text-amber-900">{alert.body}</p><p className="text-xs text-amber-700">{alert.endsAt ? `Ends ${new Date(alert.endsAt).toLocaleString()}` : "No expiry"}</p></div><div className="flex gap-3"><button type="button" onClick={() => { setEditingAlertId(alert.id ?? null); setAlertTitle(alert.title); setAlertBody(alert.body); setAlertEndsAt(alert.endsAt ? new Date(alert.endsAt).toISOString().slice(0, 10) : ""); }} className="text-xs font-bold text-amber-800 hover:underline">Edit</button><button type="button" onClick={() => void handleHideAlert(alert.id)} className="text-xs font-bold text-red-700 hover:underline">Hide</button></div></div>)}</div> : null}
-        </section>
+        </details>
 
         <section className="grid grid-cols-2 gap-3 bg-slate-100 p-3 lg:grid-cols-4">
           {[
@@ -242,8 +242,9 @@ export default function SuperAdminTenants() {
           ))}
         </section>
 
-        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <details className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <summary className="cursor-pointer list-none text-lg font-extrabold text-slate-950">User registrations <span className="float-right text-sm font-semibold text-slate-500">Open / close</span></summary>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-lg font-extrabold text-slate-950">User registrations</h2>
               <p className="text-sm text-slate-500">New accounts appear here immediately. Tenant administrators see only registrations made with their organisation invite.</p>
@@ -268,9 +269,11 @@ export default function SuperAdminTenants() {
               </Link>
             ))}
           </div>
-        </section>
+        </details>
 
-        <section className="grid gap-4 lg:grid-cols-[390px_1fr]">
+        <details className="rounded-lg border border-slate-200 bg-slate-100 p-3 shadow-sm">
+          <summary className="cursor-pointer list-none px-1 text-lg font-extrabold text-slate-950">Tenant operations <span className="float-right text-sm font-semibold text-slate-500">Open / close</span></summary>
+          <div className="mt-3 grid gap-4 lg:grid-cols-[390px_1fr]">
           <form onSubmit={handleCreateTenant} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="text-lg font-extrabold text-slate-950">Create tenant</h2>
             <div className="mt-4 space-y-3">
@@ -321,7 +324,9 @@ export default function SuperAdminTenants() {
             {legacyStaff.length ? <div className="mt-3 space-y-2"><label className="flex items-center gap-2 text-sm font-semibold text-slate-700"><input type="checkbox" checked={legacyStaff.length > 0 && selectedLegacyStaff.length === legacyStaff.length} onChange={(event) => setSelectedLegacyStaff(event.target.checked ? legacyStaff.map((staff) => staff.id!).filter(Boolean) : [])} /> Select all legacy staff</label>{legacyStaff.map((staff) => <label key={staff.id} className="flex items-center gap-3 rounded-lg bg-white p-3"><input type="checkbox" checked={selectedLegacyStaff.includes(staff.id!)} onChange={() => setSelectedLegacyStaff((ids) => ids.includes(staff.id!) ? ids.filter((id) => id !== staff.id) : [...ids, staff.id!])} /><div className="min-w-0"><p className="truncate font-semibold text-slate-900">{staff.name}</p><p className="text-sm text-slate-700">{staff.staffId || "No Staff ID"}</p></div></label>)}</div> : <p className="mt-3 text-sm text-slate-700">No legacy staff records found.</p>}
           </section>
 
-          <div className="space-y-3">
+          <details open className="space-y-3 lg:col-span-2">
+            <summary className="cursor-pointer list-none rounded-lg border border-slate-200 bg-white p-3 text-base font-extrabold text-slate-950 shadow-sm">Manage tenants <span className="float-right text-sm font-semibold text-slate-500">Open / close</span></summary>
+            <div className="space-y-3">
             {tenants.length === 0 ? (
               <div className="rounded-lg border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">No tenants created yet.</div>
             ) : tenants.map((tenant) => (
@@ -363,8 +368,10 @@ export default function SuperAdminTenants() {
                 </div>
               </article>
             ))}
+            </div>
+          </details>
           </div>
-        </section>
+        </details>
       </div>
     </div>
   );

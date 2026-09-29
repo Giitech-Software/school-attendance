@@ -4,7 +4,7 @@ import { getStaffGlobalSummary, type StaffAttendanceSummary } from "../services/
 import { listTerms, type Term } from "../services/terms";
 import { exportReportCsv, openReportPdf } from "../services/reportExport";
 import AttendanceTotalsCards from "../components/AttendanceTotalsCards";
-import AttendancePieChart from "../components/AttendancePieChart";
+import AttendanceOverviewCharts from "../components/AttendanceOverviewCharts";
 import AttendanceAuditPanel from "../components/AttendanceAuditPanel";
 
 function currentTermFrom(terms: Term[]) {
@@ -122,7 +122,9 @@ export default function ReportsStaffTermly() {
           </div>
         ) : null}
 
-        {rows.length > 0 ? <><AttendanceTotalsCards rows={rows} subjectLabel="Staff" groupLabel="All staff" /><AttendancePieChart present={rows.reduce((n, r) => n + r.presentCount, 0)} late={rows.reduce((n, r) => n + r.lateCount, 0)} absent={rows.reduce((n, r) => n + r.absentCount, 0)} /><AttendanceAuditPanel periodFrom={selectedTerm?.startDate} periodTo={selectedTerm?.endDate} /></> : null}
+        {rows.length > 0 ? <AttendanceTotalsCards rows={rows} subjectLabel="Staff" groupLabel="All staff" /> : null}
+        {selectedTerm ? <AttendanceOverviewCharts present={rows.reduce((n, r) => n + r.presentCount, 0)} late={rows.reduce((n, r) => n + r.lateCount, 0)} absent={rows.reduce((n, r) => n + r.absentCount, 0)} title="Termly staff attendance charts" /> : null}
+        {rows.length > 0 ? <AttendanceAuditPanel periodFrom={selectedTerm?.startDate} periodTo={selectedTerm?.endDate} /> : null}
         {loading && <div className="mt-4 text-slate-500">Loading report...</div>}
         {!loading && !selectedTerm && <div className="mt-4 text-slate-500">Select a term to view report data.</div>}
         {!loading && selectedTerm && rows.length === 0 && <div className="mt-4 text-slate-500">No data for selected term.</div>}

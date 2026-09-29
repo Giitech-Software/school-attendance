@@ -59,6 +59,34 @@ service cloud.firestore {
       return sameTenantRequest() && sameTenantResource();
     }
 
+    function legacyStaffAttendanceBelongsToCallerTenant() {
+      return callerHasTenant()
+        && resource.data.keys().hasAll(['subjectType', 'subjectId'])
+        && resource.data.subjectType == 'staff'
+        && resource.data.subjectId is string
+        && (
+          !resource.data.keys().hasAny(['tenantId'])
+          || !(resource.data.tenantId is string)
+          || resource.data.tenantId == ''
+        )
+        && exists(/databases/$(database)/documents/staff/$(resource.data.subjectId))
+        && get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.tenantId == callerUser().tenantId;
+    }
+
+    function sameTenantAttendanceResource() {
+      return isSuperAdmin()
+        || !callerHasTenant()
+        || (
+          resource.data.keys().hasAny(['tenantId'])
+          && resource.data.tenantId == callerUser().tenantId
+        )
+        || legacyStaffAttendanceBelongsToCallerTenant();
+    }
+
+    function sameTenantAttendanceUpdate() {
+      return sameTenantRequest() && sameTenantAttendanceResource();
+    }
+
     function isStaffRole() {
       return isApproved()
         && callerUser().role in [
@@ -210,7 +238,18 @@ service cloud.firestore {
     function isSelfStaffCheckout() {
       return isUpdatingOwnStaffAttendance()
         && request.resource.data.type == 'out'
-        && sameTenantUpdate();
+        && sameTenantAttendanceUpdate();
+    }
+
+    function isPrivilegedStaffCheckout() {
+      return (isAdmin() || canTakeStaffAttendance())
+        && sameTenantAttendanceUpdate()
+        && resource.data.subjectType == 'staff'
+        && request.resource.data.subjectType == 'staff'
+        && request.resource.data.subjectId == resource.data.subjectId
+        && request.resource.data.date == resource.data.date
+        && request.resource.data.type == 'out'
+        && request.resource.data.checkOutTime is string;
     }
 
     function isReadingWardAttendance() {
@@ -449,7 +488,7 @@ service cloud.firestore {
     }
 
     match /attendance/{recId} {
-      allow get: if ((isAdmin() || canTakeStaffAttendance()) && (resource == null || sameTenantResource()))
+      allow get: if ((isAdmin() || canTakeStaffAttendance()) && (resource == null || sameTenantAttendanceResource()))
         || (resource == null && isStaffRole() && callerUser().canTakeSelfAttendance == true)
         || (resource == null && canTakeStudentAttendance())
         || (resource.data.subjectType == 'student' && isAssignedToClassDoc(resource.data.classDocId))
@@ -473,6 +512,8 @@ service cloud.firestore {
         );
 
       allow update: if isSelfStaffCheckout();
+
+      allow update: if isPrivilegedStaffCheckout();
 
       allow update: if validAttendanceShape()
         && sameTenantUpdate()
@@ -525,7 +566,7 @@ service cloud.firestore {
         && request.resource.data.body is string
         && (
           (isSuperAdmin() && (request.resource.data.recipient == 'super_admin' || request.resource.data.recipient == 'all_tenants' || request.resource.data.recipient == 'tenant_admin'))
-          || (callerUser().role == 'admin' && (request.resource.data.recipient == 'super_admin' || (request.resource.data.recipient == 'tenant_staff' && request.resource.data.recipientTenantId == callerUser().tenantId)))
+          || (callerUser().role == 'admin' && (request.resource.data.recipient == 'super_admin' || ((request.resource.data.recipient == 'tenant_staff' || request.resource.data.recipient == 'staff_member') && request.resource.data.recipientTenantId == callerUser().tenantId)))
         );
       allow read: if isApproved()
         && (isSuperAdmin()
@@ -533,7 +574,8 @@ service cloud.firestore {
           || resource.data.tenantId == callerUser().tenantId
           || resource.data.recipient == 'super_admin'
           || resource.data.recipient == 'all_tenants'
-          || resource.data.recipientTenantId == callerUser().tenantId);
+          || resource.data.recipientTenantId == callerUser().tenantId
+          || resource.data.senderUid == request.auth.uid);
       allow update: if isAdmin()
         && (isSuperAdmin() || resource.data.tenantId == callerUser().tenantId);
       allow delete: if false;

@@ -110,9 +110,9 @@ export async function getStaffGlobalSummary(fromIso: string, toIso: string, incl
   const holidayDates = new Set(holidays.map((holiday) => holiday.date));
   const expectedDates = getStaffAttendanceDaysInRange(fromIso, toIso, includeWeekends || attendanceSettings.allowStaffWeekendAttendance)
     .filter((date) => !holidayDates.has(date));
-  const summaries = await Promise.all(
-    allStaff.map(async (staff: any) => {
-    const records = await getStaffAttendanceInRange(staff.id, fromIso, toIso);
+
+  const summaries = await Promise.all(allStaff.map(async (staff: any) => {
+      const records = await getStaffAttendanceInRange(staff.id, fromIso, toIso);
       const {
         present,
         late,
@@ -137,8 +137,7 @@ export async function getStaffGlobalSummary(fromIso: string, toIso: string, incl
         percentagePresent,
         earlyDepartureCount,
       };
-    })
-  );
+    }));
 
   return summaries;
 }

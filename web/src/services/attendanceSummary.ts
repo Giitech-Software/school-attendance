@@ -237,17 +237,15 @@ export async function getAttendanceSummary(opts: GetAttendanceSummaryOptions = {
     students = students.filter((student) => student.classId === opts.classId || student.classDocId === opts.classId);
   }
 
-  const summaries = await Promise.all(
-    students.map(async (student) => {
-      const summary = await computeAttendanceSummaryForStudent(student.id, fromIso, toIso, expectedDates);
-      return {
-        ...summary,
-        studentId: student.id,
-        displayId: student.studentId ?? student.rollNo ?? "",
-        studentName: opts.includeStudentName ? student.name ?? "" : undefined,
-      };
-    })
-  );
+  const summaries = await Promise.all(students.map(async (student) => {
+    const summary = await computeAttendanceSummaryForStudent(student.id, fromIso, toIso, expectedDates);
+    return {
+      ...summary,
+      studentId: student.id,
+      displayId: student.studentId ?? student.rollNo ?? "",
+      studentName: opts.includeStudentName ? student.name ?? "" : undefined,
+    };
+  }));
 
   summaries.sort((a, b) => b.percentagePresent - a.percentagePresent);
   (summaries as any).__fromIso = fromIso;

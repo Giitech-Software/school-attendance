@@ -15,6 +15,7 @@
   "main": "lib/index.js",
   "dependencies": {
     "@aws-sdk/client-rekognition": "^3.1002.0",
+    "@aws-sdk/client-sts": "^3.1136.0",
     "aws-sdk": "^2.1693.0",
     "firebase-admin": "^13.7.0",
     "firebase-functions": "^7.0.6"

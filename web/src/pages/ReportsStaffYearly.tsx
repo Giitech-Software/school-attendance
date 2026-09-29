@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getStaffGlobalSummary, type StaffAttendanceSummary } from "../services/staffAttendanceSummary";
 import { exportReportCsv, openReportPdf } from "../services/reportExport";
 import AttendanceTotalsCards from "../components/AttendanceTotalsCards";
-import AttendancePieChart from "../components/AttendancePieChart";
+import AttendanceOverviewCharts from "../components/AttendanceOverviewCharts";
 import AttendanceAuditPanel from "../components/AttendanceAuditPanel";
 
 function yearRange(year: number) {
@@ -95,7 +95,9 @@ export default function ReportsStaffYearly() {
           </div>
         ) : null}
 
-        {rows.length > 0 ? <><AttendanceTotalsCards rows={rows} subjectLabel="Staff" groupLabel="All staff" /><AttendancePieChart present={rows.reduce((n, r) => n + r.presentCount, 0)} late={rows.reduce((n, r) => n + r.lateCount, 0)} absent={rows.reduce((n, r) => n + r.absentCount, 0)} /><AttendanceAuditPanel periodFrom={selectedRange.fromIso} periodTo={selectedRange.toIso} /></> : null}
+        {rows.length > 0 ? <AttendanceTotalsCards rows={rows} subjectLabel="Staff" groupLabel="All staff" /> : null}
+        {!loading ? <AttendanceOverviewCharts present={rows.reduce((n, r) => n + r.presentCount, 0)} late={rows.reduce((n, r) => n + r.lateCount, 0)} absent={rows.reduce((n, r) => n + r.absentCount, 0)} title="Yearly staff attendance charts" /> : null}
+        {rows.length > 0 ? <AttendanceAuditPanel periodFrom={selectedRange.fromIso} periodTo={selectedRange.toIso} /> : null}
         {loading && <div className="mt-4 text-slate-500">Loading report...</div>}
         {!loading && rows.length === 0 && <div className="mt-4 text-slate-500">No data for selected year.</div>}
 

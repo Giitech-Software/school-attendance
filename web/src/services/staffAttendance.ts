@@ -1,9 +1,9 @@
 import { query, where, getDocs, getDoc, doc, collection } from "firebase/firestore";
-import { auth, db } from "../firebase";
+import { db } from "../firebase";
 import type { AttendanceRecord } from "../types";
 import type { AppUser } from "./users";
 import { listUsersByRole } from "./users";
-import { assertAttendanceCheckInOpen, assertStaffAttendanceDayAllowed, getAttendanceSettings } from "./attendanceSettings";
+import { assertAttendanceCheckInOpen, assertStaffAttendanceDayAllowed } from "./attendanceSettings";
 import { todayISO } from "./attendance";
 import { recordAttendance } from "./attendance";
 import { getTenantScope, tenantConstraints } from "./tenantScope";
@@ -122,8 +122,9 @@ function isLate(checkInIso: string, lateAfter: string): boolean {
 }
 
 export async function findStaffAttendanceForDate(staffId: string, date: string, selfOnly = false): Promise<AttendanceRecord | null> {
+  const attendanceDocId = `${encodeURIComponent("staff")}_${encodeURIComponent(staffId)}_${date}`;
   if (selfOnly) {
-    const snap = await getDoc(doc(attendanceCollection, `${encodeURIComponent("staff")}_${encodeURIComponent(staffId)}_${date}`));
+    const snap = await getDoc(doc(attendanceCollection, attendanceDocId));
     return snap.exists() ? ({ id: snap.id, ...(snap.data() as any) } as AttendanceRecord) : null;
   }
   const q = query(
@@ -134,8 +135,16 @@ export async function findStaffAttendanceForDate(staffId: string, date: string, 
     ...tenantConstraints(await getTenantScope())
   );
   const snap = await getDocs(q);
-  if (snap.empty) return null;
-  return { id: snap.docs[0].id, ...(snap.docs[0].data() as any) } as AttendanceRecord;
+  if (!snap.empty) return { id: snap.docs[0].id, ...(snap.docs[0].data() as any) } as AttendanceRecord;
+
+  // Legacy records created before tenant stamping are omitted by the scoped query.
+  // Rules permit this direct lookup only when the linked staff profile proves tenant ownership.
+  const legacySnap = await getDoc(doc(attendanceCollection, attendanceDocId));
+  if (!legacySnap.exists()) return null;
+  const legacyRecord = legacySnap.data() as AttendanceRecord;
+  const hasTenantId = typeof legacyRecord.tenantId === "string" && legacyRecord.tenantId.trim().length > 0;
+  if (hasTenantId || legacyRecord.subjectType !== "staff" || legacyRecord.subjectId !== staffId || legacyRecord.date !== date) return null;
+  return { id: legacySnap.id, ...legacyRecord } as AttendanceRecord;
 }
 
 export async function registerStaffAttendance({
@@ -154,6 +163,20 @@ export async function registerStaffAttendance({
   selfOnly?: boolean;
 }): Promise<AttendanceRecord> {
   const date = todayISO();
+  const staffSnap = await getDoc(doc(db, "staff", staffId));
+  if (!staffSnap.exists()) throw new Error("Staff profile not found. Refresh the staff list and try again.");
+  const staffData = staffSnap.data();
+  const scope = await getTenantScope();
+  const staffTenantId = typeof staffData.tenantId === "string" && staffData.tenantId.trim()
+    ? staffData.tenantId.trim()
+    : scope.tenantId;
+  if (!staffTenantId) throw new Error("This staff profile is not assigned to an organisation. Assign it before recording attendance.");
+  if (scope.isScoped && staffTenantId !== scope.tenantId) throw new Error("This staff profile belongs to a different organisation.");
+  const attendanceTenant = {
+    tenantId: staffTenantId,
+    tenantName: staffData.tenantName ?? scope.tenantName ?? null,
+    tenantType: staffData.tenantType ?? scope.tenantType ?? null,
+  };
   let existing: AttendanceRecord | null;
   try {
     existing = await findStaffAttendanceForDate(staffId, date, selfOnly);
@@ -167,8 +190,9 @@ export async function registerStaffAttendance({
     });
     throw error;
   }
+  let settings;
   try {
-    await assertStaffAttendanceDayAllowed();
+    settings = await assertStaffAttendanceDayAllowed();
   } catch (error) {
     console.error("[attendance:self] failed while reading attendance settings", {
       operation: "get-attendance-settings",
@@ -192,6 +216,7 @@ export async function registerStaffAttendance({
       subjectType: "staff",
       subjectId: staffId,
       staffId,
+      ...attendanceTenant,
       date,
       type: "in",
       method,
@@ -216,41 +241,23 @@ export async function registerStaffAttendance({
   if (!existing) throw new Error("Staff must check-in before checking-out.");
   if (existing.checkOutTime) throw new Error("Staff already checked-out today.");
 
-  const checkoutAuthorizationContext = {
-    operation: "update-attendance",
-    attendanceId: existing.id,
-    requestedStaffId: staffId,
-    existingSubjectType: existing.subjectType,
-    existingSubjectId: existing.subjectId,
-    existingStaffId: existing.staffId,
-    existingTenantId: (existing as any).tenantId,
-    requestSubjectId: existing.subjectId ?? staffId,
-    selfOnly,
-    authUid: auth.currentUser?.uid ?? null,
-    authEmail: auth.currentUser?.email ?? null,
-    storedSubjectId: String(existing.subjectId ?? ""),
-    storedStaffId: String(existing.staffId ?? ""),
-  };
-  console.info("[attendance:self] checkout authorization context", JSON.stringify(checkoutAuthorizationContext));
-
-  const settings = await getAttendanceSettings();
   const movementRequirement = getMovementReasonRequirement(settings, "out");
   const cleanedReason = cleanMovementReason(movementReason);
   if (movementRequirement && !cleanedReason) throw new Error("A movement book entry is required for this early departure.");
 
   try {
     return await recordAttendance({
-      ...existing,
+      id: existing.id,
       subjectType: "staff",
       subjectId: existing.subjectId ?? staffId,
-      staffId: existing.staffId ?? staffId,
-    date,
-    type: "out",
-    method: existing.method ?? method,
-    biometric,
-    earlyCheckoutReason: movementRequirement?.kind === "early_checkout" ? cleanedReason : null,
-    earlyCheckoutMinutes: movementRequirement?.kind === "early_checkout" ? movementRequirement.minutes : null,
-    selfOnly,
+      ...attendanceTenant,
+      date,
+      type: "out",
+      method: existing.method ?? method,
+      biometric,
+      earlyCheckoutReason: movementRequirement?.kind === "early_checkout" ? cleanedReason : null,
+      earlyCheckoutMinutes: movementRequirement?.kind === "early_checkout" ? movementRequirement.minutes : null,
+      selfOnly,
     } as any);
   } catch (error) {
     console.error("[attendance:self] failed while checking staff out", {

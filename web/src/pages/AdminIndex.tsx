@@ -301,11 +301,11 @@ export default function AdminIndex() {
             if (!items.length) return null;
 
             return (
-              <div key={group.title} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-md shadow-slate-900/10">
-                <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 sm:px-5">
+              <details key={group.title} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-md shadow-slate-900/10">
+                <summary className="cursor-pointer list-none border-b border-slate-200 bg-slate-50 px-4 py-3 sm:px-5">
                   <h2 className="text-base font-extrabold text-slate-950">{group.title}</h2>
-                  <p className="mt-0.5 text-sm text-slate-500">{group.description}</p>
-                </div>
+                  <p className="mt-0.5 text-sm text-slate-500">{group.description} <span className="float-right font-semibold text-slate-400">Open / close</span></p>
+                </summary>
                 <div className="grid gap-px bg-slate-200 sm:grid-cols-2 xl:grid-cols-4">
                   {items.map((item) => {
                     const label = item.href === "/staff" && !allowsSchoolFeatures ? `Manage ${personnelLabel}` : item.label;
@@ -326,7 +326,7 @@ export default function AdminIndex() {
                     );
                   })}
                 </div>
-              </div>
+              </details>
             );
           })}
         </section>

@@ -52,8 +52,27 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { authUser, userDoc, loading } = useCurrentUser();
-  const [newMessageCount, setNewMessageCount] = useState(0);
-  useEffect(() => { let active = true; void listMessages().then((rows) => { if (active) setNewMessageCount(rows.filter((row) => row.senderUid !== (userDoc?.uid ?? userDoc?.id)).length); }).catch(() => { if (active) setNewMessageCount(0); }); return () => { active = false; }; }, [userDoc?.uid, userDoc?.id, location.pathname]);
+  const [messageBadge, setMessageBadge] = useState({ total: 0, unread: 0 });
+  useEffect(() => {
+    let active = true;
+    const refreshMessageBadge = async () => {
+      try {
+        const rows = await listMessages();
+        const uid = userDoc?.uid ?? userDoc?.id;
+        const received = rows.filter((row) => uid && row.senderUid !== uid);
+        if (active) setMessageBadge({
+          total: received.length,
+          unread: received.filter((row) => !(row.readBy ?? []).includes(uid!)).length,
+        });
+      } catch {
+        if (active) setMessageBadge({ total: 0, unread: 0 });
+      }
+    };
+    const handleMessageRead = () => { void refreshMessageBadge(); };
+    void refreshMessageBadge();
+    window.addEventListener("messages:read", handleMessageRead);
+    return () => { active = false; window.removeEventListener("messages:read", handleMessageRead); };
+  }, [userDoc?.uid, userDoc?.id, location.pathname]);
   const { staff: currentStaff } = useCurrentStaff();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrollState, setScrollState] = useState({ canUp: false, canDown: false });
@@ -182,7 +201,7 @@ export default function Layout() {
           <div className="mt-2 space-y-1">
             {visibleMainLinks.map((link) => (
               <NavLink key={link.to} to={link.to} end={link.to === "/"} className={(state) => `${navLinkClass({ isActive: state.isActive && !(link.to === "/attendance/checkin" && isSelfAttendanceRoute) })} ${sidebarCollapsed ? "justify-center px-2" : ""}`} title={sidebarCollapsed ? link.label : undefined}>
-                {sidebarCollapsed ? link.label.charAt(0) : link.label}{link.to === "/messages" && newMessageCount > 0 ? <span className="ml-2 inline-flex min-w-5 animate-pulse items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-extrabold text-white">{newMessageCount > 99 ? "99+" : newMessageCount}</span> : null}
+                {sidebarCollapsed ? link.label.charAt(0) : link.label}{link.to === "/messages" && messageBadge.total > 0 ? <span aria-label={`${messageBadge.unread ? `${messageBadge.unread} unread` : "All messages viewed"}; ${messageBadge.total} messages`} title={messageBadge.unread ? `${messageBadge.unread} unread message${messageBadge.unread === 1 ? "" : "s"}` : "All messages viewed"} className={`ml-2 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-extrabold text-white ${messageBadge.unread ? "animate-pulse bg-red-600" : "bg-emerald-600"}`}>{messageBadge.total > 99 ? "99+" : messageBadge.total}</span> : null}
               </NavLink>
             ))}
           </div>

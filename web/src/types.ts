@@ -65,6 +65,7 @@ export type AttendanceRecord = {
   createdAt?: { seconds: number; nanoseconds: number } | string | number;
   tenantId?: string | null;
   tenantName?: string | null;
+  tenantType?: string | null;
 };
 
 export type Term = {

@@ -18,6 +18,7 @@ import * as FileSystem from "expo-file-system/legacy"; // LEGACY API
 import * as Print from "expo-print";
 
 import { listStudents } from "../../src/services/students";
+import { getTenantScope } from "../../src/services/tenantScope";
 import { generateQrPayload } from "../../src/services/qr";
 import type { Student } from "../../src/services/types";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -100,8 +101,9 @@ const router = useRouter();
     (async () => {
       try {
         const s = await listStudents();
+        const scope = await getTenantScope();
         if (!mounted) return;
-        setStudents((s || []).filter((st: any) => !!st?.id));
+        setStudents((s || []).filter((st: any) => !!st?.id && (!scope.isSuperAdmin || Boolean(st.tenantId))));
       } catch (err) {
         console.error("listStudents error", err);
         Alert.alert("Load error", "Failed to load students.");

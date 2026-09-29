@@ -132,19 +132,29 @@ async function writeAttendance(record: Partial<AttendanceRecord> & {
   selfOnly?: boolean;
 }) {
   const now = new Date().toISOString();
-  const location = await buildPresenceAudit(now);
   const scope = await getTenantScope();
 
   if (record.id) {
     const { id, createdAt, selfOnly, ...updateFields } = record as any;
     if (record.type === "out") updateFields.checkOutTime = now;
     if (record.type === "in" && !record.checkInTime) updateFields.checkInTime = now;
-    if (!selfOnly) updateFields.location = location;
+    if (!selfOnly && record.type !== "out") updateFields.location = await buildPresenceAudit(now);
     const scopedUpdate = withTenantScope(updateFields, scope);
-    console.info("[attendance:write] update payload", JSON.stringify(scopedUpdate));
+    if (record.tenantId) {
+      scopedUpdate.tenantId = record.tenantId;
+      scopedUpdate.tenantName = record.tenantName ?? null;
+      scopedUpdate.tenantType = (record as any).tenantType ?? scope.tenantType ?? null;
+    } else {
+      delete scopedUpdate.tenantId;
+      delete scopedUpdate.tenantName;
+      delete scopedUpdate.tenantType;
+    }
+    delete scopedUpdate.selfOnly;
     await updateDoc(doc(db, "attendance", id), scopedUpdate);
     return normalizeAttendance({ id, ...scopedUpdate });
   }
+
+  const location = await buildPresenceAudit(now);
 
   const payload = withTenantScope({
     ...record,
@@ -155,6 +165,11 @@ async function writeAttendance(record: Partial<AttendanceRecord> & {
     method: record.method ?? "manual",
     location,
   }, scope);
+  if (record.tenantId) {
+    payload.tenantId = record.tenantId;
+    payload.tenantName = record.tenantName ?? null;
+    (payload as any).tenantType = (record as any).tenantType ?? scope.tenantType ?? null;
+  }
   const ref = doc(attendanceCollection, stableAttendanceId(record.subjectType, record.subjectId, record.date));
   if (record.selfOnly) {
     const { selfOnly: _selfOnly, ...createPayload } = payload as any;
@@ -281,7 +296,7 @@ async function registerAttendanceUnifiedUnsafe({
   });
 }
 
-export async function recordAttendance(record: Omit<AttendanceRecord, "id" | "createdAt">): Promise<AttendanceRecord> {
+export async function recordAttendance(record: Partial<AttendanceRecord> & Pick<AttendanceRecord, "subjectType" | "subjectId" | "date" | "type">): Promise<AttendanceRecord> {
   return writeAttendance({
     ...record,
     subjectType: record.subjectType ?? "student",

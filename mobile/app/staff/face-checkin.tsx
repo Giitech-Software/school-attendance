@@ -21,6 +21,7 @@ import { useRequireAttendanceAccess } from "../../src/hooks/useRouteAuthorizatio
 import { useCurrentStaff } from "../../src/hooks/useCurrentStaff";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useMovementReasonPrompt } from "../../components/MovementReasonPrompt";
+import { runMobileFaceLiveness } from "../../src/services/faceLiveness";
 
 export default function FaceCheckin() {
   const router = useRouter();
@@ -99,6 +100,8 @@ export default function FaceCheckin() {
 
     try {
       setLoading(true);
+
+      await runMobileFaceLiveness();
 
       const photo = await cameraRef.current.takePictureAsync({
         base64: true,

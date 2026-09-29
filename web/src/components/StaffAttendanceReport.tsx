@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getStaffGlobalSummary, type StaffAttendanceSummary } from "../services/staffAttendanceSummary";
 import { exportReportCsv, openReportPdf } from "../services/reportExport";
 import AttendanceTotalsCards from "./AttendanceTotalsCards";
-import AttendancePieChart from "./AttendancePieChart";
+import AttendanceOverviewCharts from "./AttendanceOverviewCharts";
 import AttendanceAuditPanel from "./AttendanceAuditPanel";
 import { listStaffGroups, type StaffGroup } from "../services/staffGroups";
 
@@ -109,7 +109,7 @@ export default function StaffAttendanceReport({ title, description, initialFrom,
             </div>
             <AttendanceTotalsCards rows={results ?? []} subjectLabel="Staff" groupLabel="Selected staff group" selectedMetric={metricFilter} onSelectMetric={(metric) => setMetricFilter(metric)} />
             {metricFilter ? <button type="button" onClick={() => setMetricFilter(null)} className="mt-2 text-sm font-semibold text-primary hover:underline">Clear staff status filter</button> : null}
-            <><AttendancePieChart present={visibleResults.reduce((n, r) => n + r.presentCount, 0)} late={visibleResults.reduce((n, r) => n + r.lateCount, 0)} absent={visibleResults.reduce((n, r) => n + r.absentCount, 0)} /><AttendanceAuditPanel periodFrom={from} periodTo={to} /></>
+            <><AttendanceOverviewCharts present={visibleResults.reduce((n, r) => n + r.presentCount, 0)} late={visibleResults.reduce((n, r) => n + r.lateCount, 0)} absent={visibleResults.reduce((n, r) => n + r.absentCount, 0)} title={`${title} charts`} /><AttendanceAuditPanel periodFrom={from} periodTo={to} /></>
             <div className="mt-3 rounded-lg border border-sky-100 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-800">Early departures: {visibleResults.reduce((total, row) => total + (row.earlyDepartureCount ?? 0), 0)}</div>
 
             <div className="mt-3 grid gap-3 md:hidden">
@@ -179,6 +179,7 @@ export default function StaffAttendanceReport({ title, description, initialFrom,
             </div>
           </>
         ) : null}
+        {results !== null && visibleResults && visibleResults.length === 0 ? <AttendanceOverviewCharts present={0} late={0} absent={0} title={`${title} charts`} /> : null}
         {results && results.length === 0 ? <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-500">No staff attendance records were found for the selected date range.</p> : null}
         {!results && !loading ? <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-500">Generate a staff report to see all staff attendance counts.</p> : null}
         {loading ? <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-500">Loading report...</p> : null}

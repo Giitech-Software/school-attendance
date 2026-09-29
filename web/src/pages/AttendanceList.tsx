@@ -254,7 +254,10 @@ export default function AttendanceList() {
             {visibleRecords.map((record) => {
               const subject = displaySubject(record);
               const type = subjectType(record);
-              const movementReason = [record.lateReason, record.earlyCheckoutReason].filter(Boolean).join(" / ");
+              const movementReason = [
+                record.lateReason || (record.status === "late" ? "Late arrival (reason not recorded)" : null),
+                record.earlyCheckoutReason,
+              ].filter(Boolean).join(" / ");
               return (
                 <div key={record.id ?? `${subjectKey(record)}-${record.date}`} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
@@ -327,7 +330,10 @@ export default function AttendanceList() {
                       <td className="px-2 py-3 text-slate-700">{formatTime(record.checkOutTime)}</td>
                       <td className="px-2 py-3 capitalize text-slate-700">{record.method ?? "manual"}</td>
                       <td className="px-2 py-3 text-slate-700">{record.biometric ? "Yes" : "No"}</td>
-                      <td className="px-2 py-3 text-xs font-semibold text-slate-700">{[record.lateReason, record.earlyCheckoutReason].filter(Boolean).join(" / ") || "-"}</td>
+                      <td className="px-2 py-3 text-xs font-semibold text-slate-700">{[
+                        record.lateReason || (record.status === "late" ? "Late arrival (reason not recorded)" : null),
+                        record.earlyCheckoutReason,
+                      ].filter(Boolean).join(" / ") || "-"}</td>
                     </tr>
                   );
                 })}

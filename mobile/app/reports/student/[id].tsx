@@ -286,9 +286,9 @@ const attendedCount =
                   </Text>
                 )}
 
-                {item.lateReason ? (
+                {item.status === "late" || item.lateReason ? (
                   <Text className="text-xs text-amber-700">
-                    Movement book — late arrival: {item.lateReason}
+                    Movement book — late arrival: {item.lateReason || "reason not recorded"}
                   </Text>
                 ) : null}
 

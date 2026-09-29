@@ -102,6 +102,7 @@
 
   .status-error {
     @apply rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700;
+    color: #b91c1c;
   }
 
   .report-page {

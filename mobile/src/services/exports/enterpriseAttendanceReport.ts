@@ -34,7 +34,7 @@ export async function buildMobileAggregateReport(options: AggregateOptions) {
     const subject = names.get(id);
     if (!subject) return [];
     const entries: any[] = [];
-    if (record.lateReason) entries.push({ ...subject, date: record.date, eventType: "Late arrival", reason: record.lateReason, checkInTime: record.checkInTime, checkOutTime: record.checkOutTime });
+    if (record.status === "late" || record.lateReason) entries.push({ ...subject, date: record.date, eventType: "Late arrival", reason: record.lateReason || "Late arrival recorded (reason not captured)", checkInTime: record.checkInTime, checkOutTime: record.checkOutTime });
     if (record.earlyCheckoutReason) entries.push({ ...subject, date: record.date, eventType: "Early departure", reason: record.earlyCheckoutReason, checkInTime: record.checkInTime, checkOutTime: record.checkOutTime });
     return entries;
   });
@@ -61,7 +61,10 @@ export async function buildMobileDetailReport(options: AggregateOptions & { deta
     periodLabel: options.periodLabel || `${options.fromIso} to ${options.toIso}`,
     organizationName: scope.tenantName || "ASTEM Attendance Register", organizationType: scope.tenantType,
     logoUrl: REPORT_LOGO_URL, reference: makeAttendanceReportReference(options.subjectLabel, options.fromIso, options.toIso),
-    detailRows: options.detailRows,
+    detailRows: options.detailRows.map((record) => ({
+      ...record,
+      movementEntry: record.movementEntry || (record.status === "late" ? "Late arrival (reason not recorded)" : null),
+    })),
     summary: { records: options.detailRows.length, present: row.presentCount ?? 0, late: row.lateCount ?? 0, absent: row.absentCount ?? 0, attended: row.attendedSessions ?? ((row.presentCount ?? 0) + (row.lateCount ?? 0)) },
   });
 }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import FaceCameraCapture from "../components/FaceCameraCapture";
+import FaceLivenessCheck from "../components/FaceLivenessCheck";
 import { searchFace } from "../services/faceService";
 import { listClasses, type ClassRecord } from "../services/classes";
 import { getStudentById } from "../services/students";
@@ -69,6 +70,7 @@ export default function AttendanceFace() {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [livenessVerified, setLivenessVerified] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -115,6 +117,10 @@ export default function AttendanceFace() {
   }
 
   async function handleCapture(base64Image: string) {
+    if (!livenessVerified) {
+      setError("Complete the liveness verification before face attendance.");
+      return;
+    }
     if (actor === "student" && !selectedClassId) {
       setError("Select a class before using student face attendance.");
       return;
@@ -123,6 +129,7 @@ export default function AttendanceFace() {
     setProcessing(true);
     setError(null);
     setSuccess(null);
+    setLivenessVerified(false);
     try {
       const result = await searchFace(base64Image, actor);
       if (!result.matched || !result.subjectId) throw new Error("Face not recognized.");
@@ -224,7 +231,12 @@ export default function AttendanceFace() {
           {success ? <div role="status" className="status-success mt-3 text-base shadow-sm">{success}</div> : null}
 
           <div className="mt-3">
-            <FaceCameraCapture disabled={disabled} captureLabel={processing ? "Verifying..." : `Face ${mode === "in" ? "Check-in" : "Check-out"}`} onCapture={handleCapture} />
+            {!livenessVerified ? <FaceLivenessCheck disabled={disabled} onVerified={() => { setLivenessVerified(true); setError(null); }} /> : (
+              <>
+                <div className="mb-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">Liveness verified. Capture the face for attendance matching.</div>
+                <FaceCameraCapture disabled={disabled} captureLabel={processing ? "Verifying..." : `Face ${mode === "in" ? "Check-in" : "Check-out"}`} onCapture={handleCapture} />
+              </>
+            )}
           </div>
         </div>
 

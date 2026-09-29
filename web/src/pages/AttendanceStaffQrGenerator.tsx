@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { auth } from "../firebase";
 import { listStaff } from "../services/staff";
+import { getTenantScope } from "../services/tenantScope";
 
 type StaffRecord = {
   id: string;
@@ -8,6 +10,8 @@ type StaffRecord = {
   staffId?: string;
   email?: string;
   role?: string;
+  tenantId?: string | null;
+  userUid?: string;
 };
 
 function staffLabel(staff: StaffRecord) {
@@ -49,9 +53,14 @@ export default function AttendanceStaffQrGenerator() {
     (async () => {
       try {
         const rows = await listStaff();
+        const scope = await getTenantScope();
+        const currentUid = auth.currentUser?.uid;
         if (active) {
           setStaffList(
             rows
+              .filter((item) => Boolean(item.tenantId))
+              .filter((item) => !["super_admin", "superadmin"].includes((item.role ?? "").toLowerCase()))
+              .filter((item) => !scope.isSuperAdmin || item.userUid !== currentUid)
               .filter((item) => Boolean(item.id))
               .map((item) => ({ ...item, id: item.id as string }))
               .sort((a, b) => staffLabel(a).localeCompare(staffLabel(b)))

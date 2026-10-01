@@ -36,7 +36,7 @@ const sections = [
     title: "Attendance",
     items: [
       "Student attendance supports class selection, QR check-in/out, biometric check-in/out, and student face check-in where configured.",
-      "Staff attendance supports QR, fingerprint/biometric, face check-in, and staff ID attendance.",
+      "Staff attendance supports QR, face recognition, and Staff ID for operators. Device fingerprint/face-unlock attendance uses the phone's local biometric prompt and is available only for the signed-in staff member from My Attendance.",
       "Attendance may be blocked on weekends, holidays, outside allowed time, or outside the approved school/work location.",
       "After the configured attendance close time, check-in is blocked but check-out remains available.",
       "When geofencing is bypassed, only admins or users with explicit attendance-taking permission can record student or staff attendance.",

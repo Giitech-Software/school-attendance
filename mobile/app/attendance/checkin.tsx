@@ -554,56 +554,38 @@ export default function CheckinScreen() {
           <MaterialIcons name="arrow-forward-ios" size={16} color="#64748B" />
         </Pressable>
 
-
         {actor === "staff" ? (
           <>
             <Pressable
-              onPress={() =>
-                router.push({
-                  pathname: "/staff/face-checkin",
-                  params: { mode: "in" },
-                })
-              }
+              onPress={() => router.push({ pathname: "/staff/face-checkin", params: { mode: "in" } } as any)}
               className="bg-white rounded-2xl border border-indigo-100 p-5 shadow-sm flex-row items-center mb-5"
             >
               <View className="p-4 bg-indigo-100 rounded-xl mr-4">
                 <MaterialCommunityIcons name="face-man-profile" size={28} color="#4F46E5" />
               </View>
               <View className="flex-1">
-                <Text className="text-lg font-semibold text-dark">
-                  Staff Face Check-In
-                </Text>
-                <Text className="text-sm text-neutral mt-1">
-                  Check-in using facial recognition.
-                </Text>
+                <Text className="text-lg font-semibold text-dark">Staff Face Check-In</Text>
+                <Text className="text-sm text-neutral mt-1">Check-in using face recognition.</Text>
               </View>
               <MaterialIcons name="arrow-forward-ios" size={16} color="#64748B" />
             </Pressable>
 
             <Pressable
-              onPress={() =>
-                router.push({
-                  pathname: "/staff/face-checkin",
-                  params: { mode: "out" },
-                })
-              }
+              onPress={() => router.push({ pathname: "/staff/face-checkin", params: { mode: "out" } } as any)}
               className="bg-white rounded-2xl border border-violet-100 p-5 shadow-sm flex-row items-center mb-5"
             >
               <View className="p-4 bg-violet-100 rounded-xl mr-4">
                 <MaterialCommunityIcons name="face-recognition" size={28} color="#7C3AED" />
               </View>
               <View className="flex-1">
-                <Text className="text-lg font-semibold text-dark">
-                  Staff Face Check-Out
-                </Text>
-                <Text className="text-sm text-neutral mt-1">
-                  Check-out using facial recognition.
-                </Text>
+                <Text className="text-lg font-semibold text-dark">Staff Face Check-Out</Text>
+                <Text className="text-sm text-neutral mt-1">Check-out using face recognition.</Text>
               </View>
               <MaterialIcons name="arrow-forward-ios" size={16} color="#64748B" />
             </Pressable>
           </>
         ) : null}
+
         {!showBiometric ? (
           <View className="mt-4 bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
             <Text className="font-semibold text-dark text-base mb-2">How it works</Text>

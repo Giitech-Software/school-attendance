@@ -179,7 +179,7 @@ export default function MyStaffAttendance() {
           <View className="ml-3 flex-1">
             <Text className="font-bold text-slate-900">Face Recognition</Text>
             <Text className="text-slate-500 text-sm">
-              Verify your face with the front camera.
+              Verify your face with the front camera. This records attendance only for your linked staff profile.
             </Text>
           </View>
         </View>
@@ -205,7 +205,7 @@ export default function MyStaffAttendance() {
           <View className="ml-3 flex-1">
             <Text className="font-bold text-slate-900">Device Biometric</Text>
             <Text className="text-slate-500 text-sm">
-              Use fingerprint or device face unlock.
+              Use this device’s enrolled fingerprint or face unlock for your own staff profile only.
             </Text>
           </View>
         </View>

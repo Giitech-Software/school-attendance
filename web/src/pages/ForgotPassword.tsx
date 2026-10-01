@@ -1,6 +1,7 @@
 ﻿import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { sendPasswordReset } from "../services/auth";
+import { authUserFacingError } from "../services/authUserFacingError";
 import AuthBrandHeader from "../components/AuthBrandHeader";
 
 function isValidEmail(email: string) {
@@ -33,7 +34,7 @@ export default function ForgotPassword() {
       await sendPasswordReset(email.trim());
       setMessage("A password reset link has been sent to your email address.");
     } catch (err: any) {
-      setError(err?.message ?? "Unable to send reset email. Please try again.");
+      setError(authUserFacingError(err, "password-reset"));
     } finally {
       setLoading(false);
     }

@@ -41,6 +41,7 @@ export default function FaceCheckin() {
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [loading, setLoading] = useState(false);
+  const [progressStage, setProgressStage] = useState("");
   const { promptMovementReason, movementReasonPrompt } = useMovementReasonPrompt();
 
   async function getMovementReasonFor(mode: "in" | "out") {
@@ -100,9 +101,11 @@ export default function FaceCheckin() {
 
     try {
       setLoading(true);
+      setProgressStage("Complete live face verification…");
 
       await runMobileFaceLiveness();
 
+      setProgressStage("Capturing face image…");
       const photo = await cameraRef.current.takePictureAsync({
         base64: true,
         quality: 0.5,
@@ -114,6 +117,7 @@ export default function FaceCheckin() {
         return;
       }
 
+      setProgressStage("Matching face to staff records…");
       const result = await searchFace(photo.base64, "staff");
       const staffId = result.subjectId ?? result.staffId;
 
@@ -130,6 +134,7 @@ export default function FaceCheckin() {
         return;
       }
 
+      setProgressStage("Checking staff profile and movement-book requirements…");
       const staffSnap = await getDoc(doc(db, "staff", staffId));
       if (!staffSnap.exists()) {
         Alert.alert("Access Denied", "Matched face is not registered as staff.");
@@ -139,6 +144,7 @@ export default function FaceCheckin() {
       const staffName = staffSnap.data()?.name ?? "Staff member";
       const movementReason = await getMovementReasonFor(attendanceMode);
 
+      setProgressStage(`Recording staff check-${attendanceMode === "in" ? "in" : "out"}…`);
       await handleStaffBiometricCheck({
         staffId,
         mode: attendanceMode,
@@ -164,6 +170,7 @@ export default function FaceCheckin() {
       );
     } finally {
       setLoading(false);
+      setProgressStage("");
     }
   };
 
@@ -173,11 +180,22 @@ export default function FaceCheckin() {
 
       <Pressable
         onPress={() => router.back()}
+        disabled={loading}
         className="absolute top-12 left-4 bg-black/60 rounded-full p-3"
         hitSlop={8}
       >
         <MaterialIcons name="arrow-back" size={24} color="#fff" />
       </Pressable>
+
+      {loading ? (
+        <View className="absolute top-24 left-4 right-4 rounded-2xl border border-white/20 bg-slate-950/85 p-4" accessibilityLiveRegion="polite" accessibilityRole="progressbar">
+          <View className="flex-row items-center">
+            <ActivityIndicator color="#fff" />
+            <Text className="ml-3 flex-1 font-semibold text-white">{progressStage || "Processing face attendance…"}</Text>
+          </View>
+          <Text className="mt-2 text-xs text-slate-200">Keep the app open. Attendance is confirmed only after the success alert.</Text>
+        </View>
+      ) : null}
 
       <View className="absolute bottom-10 w-full items-center">
         <Pressable onPress={handleCheckin} disabled={loading} className="bg-green-600 px-6 py-3 rounded-full">

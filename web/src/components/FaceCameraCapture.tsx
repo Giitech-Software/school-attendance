@@ -2,16 +2,21 @@
 
 type FaceCameraCaptureProps = {
   disabled?: boolean;
+  autoStart?: boolean;
+  autoCaptureOnEnable?: boolean;
   captureLabel: string;
+  processingLabel?: string;
   onCapture: (base64Image: string) => Promise<void>;
 };
 
-export default function FaceCameraCapture({ disabled = false, captureLabel, onCapture }: FaceCameraCaptureProps) {
+export default function FaceCameraCapture({ disabled = false, autoStart = false, autoCaptureOnEnable = false, captureLabel, processingLabel = "Processing…", onCapture }: FaceCameraCaptureProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
+  const [cameraStarting, setCameraStarting] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [capturing, setCapturing] = useState(false);
+  const [autoCaptureRequested, setAutoCaptureRequested] = useState(false);
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -24,10 +29,13 @@ export default function FaceCameraCapture({ disabled = false, captureLabel, onCa
     return () => stopCamera();
   }, [stopCamera]);
 
-  async function startCamera() {
+  const startCamera = useCallback(async () => {
+    if (cameraStarting || cameraActive) return;
+    setCameraStarting(true);
     setCameraError(null);
     if (!navigator.mediaDevices?.getUserMedia) {
       setCameraError("This browser cannot access a camera.");
+      setCameraStarting(false);
       return;
     }
 
@@ -52,10 +60,16 @@ export default function FaceCameraCapture({ disabled = false, captureLabel, onCa
       console.error("start face camera", err);
       stopCamera();
       setCameraError(err?.message ?? "Could not start the camera. Check browser camera permission and try again.");
+    } finally {
+      setCameraStarting(false);
     }
-  }
+  }, [cameraActive, cameraStarting, stopCamera]);
 
-  async function captureFrame() {
+  useEffect(() => {
+    if (autoStart) void startCamera();
+  }, [autoStart, startCamera]);
+
+  const captureFrame = useCallback(async () => {
     if (!videoRef.current || disabled || capturing) return;
     const video = videoRef.current;
     if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
@@ -89,7 +103,13 @@ export default function FaceCameraCapture({ disabled = false, captureLabel, onCa
     } finally {
       setCapturing(false);
     }
-  }
+  }, [disabled, capturing, onCapture]);
+
+  useEffect(() => {
+    if (!autoCaptureOnEnable || disabled || !cameraActive || autoCaptureRequested) return;
+    setAutoCaptureRequested(true);
+    void captureFrame();
+  }, [autoCaptureOnEnable, disabled, cameraActive, autoCaptureRequested, captureFrame]);
 
   return (
     <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
@@ -105,11 +125,11 @@ export default function FaceCameraCapture({ disabled = false, captureLabel, onCa
       {cameraError ? <div className="status-error mt-3">{cameraError}</div> : null}
 
       <div className="mt-3 flex flex-wrap gap-2">
-        <button type="button" onClick={startCamera} disabled={disabled || cameraActive} className="enterprise-button-primary self-start w-fit whitespace-nowrap">
-          {cameraActive ? "Camera Ready" : "Start Camera"}
+        <button type="button" onClick={startCamera} disabled={disabled || cameraActive || cameraStarting} className="enterprise-button-primary self-start w-fit whitespace-nowrap">
+          {cameraStarting ? "Starting camera…" : cameraActive ? "Camera Ready" : "Start Camera"}
         </button>
-        <button type="button" onClick={captureFrame} disabled={disabled || !cameraActive || capturing} className="enterprise-button-primary">
-          {capturing ? "Capturing..." : captureLabel}
+        <button type="button" onClick={captureFrame} disabled={disabled || !cameraActive || capturing || autoCaptureOnEnable} className="enterprise-button-primary">
+          {capturing || autoCaptureOnEnable ? processingLabel : captureLabel}
         </button>
         <button type="button" onClick={stopCamera} disabled={!cameraActive || capturing} className="enterprise-button-secondary">
           Stop

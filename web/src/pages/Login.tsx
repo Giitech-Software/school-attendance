@@ -2,16 +2,8 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signIn, signOutUser } from "../services/auth";
 import { getUserById, upsertUser } from "../services/users";
+import { authUserFacingError } from "../services/authUserFacingError";
 import AuthBrandHeader from "../components/AuthBrandHeader";
-
-function friendlyAuthError(err: any) {
-  const code = String(err?.code ?? "");
-  if (code.includes("invalid-credential") || code.includes("wrong-password")) return "Invalid email or password.";
-  if (code.includes("user-not-found")) return "No account was found for this email.";
-  if (code.includes("too-many-requests")) return "Too many attempts. Please wait and try again.";
-  if (code.includes("api-key-expired")) return "Firebase API key has expired. Renew the Firebase web key.";
-  return err?.message ?? "Unable to sign in. Please try again.";
-}
 
 export default function Login() {
   const navigate = useNavigate();
@@ -63,7 +55,7 @@ export default function Login() {
 
       navigate((user.role === "parent" || (user.wards?.length ?? 0) > 0) ? "/users" : "/", { replace: true });
     } catch (err: any) {
-      setError(friendlyAuthError(err));
+      setError(authUserFacingError(err, "sign-in"));
     } finally {
       setLoading(false);
     }

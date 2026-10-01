@@ -22,6 +22,7 @@ export default function StudentFaceCheckin({ classId }: { classId: string }) {
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [loading, setLoading] = useState(false);
+  const [progressStage, setProgressStage] = useState("");
   const { promptMovementReason, movementReasonPrompt } = useMovementReasonPrompt();
 
   async function getLateReasonIfNeeded() {
@@ -60,13 +61,15 @@ export default function StudentFaceCheckin({ classId }: { classId: string }) {
   }
 
   const handleFaceCheckin = async () => {
-    if (!cameraRef.current) return;
+    if (!cameraRef.current || loading) return;
 
     try {
       setLoading(true);
+      setProgressStage("Complete live face verification…");
 
       await runMobileFaceLiveness();
 
+      setProgressStage("Capturing face image…");
       const photo = await cameraRef.current.takePictureAsync({
         base64: true,
         quality: 0.5,
@@ -79,6 +82,7 @@ export default function StudentFaceCheckin({ classId }: { classId: string }) {
       }
 
       // Verify student face
+      setProgressStage("Matching face to student records…");
       const result = await searchFace(photo.base64, "student");
 
       if (!result.matched || !result.subjectId) {
@@ -86,9 +90,11 @@ export default function StudentFaceCheckin({ classId }: { classId: string }) {
         return;
       }
 
+      setProgressStage("Checking movement-book requirements…");
       const movementReason = await getLateReasonIfNeeded();
 
       // Register attendance immediately
+      setProgressStage("Recording student check-in…");
       await registerAttendanceUnified({
         studentId: result.subjectId,
         classId,
@@ -104,6 +110,7 @@ export default function StudentFaceCheckin({ classId }: { classId: string }) {
       Alert.alert("Error", err?.message || "Face check-in failed");
     } finally {
       setLoading(false);
+      setProgressStage("");
     }
   };
 
@@ -112,11 +119,21 @@ export default function StudentFaceCheckin({ classId }: { classId: string }) {
       <CameraView ref={cameraRef} style={{ flex: 1 }} facing="front" />
       <Pressable
         onPress={() => router.back()}
+        disabled={loading}
         className="absolute top-12 left-4 bg-black/60 rounded-full p-3"
         hitSlop={8}
       >
         <MaterialIcons name="arrow-back" size={24} color="#fff" />
       </Pressable>
+      {loading ? (
+        <View className="absolute top-24 left-4 right-4 rounded-2xl border border-white/20 bg-slate-950/85 p-4" accessibilityLiveRegion="polite" accessibilityRole="progressbar">
+          <View className="flex-row items-center">
+            <ActivityIndicator color="#fff" />
+            <Text className="ml-3 flex-1 font-semibold text-white">{progressStage || "Processing face attendance…"}</Text>
+          </View>
+          <Text className="mt-2 text-xs text-slate-200">Keep the app open. Attendance is confirmed only after the success alert.</Text>
+        </View>
+      ) : null}
       <View className="absolute bottom-10 w-full items-center">
         <Pressable
           onPress={handleFaceCheckin}

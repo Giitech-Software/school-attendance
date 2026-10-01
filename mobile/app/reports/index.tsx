@@ -208,7 +208,7 @@ if (userDoc?.role !== "admin" && userDoc?.role !== "super_admin") {
            <Text className="mt-1 text-xs font-medium text-white/70">Quick previews - tap a tile to open detailed reports.</Text>
          </View>
        </View>
-     <ImageCarousel images={[require("../../assets/images/reports-1.jpg"), require("../../assets/images/reports-2.jpg"), require("../../assets/images/reports-3.jpg"), require("../../assets/images/reports-4.jpg")]} height={300} />
+     <ImageCarousel images={[require("../../assets/images/reports-1.jpg"), require("../../assets/images/reports-2.jpg"), require("../../assets/images/reports-3.jpg"), require("../../assets/images/reports-4.jpg")]} />
      </View>
 
 <View className="flex-row mb-3">

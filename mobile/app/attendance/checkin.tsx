@@ -456,7 +456,7 @@ export default function CheckinScreen() {
         ) : null}
 
         <View className="bg-white -mx-4">
-          <ImageCarousel images={[require("../../assets/images/attendance-1.jpg"), require("../../assets/images/attendance-2.jpg"), require("../../assets/images/attendance-3.jpg"), require("../../assets/images/attendance-4.jpg")]} height={300} />
+          <ImageCarousel images={[require("../../assets/images/attendance-1.jpg"), require("../../assets/images/attendance-2.jpg"), require("../../assets/images/attendance-3.jpg"), require("../../assets/images/attendance-4.jpg")]} />
         </View>
 
         {actor === "student" || actor === "staff" ? (

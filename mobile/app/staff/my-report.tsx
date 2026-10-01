@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ActivityIndicator,
-  FlatList,
   Pressable,
   ScrollView,
 } from "react-native";
@@ -218,7 +217,13 @@ export default function MyStaffReport() {
     (safeTermSummary.presentCount ?? 0) + (safeTermSummary.lateCount ?? 0);
 
   return (
-    <View className="flex-1 bg-slate-300 p-4">
+    <ScrollView
+      className="flex-1 bg-slate-300"
+      style={{ flex: 1 }}
+      contentContainerStyle={{ flexGrow: 1, padding: 16, paddingBottom: 32 }}
+      nestedScrollEnabled
+      showsVerticalScrollIndicator
+    >
       <View className="-mx-4 mb-0 flex-row items-center bg-slate-900 px-4 py-3">
         <Pressable onPress={() => router.back()} className="p-1 mr-2" hitSlop={8}>
           <MaterialIcons name="arrow-back" size={26} color="#ffffff" />
@@ -226,7 +231,7 @@ export default function MyStaffReport() {
         <Text className="text-2xl font-extrabold text-white">My Report</Text>
       </View>
       <View className="m-0 p-0" style={{ marginHorizontal: -16, marginTop: -16 }}>
-        <ImageCarousel images={[require("../../assets/images/reports-1.jpg"), require("../../assets/images/reports-2.jpg"), require("../../assets/images/reports-3.jpg"), require("../../assets/images/reports-4.jpg")]} height={220} />
+        <ImageCarousel images={[require("../../assets/images/reports-1.jpg"), require("../../assets/images/reports-2.jpg"), require("../../assets/images/reports-3.jpg"), require("../../assets/images/reports-4.jpg")]} />
       </View>
 
       <View className="bg-white rounded-2xl p-5 shadow mb-4">
@@ -422,16 +427,11 @@ export default function MyStaffReport() {
       </View>
 
       <Text className="font-semibold text-slate-900 mb-2">Timeline</Text>
-      <FlatList
-        data={records}
-        keyExtractor={(item) => item.id ?? item.date}
-        ListEmptyComponent={
-          <Text className="text-center text-slate-500 mt-8">
-            {emptyMessage}
-          </Text>
-        }
-        renderItem={({ item }) => (
-          <View className="bg-white rounded-xl p-4 mb-3 flex-row justify-between">
+      {records.length === 0 ? (
+        <Text className="mt-8 text-center text-slate-500">{emptyMessage}</Text>
+      ) : (
+        records.map((item) => (
+          <View key={item.id ?? item.date} className="bg-white rounded-xl p-4 mb-3 flex-row justify-between">
             <View>
               <Text className="font-semibold text-slate-800">
                 {new Date(item.date).toLocaleDateString()}
@@ -464,9 +464,9 @@ export default function MyStaffReport() {
               </Text>
             </View>
           </View>
-        )}
-      />
-    </View>
+        ))
+      )}
+    </ScrollView>
   );
 }
 

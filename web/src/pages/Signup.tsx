@@ -4,6 +4,7 @@ import { updateProfile } from "firebase/auth";
 import { sendEmailVerificationToCurrentUser, signOutUser, signUp } from "../services/auth";
 import { upsertUser, type UserRole } from "../services/users";
 import { getTenantInviteByCode, normalizeInviteCode, type TenantInvite } from "../services/tenants";
+import { authUserFacingError } from "../services/authUserFacingError";
 import AuthBrandHeader from "../components/AuthBrandHeader";
 
 const roles: Array<{ value: UserRole; label: string }> = [
@@ -15,15 +16,6 @@ const roles: Array<{ value: UserRole; label: string }> = [
 
 function isValidEmail(email: string) {
   return /\S+@\S+\.\S+/.test(email);
-}
-
-function friendlySignupError(err: any) {
-  const code = String(err?.code ?? "");
-  if (code.includes("email-already-in-use")) return "An account already exists for this email.";
-  if (code.includes("invalid-email")) return "Please enter a valid email address.";
-  if (code.includes("weak-password")) return "Password must be at least 6 characters.";
-  if (code.includes("api-key-expired")) return "Firebase API key has expired. Renew the Firebase web key.";
-  return err?.message ?? "Unable to create your account. Please try again.";
 }
 
 export default function Signup() {
@@ -106,16 +98,20 @@ export default function Signup() {
         createdAt: new Date(),
       });
 
+      let verificationSent = true;
       try {
         await sendEmailVerificationToCurrentUser();
       } catch (verificationError) {
         console.warn("Failed to send verification email", verificationError);
+        verificationSent = false;
       }
 
       await signOutUser();
-      const successMessage = tenantInvite
-        ? "Account created. First check your inbox or spam folder for the verification email, then contact your administrator for approval."
-        : "Account created. Please check your email for verification.";
+      const successMessage = verificationSent
+        ? tenantInvite
+          ? "Account created. First check your inbox or spam folder for the verification email, then contact your administrator for approval."
+          : "Account created. Please check your email for verification."
+        : "Your account was created, but we couldn’t send the verification email. Check your connection and contact support for help verifying your account.";
       if (tenantInvite) {
         window.alert(successMessage);
       }
@@ -127,7 +123,7 @@ export default function Signup() {
       setRole("teacher");
       setInviteCode("");
     } catch (err: any) {
-      setError(friendlySignupError(err));
+      setError(authUserFacingError(err, "sign-up"));
     } finally {
       setLoading(false);
     }

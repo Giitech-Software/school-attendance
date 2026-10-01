@@ -68,6 +68,7 @@ export default function AttendanceFace() {
   const [selectedClassId, setSelectedClassId] = useState(searchParams.get("classId") ?? "");
   const [loadingClasses, setLoadingClasses] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [processingStage, setProcessingStage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [livenessVerified, setLivenessVerified] = useState(false);
@@ -127,13 +128,14 @@ export default function AttendanceFace() {
     }
 
     setProcessing(true);
+    setProcessingStage("Matching the captured face…");
     setError(null);
     setSuccess(null);
-    setLivenessVerified(false);
     try {
       const result = await searchFace(base64Image, actor);
       if (!result.matched || !result.subjectId) throw new Error("Face not recognized.");
 
+      setProcessingStage("Checking attendance requirements…");
       const movementReason = await promptMovementReason(mode);
 
       if (actor === "staff") {
@@ -142,14 +144,18 @@ export default function AttendanceFace() {
           const ownIds = [currentStaff?.id, currentStaff?.staffId].filter(Boolean);
           if (!ownIds.includes(matchedStaffId)) throw new Error("The recognized face does not match your staff profile.");
         }
+        setProcessingStage("Loading staff profile…");
         const staff = await getStaffById(matchedStaffId);
         if (!staff?.id) throw new Error("Matched face is not registered as staff.");
         const selfOnly = isSelfServiceStaff;
+        setProcessingStage(`Recording staff check-${mode === "in" ? "in" : "out"}…`);
         await registerStaffAttendance({ staffId: staff.id, mode, method: "face", biometric: true, movementReason, selfOnly });
         setSuccess(`${staff.name ?? "Staff member"} checked ${mode === "in" ? "in" : "out"} by face${similarityLabel(result.similarity)}.`);
       } else {
+        setProcessingStage("Loading student profile…");
         const student = await getStudentById(result.subjectId);
         if (!student?.id) throw new Error("Matched face is not registered as a student.");
+        setProcessingStage(`Recording student check-${mode === "in" ? "in" : "out"}…`);
         await registerAttendanceUnified({
           studentId: student.id,
           classId: selectedClassId,
@@ -166,6 +172,8 @@ export default function AttendanceFace() {
       setError(err?.message ?? "Face attendance failed.");
     } finally {
       setProcessing(false);
+      setProcessingStage("");
+      setLivenessVerified(false);
     }
   }
 
@@ -229,12 +237,29 @@ export default function AttendanceFace() {
 
           {error ? <div role="alert" className="status-error mt-3 text-base shadow-sm">{error}</div> : null}
           {success ? <div role="status" className="status-success mt-3 text-base shadow-sm">{success}</div> : null}
+          {processing ? (
+            <div role="status" aria-live="polite" className="mt-3 flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-900">
+              <span aria-hidden="true" className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-blue-200 border-t-blue-700" />
+              <span>{processingStage || "Processing face attendance…"}<span className="mt-0.5 block text-xs font-normal text-blue-800">Please keep this page open. Attendance is confirmed only when a success message appears.</span></span>
+            </div>
+          ) : null}
 
-          <div className="mt-3">
-            {!livenessVerified ? <FaceLivenessCheck disabled={disabled} onVerified={() => { setLivenessVerified(true); setError(null); }} /> : (
+          <div className="mt-3 space-y-3">
+            {!livenessVerified ? (
+              <FaceLivenessCheck disabled={disabled} onVerified={() => { setLivenessVerified(true); setError(null); }} />
+            ) : (
               <>
-                <div className="mb-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">Liveness verified. Capture the face for attendance matching.</div>
-                <FaceCameraCapture disabled={disabled} captureLabel={processing ? "Verifying..." : `Face ${mode === "in" ? "Check-in" : "Check-out"}`} onCapture={handleCapture} />
+                <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
+                  Liveness verified. Reopening the camera automatically to match your face and record attendance…
+                </div>
+                <FaceCameraCapture
+                  disabled={disabled}
+                  autoStart
+                  autoCaptureOnEnable
+                  captureLabel={`Face ${mode === "in" ? "Check-in" : "Check-out"}`}
+                  processingLabel={processingStage || "Verifying face and recording attendance…"}
+                  onCapture={handleCapture}
+                />
               </>
             )}
           </div>

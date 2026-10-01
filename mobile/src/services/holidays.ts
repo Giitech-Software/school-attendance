@@ -1,5 +1,5 @@
 import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "./firebase";
+import { db } from "../../app/firebase";
 import { tenantConstraints, getTenantScope } from "./tenantScope";
 
 export type Holiday = { id: string; date: string; name: string };

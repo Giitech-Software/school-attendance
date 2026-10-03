@@ -15,6 +15,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { searchFace } from "../../src/services/faceService";
 import { handleStaffBiometricCheck } from "../../src/services/staffBiometricHandler";
+import { registerStaffAttendance } from "../../src/services/staffAttendance";
 import { getAttendanceSettings } from "../../src/services/attendanceSettings";
 import { getMovementReasonRequirement } from "../../src/services/movementPolicy";
 import { useRequireAttendanceAccess } from "../../src/hooks/useRouteAuthorization";
@@ -145,13 +146,24 @@ export default function FaceCheckin() {
       const movementReason = await getMovementReasonFor(attendanceMode);
 
       setProgressStage(`Recording staff check-${attendanceMode === "in" ? "in" : "out"}…`);
-      await handleStaffBiometricCheck({
-        staffId,
-        mode: attendanceMode,
-        biometricVerified: true,
-        method: "face",
-        movementReason,
-      });
+      if (isSelfService) {
+        await handleStaffBiometricCheck({
+          staffId,
+          mode: attendanceMode,
+          biometricVerified: true,
+          method: "face",
+          movementReason,
+        });
+      } else {
+        await registerStaffAttendance({
+          staffId,
+          mode: attendanceMode,
+          method: "face",
+          biometric: true,
+          movementReason,
+          selfOnly: false,
+        });
+      }
 
       const similarity =
         typeof result.similarity === "number"

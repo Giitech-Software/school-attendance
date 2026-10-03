@@ -14,6 +14,10 @@ import * as LocalAuthentication from "expo-local-authentication";
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { useCurrentStaff } from "../../src/hooks/useCurrentStaff";
 import { handleStaffBiometricCheck } from "../../src/services/staffBiometricHandler";
+import { registerStaffAttendance } from "../../src/services/staffAttendance";
+import { getAttendanceSettings } from "../../src/services/attendanceSettings";
+import { getMovementReasonRequirement } from "../../src/services/movementPolicy";
+import { useMovementReasonPrompt } from "../../components/MovementReasonPrompt";
 import ImageCarousel from "../../components/ImageCarousel";
 
 export default function MyStaffAttendance() {
@@ -21,6 +25,7 @@ export default function MyStaffAttendance() {
   const { staff, loading } = useCurrentStaff();
   const [saving, setSaving] = useState(false);
   const [confirmation, setConfirmation] = useState<string | null>(null);
+  const { promptMovementReason, movementReasonPrompt } = useMovementReasonPrompt();
 
   function openQrAttendance(mode: "in" | "out") {
     router.push({
@@ -91,6 +96,38 @@ export default function MyStaffAttendance() {
     } as any);
   }
 
+  async function handleStaffIdAttendance(mode: "in" | "out") {
+    if (!staff?.id) {
+      Alert.alert("Staff profile missing", "Your account is not linked to a staff record.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const settings = await getAttendanceSettings();
+      const requirement = getMovementReasonRequirement({ settings, mode });
+      let movementReason: string | undefined;
+      if (requirement) {
+        movementReason = (await promptMovementReason(requirement)) ?? undefined;
+        if (!movementReason) return;
+      }
+
+      await registerStaffAttendance({
+        staffId: staff.id,
+        mode,
+        method: "manual",
+        biometric: false,
+        movementReason,
+        selfOnly: true,
+      });
+      setConfirmation(`${staff.name} ${mode === "in" ? "checked in" : "checked out"} using Staff ID.`);
+    } catch (error) {
+      Alert.alert("Attendance error", error instanceof Error ? error.message : "Could not record attendance.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center bg-slate-50">
@@ -145,6 +182,24 @@ export default function MyStaffAttendance() {
         {staff.profilePhotoUrl ? <Image source={{ uri: staff.profilePhotoUrl }} className="mb-3 h-20 w-20 rounded-full self-center" /> : null}
         <Text className="text-lg font-bold text-slate-900">{staff.name}</Text>
         <Text className="text-slate-500 mt-1">Staff ID: {staff.staffId ?? staff.id}</Text>
+      </View>
+
+      <View className="bg-white rounded-2xl p-4 shadow mb-4">
+        <View className="mb-3 flex-row items-center">
+          <MaterialIcons name="badge" size={26} color="#0369A1" />
+          <View className="ml-3 flex-1">
+            <Text className="font-bold text-slate-900">Staff ID Attendance</Text>
+            <Text className="text-sm text-slate-500">Use your linked ID: {staff.staffId ?? staff.id}</Text>
+          </View>
+        </View>
+        <View className="flex-row gap-3">
+          <Pressable onPress={() => handleStaffIdAttendance("in")} disabled={saving} className="flex-1 rounded-xl bg-blue-600 py-3" style={saving ? { opacity: 0.7 } : undefined}>
+            <Text className="text-center font-semibold text-white">Check-In</Text>
+          </Pressable>
+          <Pressable onPress={() => handleStaffIdAttendance("out")} disabled={saving} className="flex-1 rounded-xl bg-amber-600 py-3" style={saving ? { opacity: 0.7 } : undefined}>
+            <Text className="text-center font-semibold text-white">Check-Out</Text>
+          </Pressable>
+        </View>
       </View>
 
       <View className="bg-white rounded-2xl p-4 shadow mb-4">
@@ -256,6 +311,7 @@ export default function MyStaffAttendance() {
           </View>
         </View>
       </Modal>
+      {movementReasonPrompt}
     </ScrollView>
   );
 }

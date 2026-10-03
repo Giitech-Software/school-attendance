@@ -16,7 +16,7 @@ import {
 
 import { db } from "../../app/firebase";
 import { storage } from "../../app/firebase";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { getDownloadURL, ref } from "firebase/storage";
 import type { Staff } from "./types";
 export type { Staff } from "./types";
 import { logAdminAction } from "./adminLogs";
@@ -24,6 +24,7 @@ import { deleteFace } from "./faceService";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import app from "../../app/firebase";
 import { belongsToTenant, getTenantScope, requireStaffRegistrationScope, sortByCreatedAtDesc, tenantConstraints, withTenantScope } from "./tenantScope";
+import { uploadProfilePhoto } from "./profilePhotoUpload";
 
 /* ============================
    COLLECTION
@@ -31,11 +32,7 @@ import { belongsToTenant, getTenantScope, requireStaffRegistrationScope, sortByC
 const STAFF_COLLECTION = "staff";
 
 export async function uploadStaffProfilePhoto(staffId: string, uri: string): Promise<string> {
-  const response = await fetch(uri);
-  const blob = await response.blob();
-  const photoRef = ref(storage, `staff-profile-photos/${staffId}`);
-  await uploadBytes(photoRef, blob, { contentType: "image/jpeg", cacheControl: "public,max-age=86400" });
-  return getDownloadURL(photoRef);
+  return uploadProfilePhoto(uri, `staff-profile-photos/${staffId}`);
 }
 
 export async function updateOwnStaffProfilePhoto(staffId: string, uri: string): Promise<string> {
@@ -224,13 +221,17 @@ export async function listStaff(): Promise<Staff[]> {
    GET STAFF BY ID
 ============================ */
 export async function getStaffById(id: string): Promise<Staff | null> {
-  const ref = doc(db, STAFF_COLLECTION, id);
-  const snap = await getDoc(ref);
+  const staffDocRef = doc(db, STAFF_COLLECTION, id);
+  const snap = await getDoc(staffDocRef);
   if (!snap.exists()) return null;
   const data = snap.data();
   if (!belongsToTenant(data, await getTenantScope())) return null;
   const staff = { id: snap.id, ...data } as Staff;
-  try { staff.profilePhotoUrl = await getDownloadURL(ref(storage, `staff-profile-photos/${snap.id}`)); } catch { staff.profilePhotoUrl = undefined; }
+  try {
+    const updatedAt = typeof staff.updatedAt?.toMillis === "function" ? staff.updatedAt.toMillis() : Date.now();
+    const url = await getDownloadURL(ref(storage, `staff-profile-photos/${snap.id}`));
+    staff.profilePhotoUrl = `${url}${url.includes("?") ? "&" : "?"}v=${updatedAt}`;
+  } catch { staff.profilePhotoUrl = staff.profilePhotoUrl ? `${staff.profilePhotoUrl}${staff.profilePhotoUrl.includes("?") ? "&" : "?"}v=${Date.now()}` : undefined; }
   return staff;
 }
 

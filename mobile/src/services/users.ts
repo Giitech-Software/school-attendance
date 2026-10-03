@@ -12,9 +12,11 @@ import {
   updateDoc
 } from "firebase/firestore";
 import { db } from "../../app/firebase";
+import { auth } from "../../app/firebase";
 import { type UserRole } from "./constants/roles";
 import { logAdminAction } from "./adminLogs";
 import { belongsToTenant, getTenantScope, tenantConstraints, withTenantScope } from "./tenantScope";
+import { uploadProfilePhoto } from "./profilePhotoUpload";
 
 /* ---------------- Types ---------------- */
  
@@ -56,7 +58,16 @@ export type AppUser = {
   canTakeStudentAttendance?: boolean;
   canTakeSelfAttendance?: boolean;
   canRegisterStaff?: boolean;
+  profilePhotoUrl?: string | null;
 };
+
+export async function updateOwnUserProfilePhoto(uri: string): Promise<string> {
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error("Please sign in again before updating your profile picture.");
+  const url = await uploadProfilePhoto(uri, `user-profile-photos/${uid}`);
+  await updateDoc(doc(db, "users", uid), { profilePhotoUrl: url });
+  return url;
+}
 
 const USERS_COLLECTION = "users";
 
@@ -117,6 +128,7 @@ export async function getUserById(id: string): Promise<AppUser | null> {
       id: snap.id,
       uid: data.uid ?? snap.id,
       displayName: data.displayName ?? null,
+      profilePhotoUrl: data.profilePhotoUrl ?? null,
       role: data.role === "superadmin" ? "super_admin" : (data.role ?? null),
       email: data.email ?? null,
       createdAt: data.createdAt ?? Date.now(),
@@ -156,6 +168,7 @@ export async function getUserByEmail(email: string): Promise<AppUser | null> {
       id: userDoc.id,
       uid: data.uid ?? userDoc.id,
       displayName: data.displayName ?? null,
+      profilePhotoUrl: data.profilePhotoUrl ?? null,
       role: data.role === "superadmin" ? "super_admin" : (data.role ?? null),
       email: data.email ?? null,
       createdAt: data.createdAt ?? Date.now(),

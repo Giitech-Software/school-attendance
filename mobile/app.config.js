@@ -73,6 +73,7 @@ export default ({ config }) => ({
   },
 
   plugins: [
+    "./plugins/with-face-liveness",
     "expo-web-browser",
     "expo-router",
     "expo-font",

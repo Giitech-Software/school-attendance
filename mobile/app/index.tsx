@@ -57,23 +57,25 @@ function LandingActionGroup({ title, description, actions }: { title: string; de
         <Text className="text-xl font-extrabold leading-7 text-slate-900">{title}</Text>
         <Text className="mt-1 text-[13px] leading-5 text-slate-700">{description}</Text>
       </View>
-      <View className="bg-slate-100 p-3">
+      <View className="flex-row flex-wrap justify-between bg-slate-100 p-3">
       {actions.map((action) => (
         <Pressable
           key={action.title}
           onPress={action.onPress}
           android_ripple={{ color: "#DBEAFE" }}
-          style={{ borderLeftColor: action.iconColor }}
-          className="mb-2 flex-row items-center rounded-xl border border-slate-200 border-l-4 bg-white px-3 py-3 shadow-sm last:mb-0"
+          style={{ borderLeftColor: action.iconColor, width: "48%" }}
+          className="mb-2 min-h-32 rounded-xl border border-slate-200 border-l-4 bg-white p-3 shadow-sm"
         >
-          <View className="h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: action.iconBackground }}>
-            <MaterialIcons name={action.icon} size={22} color={action.iconColor} />
+          <View className="flex-row items-center justify-between">
+            <View className="h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: action.iconBackground }}>
+              <MaterialIcons name={action.icon} size={22} color={action.iconColor} />
+            </View>
+            <MaterialIcons name="chevron-right" size={20} color="#94A3B8" />
           </View>
-          <View className="ml-3 flex-1" style={{ minWidth: 0 }}>
-            <Text className="text-[17px] font-extrabold leading-6 text-slate-900">{action.title}</Text>
-            <Text className="mt-1 text-[13px] font-medium leading-5 text-slate-700">{action.subtitle}</Text>
+          <View className="mt-2 flex-1" style={{ minWidth: 0 }}>
+            <Text className="text-[15px] font-extrabold leading-5 text-slate-900">{action.title}</Text>
+            <Text className="mt-1 text-xs font-medium leading-4 text-slate-700">{action.subtitle}</Text>
           </View>
-          <MaterialIcons name="chevron-right" size={20} color="#94A3B8" />
         </Pressable>
       ))}
       </View>

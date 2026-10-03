@@ -38,8 +38,21 @@ export async function uploadStaffProfilePhoto(staffId: string, file: File): Prom
   canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Could not compress profile photo.")), "image/jpeg", 0.72));
   const photoRef = ref(storage, `staff-profile-photos/${staffId}`);
-  await uploadBytes(photoRef, blob, { contentType: "image/jpeg", cacheControl: "public,max-age=86400" });
-  return getDownloadURL(photoRef);
+  await uploadBytes(photoRef, blob, { contentType: "image/jpeg", cacheControl: "public,max-age=0,must-revalidate" });
+  return withPhotoCacheVersion(await getDownloadURL(photoRef), Date.now());
+}
+
+function photoVersion(value: any): number {
+  if (typeof value?.toMillis === "function") return value.toMillis();
+  if (typeof value?.toDate === "function") return value.toDate().getTime();
+  if (typeof value === "number") return value;
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function withPhotoCacheVersion(url: string, version: any): string {
+  const separator = url.includes("?") ? "&" : "?";
+  return `${url}${separator}v=${photoVersion(version) || Date.now()}`;
 }
 
 export async function updateOwnStaffProfilePhoto(staffId: string, file: File): Promise<string> {
@@ -72,7 +85,10 @@ function withoutUndefined<T extends Record<string, any>>(data: T): T {
 export async function listStaff(): Promise<Staff[]> {
   const scope = await getTenantScope();
   const snap = await getDocs(query(collection(db, STAFF_COLLECTION), ...tenantConstraints(scope)));
-  return sortByCreatedAtDesc(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) } as Staff)));
+  return sortByCreatedAtDesc(snap.docs.map((d) => {
+    const data = d.data() as any;
+    return { id: d.id, ...data, profilePhotoUrl: data.profilePhotoUrl ? withPhotoCacheVersion(data.profilePhotoUrl, data.updatedAt) : undefined } as Staff;
+  }));
 }
 
 export async function listLegacyStaff(): Promise<Staff[]> {
@@ -99,7 +115,7 @@ export async function getStaffById(id: string): Promise<Staff | null> {
   const data = snap.data();
   if (!belongsToTenant(data, await getTenantScope())) return null;
   const staff = { id: snap.id, ...(data as any) } as Staff;
-  try { staff.profilePhotoUrl = await getDownloadURL(ref(storage, `staff-profile-photos/${snap.id}`)); } catch { staff.profilePhotoUrl = undefined; }
+  try { staff.profilePhotoUrl = withPhotoCacheVersion(await getDownloadURL(ref(storage, `staff-profile-photos/${snap.id}`)), staff.updatedAt); } catch { staff.profilePhotoUrl = staff.profilePhotoUrl ? withPhotoCacheVersion(staff.profilePhotoUrl, staff.updatedAt) : undefined; }
   return staff;
 }
 

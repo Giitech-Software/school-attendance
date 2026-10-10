@@ -59,8 +59,8 @@ export default function RegisterFace() {
 
       const photo = await cameraRef.current.takePictureAsync({
         base64: true,
-        quality: 0.6,
-        skipProcessing: true,
+        quality: 0.85,
+        skipProcessing: false,
       });
 
       if (!photo.base64) {

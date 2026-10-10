@@ -15,10 +15,10 @@ import { userFacingError } from "../services/userFacingError";
 function isAttendanceAllowed(actor: "student" | "staff", allowStaffWeekendAttendance: boolean): { allowed: boolean; reason?: string } {
   const today = new Date();
   const day = today.getDay();
-  if (day === 0 && !(actor === "staff" && allowStaffWeekendAttendance)) return { allowed: false, reason: "Today is Sunday. Attendance is not allowed." };
-  if (day === 6 && !(actor === "staff" && allowStaffWeekendAttendance)) return { allowed: false, reason: "Today is Saturday. Attendance is not allowed." };
+  if (day === 0 && !(actor === "staff" && allowStaffWeekendAttendance)) return { allowed: false, reason: "Attendance is unavailable today because it is Sunday." };
+  if (day === 6 && !(actor === "staff" && allowStaffWeekendAttendance)) return { allowed: false, reason: "Attendance is unavailable today because it is Saturday." };
   const holidays = ["2026-01-01", "2026-04-15", "2026-12-25"];
-  if (holidays.includes(today.toISOString().slice(0, 10))) return { allowed: false, reason: "Today is a holiday. Attendance is not allowed." };
+  if (holidays.includes(today.toISOString().slice(0, 10))) return { allowed: false, reason: "Attendance is unavailable today because it is a public holiday." };
   return { allowed: true };
 }
 
@@ -201,7 +201,7 @@ export default function Checkin() {
   }
 
   async function submitStudentAttendance(studentId = selectedStudentId, nextMode: "in" | "out" = mode) {
-    if (!canRecord) { setError("An administrator must enable student attendance access for your account."); return; }
+    if (!canRecord) { setError("Your account is not authorised to record student attendance. Please contact an administrator."); return; }
     if (!studentId) {
       setError("Select a student before recording attendance.");
       return;
@@ -211,7 +211,7 @@ export default function Checkin() {
       return;
     }
     if (!attendanceCheck.allowed) {
-      setError(attendanceCheck.reason ?? "Attendance is not allowed today.");
+      setError(attendanceCheck.reason ?? "Attendance is unavailable today.");
       return;
     }
 
@@ -241,14 +241,43 @@ export default function Checkin() {
     }
   }
 
+  async function markAllStudentsPresent() {
+    if (!canRecord) { setError("Your account is not authorised to record student attendance. Please contact an administrator."); return; }
+    if (!selectedClassId) { setError("Select a class before marking attendance."); return; }
+    if (!attendanceCheck.allowed) { setError(attendanceCheck.reason ?? "Attendance is unavailable today."); return; }
+    const pending = students.filter((student) => student.isActive !== false && !todayAttendance.some((record) => record.studentId === student.id));
+    if (!pending.length) { setSuccess("All students in this class already have attendance recorded for today."); return; }
+    setSubmitting(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      let saved = 0;
+      for (const student of pending) {
+        try {
+          await registerAttendanceUnified({ studentId: student.id, classId: selectedClassId, classDocId: selectedClass?.id, mode: "in", method: "manual", biometric: false });
+          saved += 1;
+        } catch (err: any) {
+          // A record created by another action during this batch should not stop the class batch.
+          if (!String(err?.message ?? "").toLowerCase().includes("already")) throw err;
+        }
+      }
+      await refreshAttendance();
+      setSuccess(`${saved} student${saved === 1 ? "" : "s"} marked present.`);
+    } catch (err: any) {
+      setError(userFacingError(err, "Could not mark all students present."));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   async function submitStaffAttendance(nextMode = mode) {
-    if (!canRecord) { setError("An administrator must enable staff check-in and check-out for your account."); return; }
+    if (!canRecord) { setError("Your account is not authorised to record staff attendance. Please contact an administrator."); return; }
     if (!staffIdInput.trim()) {
       setError("Enter a staff ID before recording attendance.");
       return;
     }
     if (!attendanceCheck.allowed) {
-      setError(attendanceCheck.reason ?? "Attendance is not allowed today.");
+      setError(attendanceCheck.reason ?? "Attendance is unavailable today.");
       return;
     }
 
@@ -354,9 +383,9 @@ export default function Checkin() {
 
   const qrClassQuery = selectedClassId ? `&classId=${selectedClassId}&classDocId=${selectedClass?.id ?? ""}` : "";
 
-  if (userLoading) return <div className="enterprise-panel p-4 text-sm text-slate-600">Checking attendance access...</div>;
-  if (!userDoc) return <div className="enterprise-panel p-6 text-center"><h1 className="text-xl font-extrabold text-slate-950">Sign in required</h1><p className="mt-2 text-sm text-slate-700">Please sign in before recording attendance.</p></div>;
-  if (!canRecord) return <div className="enterprise-panel p-6 text-center"><h1 className="text-xl font-extrabold text-slate-950">Attendance access unavailable</h1><p className="mt-2 text-sm text-slate-700">{actor === "staff" ? "An administrator must enable staff check-in and check-out for your account." : "An administrator must enable student attendance access for your account."}</p></div>;
+  if (userLoading) return <div className="enterprise-panel p-4 text-sm text-slate-600">Verifying attendance access…</div>;
+  if (!userDoc) return <div className="enterprise-panel p-6 text-center"><h1 className="text-xl font-extrabold text-slate-950">Sign-in required</h1><p className="mt-2 text-sm text-slate-700">Sign in to record attendance.</p></div>;
+  if (!canRecord) return <div className="enterprise-panel p-6 text-center"><h1 className="text-xl font-extrabold text-slate-950">Attendance access unavailable</h1><p className="mt-2 text-sm text-slate-700">{actor === "staff" ? "Your account is not authorised to record staff attendance. Please contact an administrator." : "Your account is not authorised to record student attendance. Please contact an administrator."}</p></div>;
 
   return (
     <div className="min-w-0 space-y-3">
@@ -368,7 +397,7 @@ export default function Checkin() {
             </Link>
             <div className="min-w-0">
             <h1 className="text-xl font-extrabold">{actor === "student" ? "Student Attendance" : "Staff Attendance"}</h1>
-            <p className="mt-1 text-xs text-white/70">{actor === "student" ? "Scan QR or fingerprint for check-in." : "Scan QR or use face recognition for check-in."}</p>
+            <p className="mt-1 text-xs text-white/70">Use an approved method to record check-in or check-out.</p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
@@ -439,10 +468,10 @@ export default function Checkin() {
               />
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <button type="button" onClick={() => submitStaffAttendance("in")} disabled={submitting || !attendanceCheck.allowed} className="enterprise-button-primary justify-center">
-                  Check-In
+                  Check in
                 </button>
                 <button type="button" onClick={() => submitStaffAttendance("out")} disabled={submitting || !attendanceCheck.allowed} className="rounded-lg bg-amber-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-700 disabled:opacity-60">
-                  Check-Out
+                  Check out
                 </button>
               </div>
             </div>
@@ -450,6 +479,15 @@ export default function Checkin() {
 
           {actor === "student" ? (
             <div className="enterprise-panel min-w-0 overflow-hidden p-3 sm:p-4">
+              <div className="mb-3 flex flex-col gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-sm font-extrabold text-emerald-900">Manual class attendance</h2>
+                  <p className="text-xs text-emerald-800">Mark every active student present, or mark students individually below.</p>
+                </div>
+                <button type="button" onClick={markAllStudentsPresent} disabled={submitting || loading || !attendanceCheck.allowed || !selectedClassId || students.length === 0} className="enterprise-button-primary justify-center whitespace-nowrap disabled:opacity-60">
+                  {submitting ? "Saving..." : "Mark all present"}
+                </button>
+              </div>
               <div className="grid grid-cols-2 gap-2 lg:grid-cols-[1fr_auto_auto]">
                 <select value={selectedStudentId} onChange={(event) => setSelectedStudentId(event.target.value)} disabled={loading || students.length === 0} className="enterprise-input col-span-2 lg:col-span-1">
                   <option value="">Choose a student</option>
@@ -460,12 +498,24 @@ export default function Checkin() {
                   ))}
                 </select>
                 <button type="button" onClick={() => { setMode("in"); submitStudentAttendance(selectedStudentId, "in"); }} disabled={submitting || !attendanceCheck.allowed || !selectedStudentId} className="enterprise-button-primary min-h-11 w-full justify-center">
-                  Check-In
+                  Check in
                 </button>
                 <button type="button" onClick={() => { setMode("out"); submitStudentAttendance(selectedStudentId, "out"); }} disabled={submitting || !attendanceCheck.allowed || !selectedStudentId} className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-amber-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-700 disabled:opacity-60">
-                  Check-Out
+                  Check out
                 </button>
               </div>
+              {students.length > 0 ? (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Individual students</p>
+                  {students.filter((student) => student.isActive !== false).map((student) => {
+                    const recorded = todayAttendance.some((record) => record.studentId === student.id);
+                    return <div key={student.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                      <span className="min-w-0 truncate text-sm font-semibold text-slate-800">{student.name ?? student.studentId ?? student.id}</span>
+                      <button type="button" onClick={() => submitStudentAttendance(student.id, "in")} disabled={submitting || recorded || !attendanceCheck.allowed} className="shrink-0 rounded-md bg-emerald-600 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:bg-slate-300">{recorded ? "Recorded" : "Mark present"}</button>
+                    </div>;
+                  })}
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -478,11 +528,11 @@ export default function Checkin() {
                   <p className="mt-2 text-xs font-semibold text-primary">Available on mobile</p>
                 </div>
                 <Link to={`/attendance/face?actor=student&mode=in${qrClassQuery}`} className={actionCardClass("emerald")}>
-                  <h2 className="break-words text-base font-semibold text-dark">Student Face Check-In</h2>
+                  <h2 className="break-words text-base font-semibold text-dark">Student face check in</h2>
                   <p className="mt-1 break-words text-sm text-neutral">Check-in using facial recognition.</p>
                 </Link>
                 <Link to={`/attendance/face?actor=student&mode=out${qrClassQuery}`} className={actionCardClass("slate")}>
-                  <h2 className="break-words text-base font-semibold text-dark">Student Face Check-Out</h2>
+                  <h2 className="break-words text-base font-semibold text-dark">Student face check out</h2>
                   <p className="mt-1 break-words text-sm text-neutral">Check-out using facial recognition.</p>
                 </Link>
               </>
@@ -501,11 +551,11 @@ export default function Checkin() {
             {actor === "staff" ? (
               <>
                 <Link to={`/attendance/face?actor=staff&mode=in${selfQuery}`} className={actionCardClass("emerald")}>
-                  <h2 className="break-words text-base font-semibold text-dark">Staff Face Check-In</h2>
+                  <h2 className="break-words text-base font-semibold text-dark">Staff face check in</h2>
                   <p className="mt-1 break-words text-sm text-neutral">Check-in using facial recognition.</p>
                 </Link>
                 <Link to={`/attendance/face?actor=staff&mode=out${selfQuery}`} className={actionCardClass("slate")}>
-                  <h2 className="break-words text-base font-semibold text-dark">Staff Face Check-Out</h2>
+                  <h2 className="break-words text-base font-semibold text-dark">Staff face check out</h2>
                   <p className="mt-1 break-words text-sm text-neutral">Check-out using facial recognition.</p>
                 </Link>
               </>
@@ -515,8 +565,8 @@ export default function Checkin() {
           <div className="enterprise-panel p-3">
             <h2 className="mb-2 text-base font-semibold text-dark">How it works</h2>
             <div className="grid gap-2 text-sm text-neutral md:grid-cols-2">
-              <p>{actor === "staff" ? "Scan QR or use face recognition for check-in." : "Scan QR or fingerprint for check-in."}</p>
-              <p>Attendance is logged automatically.</p>
+              <p>{actor === "staff" ? "Use staff ID, QR scanning, or facial recognition to record attendance." : "Use student selection, QR scanning, fingerprint, or facial recognition to record attendance."}</p>
+              <p>Records are saved automatically after successful verification.</p>
             </div>
           </div>
         </div>

@@ -68,7 +68,7 @@ export async function assertAttendanceCheckInOpen() {
   const settings = await getAttendanceSettings();
 
   if (hasReachedAttendanceCloseTime(settings)) {
-    throw new Error("Attendance check-in is closed for today.");
+    throw new Error("The attendance check-in window has closed for today. Please contact an administrator if a correction is required.");
   }
 
   return settings;
@@ -95,7 +95,7 @@ export function isWeekendForAttendance(settings: AttendanceSettings, now = new D
 export async function assertStaffAttendanceDayAllowed() {
   const settings = await getAttendanceSettings();
   if (isWeekendForAttendance(settings) && !settings.allowStaffWeekendAttendance) {
-    throw new Error("Staff attendance is disabled on weekends. Ask an admin to allow weekend staff attendance.");
+    throw new Error("Staff attendance is unavailable at weekends. Please contact an administrator if weekend attendance is required.");
   }
   return settings;
 }

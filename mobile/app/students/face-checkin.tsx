@@ -11,7 +11,6 @@ import { getMovementReasonRequirement } from "../../src/services/movementPolicy"
 import { useRequireAttendanceAccess } from "../../src/hooks/useRouteAuthorization";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useMovementReasonPrompt } from "../../components/MovementReasonPrompt";
-import { runMobileFaceLiveness } from "../../src/services/faceLiveness";
 
 export default function StudentFaceCheckin({ classId }: { classId: string }) {
   const router = useRouter();
@@ -65,19 +64,15 @@ export default function StudentFaceCheckin({ classId }: { classId: string }) {
 
     try {
       setLoading(true);
-      setProgressStage("Complete live face verification…");
-
-      await runMobileFaceLiveness();
-
       setProgressStage("Capturing face image…");
       const photo = await cameraRef.current.takePictureAsync({
         base64: true,
-        quality: 0.5,
-        skipProcessing: true,
+        quality: 0.8,
+        skipProcessing: false,
       });
 
       if (!photo.base64) {
-        Alert.alert("Error", "Could not capture image");
+        Alert.alert("Face attendance failed", "Could not capture image.");
         return;
       }
 
@@ -86,7 +81,7 @@ export default function StudentFaceCheckin({ classId }: { classId: string }) {
       const result = await searchFace(photo.base64, "student");
 
       if (!result.matched || !result.subjectId) {
-        Alert.alert("Access Denied", "Face not recognized");
+        Alert.alert("Face attendance failed", "Face not recognized.");
         return;
       }
 
@@ -104,10 +99,10 @@ export default function StudentFaceCheckin({ classId }: { classId: string }) {
         movementReason,
       });
 
-      Alert.alert("Check-in Successful", `Face matched (${result.similarity.toFixed(2)}%)`);
+      Alert.alert("Attendance recorded", `Attendance recorded successfully using facial recognition (${result.similarity.toFixed(2)}% match).`);
     } catch (err: any) {
       console.error(err);
-      Alert.alert("Error", err?.message || "Face check-in failed");
+      Alert.alert("Face attendance failed", err?.message || "Face attendance could not be completed.");
     } finally {
       setLoading(false);
       setProgressStage("");
@@ -117,6 +112,10 @@ export default function StudentFaceCheckin({ classId }: { classId: string }) {
   return (
     <View className="flex-1">
       <CameraView ref={cameraRef} style={{ flex: 1 }} facing="front" />
+      <View className="absolute top-24 left-4 right-4 rounded-2xl bg-slate-950/75 p-4">
+        <Text className="text-center font-semibold text-white">Position your face in the frame</Text>
+        <Text className="mt-1 text-center text-xs text-slate-200">Look directly at the camera and keep still. Then press “Capture face.”</Text>
+      </View>
       <Pressable
         onPress={() => router.back()}
         disabled={loading}
@@ -140,7 +139,7 @@ export default function StudentFaceCheckin({ classId }: { classId: string }) {
           disabled={loading}
           className="bg-green-600 px-6 py-3 rounded-full"
         >
-          {loading ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-semibold">Face Check-in</Text>}
+          {loading ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-semibold">Capture face</Text>}
         </Pressable>
       </View>
       {movementReasonPrompt}

@@ -1,5 +1,22 @@
 import 'dotenv/config';
 
+const firebaseEnvKeys = [
+  'FIREBASE_API_KEY',
+  'FIREBASE_AUTH_DOMAIN',
+  'FIREBASE_PROJECT_ID',
+  'FIREBASE_STORAGE_BUCKET',
+  'FIREBASE_MESSAGING_SENDER_ID',
+  'FIREBASE_APP_ID',
+  'FIREBASE_MEASUREMENT_ID',
+];
+const missingFirebaseEnvKeys = firebaseEnvKeys.filter((key) => !process.env[key]?.trim());
+if (missingFirebaseEnvKeys.length) {
+  throw new Error(
+    `Missing Firebase app configuration: ${missingFirebaseEnvKeys.join(', ')}. ` +
+      'Set these in the selected EAS environment or in mobile/.env for local builds.'
+  );
+}
+
 export default ({ config }) => ({
   ...config,
 
@@ -73,7 +90,6 @@ export default ({ config }) => ({
   },
 
   plugins: [
-    "./plugins/with-face-liveness",
     "expo-web-browser",
     "expo-router",
     "expo-font",

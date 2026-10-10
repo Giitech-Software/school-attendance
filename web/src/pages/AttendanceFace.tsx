@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import FaceCameraCapture from "../components/FaceCameraCapture";
-import FaceLivenessCheck from "../components/FaceLivenessCheck";
 import { searchFace } from "../services/faceService";
 import { listClasses, type ClassRecord } from "../services/classes";
 import { getStudentById } from "../services/students";
@@ -71,7 +70,6 @@ export default function AttendanceFace() {
   const [processingStage, setProcessingStage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [livenessVerified, setLivenessVerified] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -118,10 +116,6 @@ export default function AttendanceFace() {
   }
 
   async function handleCapture(base64Image: string) {
-    if (!livenessVerified) {
-      setError("Complete the liveness verification before face attendance.");
-      return;
-    }
     if (actor === "student" && !selectedClassId) {
       setError("Select a class before using student face attendance.");
       return;
@@ -150,7 +144,7 @@ export default function AttendanceFace() {
         const selfOnly = isSelfServiceStaff;
         setProcessingStage(`Recording staff check-${mode === "in" ? "in" : "out"}…`);
         await registerStaffAttendance({ staffId: staff.id, mode, method: "face", biometric: true, movementReason, selfOnly });
-        setSuccess(`${staff.name ?? "Staff member"} checked ${mode === "in" ? "in" : "out"} by face${similarityLabel(result.similarity)}.`);
+        setSuccess(`Attendance recorded successfully using facial recognition${similarityLabel(result.similarity)}.`);
       } else {
         setProcessingStage("Loading student profile…");
         const student = await getStudentById(result.subjectId);
@@ -165,7 +159,7 @@ export default function AttendanceFace() {
           biometric: true,
           movementReason,
         });
-        setSuccess(`${student.name ?? "Student"} checked ${mode === "in" ? "in" : "out"} by face${similarityLabel(result.similarity)}.`);
+        setSuccess(`Attendance recorded successfully using facial recognition${similarityLabel(result.similarity)}.`);
       }
     } catch (err: any) {
       console.error("face attendance", err);
@@ -173,7 +167,6 @@ export default function AttendanceFace() {
     } finally {
       setProcessing(false);
       setProcessingStage("");
-      setLivenessVerified(false);
     }
   }
 
@@ -245,42 +238,16 @@ export default function AttendanceFace() {
           ) : null}
 
           <div className="mt-3 space-y-3">
-            {!livenessVerified ? (
-              <FaceLivenessCheck disabled={disabled} onVerified={() => { setLivenessVerified(true); setError(null); }} />
-            ) : (
-              <>
-                <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
-                  Liveness verified. Reopening the camera automatically to match your face and record attendance…
-                </div>
-                <FaceCameraCapture
-                  disabled={disabled}
-                  autoStart
-                  autoCaptureOnEnable
-                  captureLabel={`Face ${mode === "in" ? "Check-in" : "Check-out"}`}
-                  processingLabel={processingStage || "Verifying face and recording attendance…"}
-                  onCapture={handleCapture}
-                />
-              </>
-            )}
+            <FaceCameraCapture
+              disabled={disabled}
+              autoStart
+              captureLabel="Capture face"
+              processingLabel={processingStage || "Verifying face and recording attendance…"}
+              onCapture={handleCapture}
+            />
           </div>
         </div>
 
-        <aside className="enterprise-panel p-4">
-          <h2 className="text-base font-bold text-slate-950">Face Notes</h2>
-          <div className="mt-3 space-y-2 text-sm text-slate-600">
-            <p className="rounded-lg bg-slate-50 p-3">The web camera captures one image and sends it to the same recognition function used by mobile.</p>
-            <p className="rounded-lg bg-slate-50 p-3">Use a clear front-facing photo with good lighting.</p>
-            <p className="rounded-lg bg-slate-50 p-3">If a face is not recognized, confirm the person has been registered first.</p>
-          </div>
-          <div className="mt-3 grid gap-2">
-            <Link to={`/attendance/qr?actor=${actor}&mode=${mode}${actor === "student" && selectedClassId ? `&classId=${selectedClassId}` : ""}`} className="enterprise-button-secondary">
-              Use QR instead
-            </Link>
-            <Link to="/attendance" className="enterprise-button-secondary">
-              Today's Attendance
-            </Link>
-          </div>
-        </aside>
       </section>
     </div>
   );

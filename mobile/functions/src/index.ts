@@ -5,7 +5,6 @@ import * as admin from "firebase-admin";
 export { verifyAttendancePresence } from "./handlers/verifyAttendancePresence";
 export { linkStaffAccount } from "./handlers/linkStaffAccount";
 export { updateOwnStaffProfilePhoto } from "./handlers/updateOwnStaffProfilePhoto";
-export { createFaceLivenessSession, getFaceLivenessSessionResults, getFaceLivenessCredentials } from "./handlers/faceLiveness";
 
 if (!admin.apps.length) admin.initializeApp();
 
@@ -188,7 +187,7 @@ export const searchStaffFace = onRequest(
         Image: {
           Bytes: Buffer.from(normalizedBase64, "base64"),
         },
-        FaceMatchThreshold: 85,
+        FaceMatchThreshold: 80,
         MaxFaces: 1,
       });
 
@@ -406,7 +405,7 @@ export const searchStudentFace = onRequest(
         Image: {
           Bytes: Buffer.from(normalizedBase64, "base64"),
         },
-        FaceMatchThreshold: 85,
+        FaceMatchThreshold: 80,
         MaxFaces: 1,
       });
 

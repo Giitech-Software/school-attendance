@@ -17,6 +17,7 @@ export default function FaceCameraCapture({ disabled = false, autoStart = false,
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [capturing, setCapturing] = useState(false);
   const [autoCaptureRequested, setAutoCaptureRequested] = useState(false);
+  const autoStartAttemptedRef = useRef(false);
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -66,7 +67,9 @@ export default function FaceCameraCapture({ disabled = false, autoStart = false,
   }, [cameraActive, cameraStarting, stopCamera]);
 
   useEffect(() => {
-    if (autoStart) void startCamera();
+    if (!autoStart || autoStartAttemptedRef.current) return;
+    autoStartAttemptedRef.current = true;
+    void startCamera();
   }, [autoStart, startCamera]);
 
   const captureFrame = useCallback(async () => {
@@ -113,23 +116,34 @@ export default function FaceCameraCapture({ disabled = false, autoStart = false,
 
   return (
     <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-      <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-950">
+      <div className="relative overflow-hidden rounded-lg border border-slate-200 bg-slate-950">
         <video ref={videoRef} className={`aspect-[3/4] w-full object-cover scale-x-[-1] sm:aspect-video ${cameraActive ? "block" : "hidden"}`} aria-label="Face camera preview" />
         {!cameraActive ? (
             <div className="flex aspect-[3/4] items-center justify-center px-4 text-center text-sm font-semibold text-slate-300 sm:aspect-video">
             Front camera preview will appear here
           </div>
         ) : null}
+        {cameraActive ? (
+          <button
+            type="button"
+            onClick={captureFrame}
+            disabled={disabled || capturing}
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-extrabold text-white shadow-lg ring-2 ring-white/80 hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {capturing ? processingLabel : captureLabel}
+          </button>
+        ) : null}
       </div>
+
+      <p className="mt-2 text-sm font-medium text-slate-700">
+        Position your face in the frame, look directly at the camera, and keep still. Then press “Capture face.”
+      </p>
 
       {cameraError ? <div className="status-error mt-3">{cameraError}</div> : null}
 
       <div className="mt-3 flex flex-wrap gap-2">
         <button type="button" onClick={startCamera} disabled={disabled || cameraActive || cameraStarting} className="enterprise-button-primary self-start w-fit whitespace-nowrap">
           {cameraStarting ? "Starting camera…" : cameraActive ? "Camera Ready" : "Start Camera"}
-        </button>
-        <button type="button" onClick={captureFrame} disabled={disabled || !cameraActive || capturing || autoCaptureOnEnable} className="enterprise-button-primary">
-          {capturing || autoCaptureOnEnable ? processingLabel : captureLabel}
         </button>
         <button type="button" onClick={stopCamera} disabled={!cameraActive || capturing} className="enterprise-button-secondary">
           Stop

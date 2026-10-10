@@ -36,12 +36,12 @@ import { useCurrentStaff } from "../../src/hooks/useCurrentStaff";
 function isAttendanceAllowed(actor: "student" | "staff", allowStaffWeekendAttendance: boolean): { allowed: boolean; reason?: string } {
   const today = new Date();
   const day = today.getDay();
-  if (day === 0 && !(actor === "staff" && allowStaffWeekendAttendance)) return { allowed: false, reason: "Today is Sunday. Attendance is not allowed." };
-  if (day === 6 && !(actor === "staff" && allowStaffWeekendAttendance)) return { allowed: false, reason: "Today is Saturday. Attendance is not allowed." };
+  if (day === 0 && !(actor === "staff" && allowStaffWeekendAttendance)) return { allowed: false, reason: "Attendance is unavailable today because it is Sunday." };
+  if (day === 6 && !(actor === "staff" && allowStaffWeekendAttendance)) return { allowed: false, reason: "Attendance is unavailable today because it is Saturday." };
   const holidays = ["2026-01-01", "2026-04-15", "2026-12-25"];
   const todayISO = today.toISOString().slice(0, 10);
   if (holidays.includes(todayISO)) {
-    return { allowed: false, reason: "Today is a holiday. Attendance is not allowed." };
+    return { allowed: false, reason: "Attendance is unavailable today because it is a public holiday." };
   }
   return { allowed: true };
 }
@@ -67,7 +67,7 @@ function StudentRow({ student, onCheckIn, onCheckOut }: { student: StudentRecord
     disabled={!hasBiometric}
     className={`${hasBiometric ? "bg-blue-600" : "bg-gray-400"} px-4 py-2 rounded-lg mr-3`}
   >
-    <Text className="text-white font-semibold">Check-In</Text>
+    <Text className="text-white font-semibold">Check in</Text>
   </Pressable>
 
   <Pressable
@@ -75,7 +75,7 @@ function StudentRow({ student, onCheckIn, onCheckOut }: { student: StudentRecord
     disabled={!hasBiometric}
     className={`${hasBiometric ? "bg-yellow-600" : "bg-gray-400"} px-4 py-2 rounded-lg mr-3`}
   >
-    <Text className="text-white font-semibold">Check-Out</Text>
+    <Text className="text-white font-semibold">Check out</Text>
   </Pressable>
 </View>
 
@@ -97,7 +97,7 @@ function StaffRow({ staff, onCheckIn, onCheckOut }: { staff: any; onCheckIn: () 
           disabled={!hasBiometric}
           className={`${hasBiometric ? "bg-blue-600" : "bg-gray-400"} px-4 py-2 rounded-lg mr-3 shadow-sm`}
         >
-          <Text className="text-white font-semibold">Check-In</Text>
+          <Text className="text-white font-semibold">Check in</Text>
         </Pressable>
 
         <Pressable
@@ -105,7 +105,7 @@ function StaffRow({ staff, onCheckIn, onCheckOut }: { staff: any; onCheckIn: () 
           disabled={!hasBiometric}
           className={`${hasBiometric ? "bg-yellow-600" : "bg-gray-400"} px-4 py-2 rounded-lg shadow-sm`}
         >
-          <Text className="text-white font-semibold">Check-Out</Text>
+          <Text className="text-white font-semibold">Check out</Text>
         </Pressable>
       </View>
     </View>
@@ -476,7 +476,7 @@ export default function CheckinScreen() {
           <View className="flex-1">
           <Text className="text-lg font-semibold text-dark">{actor === "student" ? "Student Biometric Attendance" : "Staff Device Biometric Attendance"}</Text>
             <Text className="text-sm text-neutral mt-1">
-              {showBiometric ? "Tap to record attendance via fingerprint." : "Check-in or check-out using fingerprint."}
+              {showBiometric ? "Tap to verify and record attendance using your fingerprint." : "Use your device fingerprint to verify attendance."}
             </Text>
           </View>
           <MaterialIcons name={showBiometric ? "keyboard-arrow-up" : "arrow-forward-ios"} size={16} color="#64748B" />
@@ -515,7 +515,7 @@ export default function CheckinScreen() {
                 style={staffIdSubmitting ? { opacity: 0.7 } : undefined}
               >
                 <Text className="text-white text-center font-semibold">
-                  Check-In
+                  Check in
                 </Text>
               </Pressable>
               <Pressable
@@ -525,7 +525,7 @@ export default function CheckinScreen() {
                 style={staffIdSubmitting ? { opacity: 0.7 } : undefined}
               >
                 <Text className="text-white text-center font-semibold">
-                  Check-Out
+                  Check out
                 </Text>
               </Pressable>
             </View>
@@ -538,7 +538,7 @@ export default function CheckinScreen() {
           </View>
           <View className="flex-1">
             <Text className="text-lg font-semibold text-dark">Scan QR Code (In)</Text>
-            <Text className="text-sm text-neutral mt-1">Check-in via QR scan.</Text>
+            <Text className="text-sm text-neutral mt-1">Scan a registered QR code to record check-in.</Text>
           </View>
           <MaterialIcons name="arrow-forward-ios" size={16} color="#64748B" />
         </Pressable>
@@ -549,7 +549,7 @@ export default function CheckinScreen() {
           </View>
           <View className="flex-1">
             <Text className="text-lg font-semibold text-dark">Scan QR Code (Out)</Text>
-            <Text className="text-sm text-neutral mt-1">Check-out via QR scan.</Text>
+            <Text className="text-sm text-neutral mt-1">Scan a registered QR code to record check-out.</Text>
           </View>
           <MaterialIcons name="arrow-forward-ios" size={16} color="#64748B" />
         </Pressable>
@@ -564,8 +564,8 @@ export default function CheckinScreen() {
                 <MaterialCommunityIcons name="face-man-profile" size={28} color="#4F46E5" />
               </View>
               <View className="flex-1">
-                <Text className="text-lg font-semibold text-dark">Staff Face Check-In</Text>
-                <Text className="text-sm text-neutral mt-1">Check-in using face recognition.</Text>
+                <Text className="text-lg font-semibold text-dark">Staff face check in</Text>
+                <Text className="text-sm text-neutral mt-1">Use facial recognition to verify check-in.</Text>
               </View>
               <MaterialIcons name="arrow-forward-ios" size={16} color="#64748B" />
             </Pressable>
@@ -578,8 +578,8 @@ export default function CheckinScreen() {
                 <MaterialCommunityIcons name="face-recognition" size={28} color="#7C3AED" />
               </View>
               <View className="flex-1">
-                <Text className="text-lg font-semibold text-dark">Staff Face Check-Out</Text>
-                <Text className="text-sm text-neutral mt-1">Check-out using face recognition.</Text>
+                <Text className="text-lg font-semibold text-dark">Staff face check out</Text>
+                <Text className="text-sm text-neutral mt-1">Use facial recognition to verify check-out.</Text>
               </View>
               <MaterialIcons name="arrow-forward-ios" size={16} color="#64748B" />
             </Pressable>
@@ -590,10 +590,10 @@ export default function CheckinScreen() {
           <View className="mt-4 bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
             <Text className="font-semibold text-dark text-base mb-2">How it works</Text>
             <View className="flex-row items-center mb-2">
-              <MaterialIcons name="check-circle" size={20} color="#10B981" /><Text className="ml-3 text-neutral">{actor === "staff" ? "Scan QR or use face recognition for check-in." : "Scan QR or fingerprint for check-in."}</Text>
+              <MaterialIcons name="check-circle" size={20} color="#10B981" /><Text className="ml-3 text-neutral">{actor === "staff" ? "Use staff ID, QR scanning, or facial recognition to record attendance." : "Use QR scanning, fingerprint, or facial recognition to record attendance."}</Text>
             </View>
             <View className="flex-row items-center">
-              <MaterialIcons name="check-circle" size={20} color="#10B981" /><Text className="ml-3 text-neutral">Attendance is logged automatically.</Text>
+              <MaterialIcons name="check-circle" size={20} color="#10B981" /><Text className="ml-3 text-neutral">Records are saved automatically after successful verification.</Text>
             </View>
           </View>
         ) : null}

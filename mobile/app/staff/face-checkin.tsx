@@ -22,7 +22,6 @@ import { useRequireAttendanceAccess } from "../../src/hooks/useRouteAuthorizatio
 import { useCurrentStaff } from "../../src/hooks/useCurrentStaff";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useMovementReasonPrompt } from "../../components/MovementReasonPrompt";
-import { runMobileFaceLiveness } from "../../src/services/faceLiveness";
 
 export default function FaceCheckin() {
   const router = useRouter();
@@ -102,19 +101,15 @@ export default function FaceCheckin() {
 
     try {
       setLoading(true);
-      setProgressStage("Complete live face verification…");
-
-      await runMobileFaceLiveness();
-
       setProgressStage("Capturing face image…");
       const photo = await cameraRef.current.takePictureAsync({
         base64: true,
-        quality: 0.5,
-        skipProcessing: true,
+        quality: 0.8,
+        skipProcessing: false,
       });
 
       if (!photo.base64) {
-        Alert.alert("Error", "Could not capture image");
+        Alert.alert("Face attendance failed", "Could not capture image.");
         return;
       }
 
@@ -123,13 +118,13 @@ export default function FaceCheckin() {
       const staffId = result.subjectId ?? result.staffId;
 
       if (!result.matched || !staffId) {
-        Alert.alert("Access Denied", "Face not recognized");
+        Alert.alert("Face attendance failed", "Face not recognized.");
         return;
       }
 
       if (isSelfService && staffId !== currentStaff?.id) {
         Alert.alert(
-          "Wrong face profile",
+          "Face attendance failed",
           "The recognized face does not match your staff profile."
         );
         return;
@@ -138,11 +133,10 @@ export default function FaceCheckin() {
       setProgressStage("Checking staff profile and movement-book requirements…");
       const staffSnap = await getDoc(doc(db, "staff", staffId));
       if (!staffSnap.exists()) {
-        Alert.alert("Access Denied", "Matched face is not registered as staff.");
+        Alert.alert("Face attendance failed", "The recognized face is not registered as staff.");
         return;
       }
 
-      const staffName = staffSnap.data()?.name ?? "Staff member";
       const movementReason = await getMovementReasonFor(attendanceMode);
 
       setProgressStage(`Recording staff check-${attendanceMode === "in" ? "in" : "out"}…`);
@@ -167,18 +161,18 @@ export default function FaceCheckin() {
 
       const similarity =
         typeof result.similarity === "number"
-          ? ` (${result.similarity.toFixed(2)}%)`
+          ? ` (${result.similarity.toFixed(2)}% match)`
           : "";
 
       Alert.alert(
-        attendanceMode === "in" ? "Check-in Successful" : "Check-out Successful",
-        `${staffName} ${attendanceMode === "in" ? "checked in" : "checked out"} by face${similarity}.`
+        "Attendance recorded",
+        `Attendance recorded successfully using facial recognition${similarity}.`
       );
     } catch (error) {
       console.error(error);
       Alert.alert(
-        "Error",
-        error instanceof Error ? error.message : "Face verification failed"
+        "Face attendance failed",
+        error instanceof Error ? error.message : "Face attendance could not be completed."
       );
     } finally {
       setLoading(false);
@@ -189,6 +183,11 @@ export default function FaceCheckin() {
   return (
     <View className="flex-1">
       <CameraView ref={cameraRef} style={{ flex: 1 }} facing="front" />
+
+      <View className="absolute top-24 left-4 right-4 rounded-2xl bg-slate-950/75 p-4">
+        <Text className="text-center font-semibold text-white">Position your face in the frame</Text>
+        <Text className="mt-1 text-center text-xs text-slate-200">Look directly at the camera and keep still. Then press “Capture face.”</Text>
+      </View>
 
       <Pressable
         onPress={() => router.back()}
@@ -215,7 +214,7 @@ export default function FaceCheckin() {
             <ActivityIndicator color="#fff" />
           ) : (
             <Text className="text-white">
-              {attendanceMode === "in" ? "Face Check-in" : "Face Check-out"}
+              Capture face
             </Text>
           )}
         </Pressable>

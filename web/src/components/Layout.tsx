@@ -91,6 +91,9 @@ export default function Layout() {
   const visibleAdminLinks = isAdmin ? adminLinks.filter((link) => !link.schoolOnly || allowsSchoolFeatures) : [];
   const isStaffUser = ["teacher", "staff", "non_teaching_staff", "general_staff"].includes(userDoc?.role ?? "");
   const isSelfAttendanceRoute = location.pathname === "/attendance/checkin" && new URLSearchParams(location.search).get("self") === "1";
+  const attendanceLinkTo = !isAdmin && userDoc?.canTakeStudentAttendance !== true && (userDoc?.canTakeStaffAttendance === true || userDoc?.canTakeSelfAttendance === true)
+    ? "/attendance/checkin?actor=staff"
+    : "/attendance/checkin";
   const visibleStaffLinks = !isAdmin && isStaffUser ? [
     ...(canRegisterStaff ? [{ to: "/staff", label: "Staff Directory" }] : []),
     { to: "/staff/my-attendance", label: "My Attendance" },
@@ -199,11 +202,14 @@ export default function Layout() {
         <div>
           {!sidebarCollapsed ? <p className="px-2.5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Main</p> : null}
           <div className="mt-2 space-y-1">
-            {visibleMainLinks.map((link) => (
-              <NavLink key={link.to} to={link.to} end={link.to === "/"} className={(state) => `${navLinkClass({ isActive: state.isActive && !(link.to === "/attendance/checkin" && isSelfAttendanceRoute) })} ${sidebarCollapsed ? "justify-center px-2" : ""}`} title={sidebarCollapsed ? link.label : undefined}>
+            {visibleMainLinks.map((link) => {
+              const linkTo = link.to === "/attendance/checkin" ? attendanceLinkTo : link.to;
+              return (
+              <NavLink key={link.to} to={linkTo} end={link.to === "/"} className={(state) => `${navLinkClass({ isActive: state.isActive && !(link.to === "/attendance/checkin" && isSelfAttendanceRoute) })} ${sidebarCollapsed ? "justify-center px-2" : ""}`} title={sidebarCollapsed ? link.label : undefined}>
                 {sidebarCollapsed ? link.label.charAt(0) : link.label}{link.to === "/messages" && messageBadge.total > 0 ? <span aria-label={`${messageBadge.unread ? `${messageBadge.unread} unread` : "All messages viewed"}; ${messageBadge.total} messages`} title={messageBadge.unread ? `${messageBadge.unread} unread message${messageBadge.unread === 1 ? "" : "s"}` : "All messages viewed"} className={`ml-2 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-extrabold text-white ${messageBadge.unread ? "animate-pulse bg-red-600" : "bg-emerald-600"}`}>{messageBadge.total > 99 ? "99+" : messageBadge.total}</span> : null}
               </NavLink>
-            ))}
+              );
+            })}
           </div>
         </div>
 

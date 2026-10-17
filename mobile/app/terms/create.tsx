@@ -20,6 +20,9 @@ export default function TermCreate() {
   const [name, setName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [midtermStartDate, setMidtermStartDate] = useState("");
+  const [midtermEndDate, setMidtermEndDate] = useState("");
+  const [holidayText, setHolidayText] = useState("");
   const [saving, setSaving] = useState(false);
 
   function isWeekend(dateStr: string) {
@@ -53,6 +56,9 @@ setSaving(true);
       name: name.trim(),
       startDate,
       endDate,
+      midtermStartDate: midtermStartDate || undefined,
+      midtermEndDate: midtermEndDate || undefined,
+      holidays: holidayText.split("\n").map((line) => { const [date, ...parts] = line.split("|"); return { date: date.trim(), name: parts.join("|").trim() || "Holiday" }; }).filter((holiday) => /^\d{4}-\d{2}-\d{2}$/.test(holiday.date)),
     } as Term);
 
     // 2ÃƒÂ¯Ã‚Â¸Ã‚ÂÃƒÂ¢Ã†â€™Ã‚Â£ auto-generate weeks from term dates
@@ -116,6 +122,13 @@ setSaving(true);
   className="border p-3 rounded mb-3 bg-white"
   placeholder="e.g. Term 2"
 />
+
+<Text className="text-sm text-neutral">Midterm/break start (optional)</Text>
+<AppInput value={midtermStartDate} onChangeText={setMidtermStartDate} className="border p-3 rounded mb-3 bg-white" placeholder="2025-02-10" keyboardType="numeric" />
+<Text className="text-sm text-neutral">Midterm/break end (optional)</Text>
+<AppInput value={midtermEndDate} onChangeText={setMidtermEndDate} className="border p-3 rounded mb-3 bg-white" placeholder="2025-02-14" keyboardType="numeric" />
+<Text className="text-sm text-neutral">Additional holidays (YYYY-MM-DD | name)</Text>
+<TextInput value={holidayText} onChangeText={setHolidayText} multiline className="border p-3 rounded mb-4 bg-white min-h-24" placeholder="2025-05-01 | Workers' Day" />
 
 <Text className="text-sm text-neutral">Start date (YYYY-MM-DD)</Text>
 <AppInput

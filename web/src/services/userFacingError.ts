@@ -17,7 +17,7 @@ export function userFacingError(error: unknown, fallback = "Something went wrong
     return "You appear to be offline. Reconnect to the internet and retry. Attendance is not confirmed until you see a success message.";
   }
   if (code.includes("permission-denied")) {
-    return "We couldn’t verify this attendance action with your current access. Confirm that your account is approved, assigned to this organisation, and enabled for this attendance type. Contact your organisation administrator if the issue continues.";
+    return "Attendance could not be recorded. Please contact your administrator.";
   }
   if (code.includes("unauthenticated") || code.includes("auth/user-token-expired") || code.includes("auth/invalid-user-token")) {
     return "Your session has expired. Sign in again, then retry the attendance action.";

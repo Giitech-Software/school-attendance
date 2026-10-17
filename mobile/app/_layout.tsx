@@ -8,7 +8,7 @@ import { View, Text, StatusBar, useColorScheme, AppState } from 'react-native';
 import Avatar from '../components/Avatar';
 import { auth } from './firebase';
 import { signOutUser } from '../src/services/auth';
-import { getUserById } from "@/src/services/users";
+import { getCachedCurrentUser } from "../src/hooks/useCurrentUser";
 
 import '../global.css';
 
@@ -94,7 +94,7 @@ export default function RootLayout() {
       }
 
       try {
-        const user = await getUserById(auth.currentUser.uid);
+        const user = await getCachedCurrentUser();
 
         if (user && user.role !== "admin" && user.approved !== true) {
           router.replace("/(auth)/pending-approval");

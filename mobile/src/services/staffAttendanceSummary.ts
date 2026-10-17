@@ -4,7 +4,7 @@ import { db } from "../../app/firebase";
 import { getTenantScope, tenantConstraints } from "./tenantScope";
 import type { AttendanceRecord } from "./types";
 import { getAttendanceSettings } from "./attendanceSettings";
-import { getHolidaysInRange } from "./holidays";
+import { getNonInstructionalDates } from "./calendar";
 
 const attendanceCollection = collection(db, "attendance");
 const staffCollection = collection(db, "staff");
@@ -109,8 +109,7 @@ export async function getStaffGlobalSummary(fromIso: string, toIso: string, incl
   const staffSnap = await getDocs(query(staffCollection, ...tenantConstraints(await getTenantScope())));
   const allStaff = staffSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter((staff: any) => staff.isActive !== false);
   const attendanceSettings = await getAttendanceSettings();
-  const holidays = await getHolidaysInRange(fromIso, toIso).catch(() => []);
-  const holidayDates = new Set(holidays.map((holiday) => holiday.date));
+  const holidayDates = await getNonInstructionalDates(fromIso, toIso);
   const expectedDates = getStaffAttendanceDaysInRange(fromIso, toIso, includeWeekends || attendanceSettings.allowStaffWeekendAttendance)
     .filter((date) => !holidayDates.has(date));
 

@@ -87,6 +87,15 @@ service cloud.firestore {
       return sameTenantRequest() && sameTenantAttendanceResource();
     }
 
+    function staffCheckoutTenantMatchesCaller() {
+      return resource.data.subjectId is string
+        && exists(/databases/$(database)/documents/staff/$(resource.data.subjectId))
+        && (
+          !callerHasTenant()
+          || get(/databases/$(database)/documents/staff/$(resource.data.subjectId)).data.tenantId == callerUser().tenantId
+        );
+    }
+
     function isStaffRole() {
       return isApproved()
         && callerUser().role in [
@@ -243,7 +252,7 @@ service cloud.firestore {
 
     function isPrivilegedStaffCheckout() {
       return (isAdmin() || canTakeStaffAttendance())
-        && sameTenantAttendanceUpdate()
+        && sameTenantResource()
         && resource.data.subjectType == 'staff'
         && request.resource.data.subjectType == 'staff'
         && request.resource.data.subjectId == resource.data.subjectId
@@ -516,7 +525,7 @@ service cloud.firestore {
       allow update: if isPrivilegedStaffCheckout();
 
       allow update: if validAttendanceShape()
-        && sameTenantUpdate()
+        && sameTenantAttendanceUpdate()
         && (
           isAdmin()
           || (resource.data.subjectType == 'student' && canTakeStudentAttendance())
@@ -646,7 +655,6 @@ service cloud.firestore {
     }
   }
 }
-
 
 
 

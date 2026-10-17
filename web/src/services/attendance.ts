@@ -1,5 +1,5 @@
 import { collection, doc, getDocs, query, runTransaction, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore";
-import { db } from "../firebase";
+import { auth, db } from "../firebase";
 import type { AttendanceRecord } from "../types";
 import { assertAttendanceCheckInOpen, getAttendanceSettings } from "./attendanceSettings";
 import { validateAttendancePresence } from "./locationGuard";
@@ -150,8 +150,47 @@ async function writeAttendance(record: Partial<AttendanceRecord> & {
       delete scopedUpdate.tenantType;
     }
     delete scopedUpdate.selfOnly;
-    await updateDoc(doc(db, "attendance", id), scopedUpdate);
-    return normalizeAttendance({ id, ...scopedUpdate });
+    // Staff checkout only needs to change the checkout state. Keeping the
+    // update narrow avoids re-submitting unrelated staff fields through the
+    // canTakeStaffAttendance checkout path.
+    const updatePayload = record.type === "out" && record.subjectType === "staff"
+      ? {
+          subjectType: scopedUpdate.subjectType,
+          subjectId: scopedUpdate.subjectId,
+          staffId: scopedUpdate.staffId,
+          date: scopedUpdate.date,
+          type: scopedUpdate.type,
+          method: scopedUpdate.method,
+          biometric: scopedUpdate.biometric,
+          checkOutTime: scopedUpdate.checkOutTime,
+          earlyCheckoutReason: scopedUpdate.earlyCheckoutReason ?? null,
+          earlyCheckoutMinutes: scopedUpdate.earlyCheckoutMinutes ?? null,
+          ...(scopedUpdate.tenantId ? {
+            tenantId: scopedUpdate.tenantId,
+            tenantName: scopedUpdate.tenantName ?? null,
+            tenantType: scopedUpdate.tenantType ?? null,
+          } : {}),
+        }
+      : scopedUpdate;
+    if (record.type === "out" && record.subjectType === "staff") {
+      console.debug("[attendance:checkout-debug]", {
+        authUid: auth.currentUser?.uid ?? null,
+        attendanceId: id,
+        existingSubjectId: record.subjectId,
+        updateSubjectId: updatePayload.subjectId,
+        existingDate: record.date,
+        updateDate: scopedUpdate.date,
+        existingTenantId: record.tenantId ?? null,
+        updateTenantId: updatePayload.tenantId ?? null,
+        updateType: updatePayload.type,
+        checkOutTimeType: typeof updatePayload.checkOutTime,
+      });
+      console.log("DB", (db as any)._databaseId);
+      console.log("CHECKOUT PAYLOAD", JSON.stringify(updatePayload, null, 2));
+      console.log("PAYLOAD TYPES", Object.fromEntries(Object.entries(updatePayload).map(([key, value]) => [key, value === null ? "null" : typeof value])));
+    }
+    await updateDoc(doc(db, "attendance", id), updatePayload);
+    return normalizeAttendance({ id, ...updatePayload });
   }
 
   const location = await buildPresenceAudit(now);

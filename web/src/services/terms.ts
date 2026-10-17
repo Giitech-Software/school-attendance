@@ -92,3 +92,10 @@ export async function getCurrentTerm(todayIso?: string): Promise<Term | null> {
     throw err;
   }
 }
+
+export async function getTermForRange(fromIso: string, toIso: string): Promise<Term | null> {
+  const terms = await listTerms();
+  return terms.find((term) => term.startDate <= fromIso && term.endDate >= toIso)
+    ?? terms.find((term) => term.startDate <= toIso && term.endDate >= fromIso)
+    ?? null;
+}

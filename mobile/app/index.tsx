@@ -25,6 +25,7 @@ import { getAttendanceSettings } from "../src/services/attendanceSettings";
 import { autoMarkAbsentsForToday } from "../src/services/autoMarkAbsent";
 import { allowsStudentAndParentFeatures } from "../src/services/tenantScope";
 import { getActiveSystemAlerts, type SystemAlert } from "../src/services/systemAlerts";
+import { InteractionManager } from "react-native";
 /* ---------- helpers ---------- */
 
 // Step 4 - formatTime helper (NOT inside component)
@@ -91,7 +92,12 @@ export default function Home(): JSX.Element {
   const { userDoc } = useCurrentUser();
   const [systemAlerts, setSystemAlerts] = useState<SystemAlert[]>([]);
   const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([]);
-  useEffect(() => { getActiveSystemAlerts().then(setSystemAlerts).catch(() => setSystemAlerts([])); }, []);
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      getActiveSystemAlerts().then(setSystemAlerts).catch(() => setSystemAlerts([]));
+    });
+    return () => task.cancel();
+  }, []);
   const { hasAssignedClasses: hasAssignedStudentClasses } =
     useAssignedStudentClasses(
       userDoc?.approved === true || userDoc?.role === "admin" || userDoc?.role === "super_admin"
@@ -130,7 +136,7 @@ useFocusEffect(
   React.useCallback(() => {
     let active = true;
 
-    (async () => {
+    const task = InteractionManager.runAfterInteractions(() => (async () => {
       try {
         if (active && (userDoc?.role === "admin" || userDoc?.role === "super_admin")) {
           await autoMarkAbsentsForToday({ adminUid: userDoc.uid ?? userDoc.id });
@@ -138,10 +144,11 @@ useFocusEffect(
       } catch (error) {
         console.warn("Auto-mark failed", error);
       }
-    })();
+    })());
 
     return () => {
       active = false;
+      task.cancel();
     };
   }, [userDoc?.id, userDoc?.role, userDoc?.uid])
 );
@@ -151,17 +158,18 @@ useFocusEffect(
   React.useCallback(() => {
     let active = true;
 
-    (async () => {
+    const task = InteractionManager.runAfterInteractions(() => (async () => {
       try {
         const settings = await getAttendanceSettings();
         if (active) setAttendanceSettings(settings);
       } catch {
         console.warn("Failed to load attendance settings");
       }
-    })();
+    })());
 
     return () => {
       active = false;
+      task.cancel();
     };
   }, [])
 );

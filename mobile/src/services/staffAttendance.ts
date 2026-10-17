@@ -54,12 +54,32 @@ export async function findStaffAttendanceForDate(
   );
 
   const snap = await getDocs(q);
-  if (snap.empty) return null;
+  if (!snap.empty) {
+    return {
+      id: snap.docs[0].id,
+      ...(snap.docs[0].data() as any),
+    };
+  }
 
-  return {
-    id: snap.docs[0].id,
-    ...(snap.docs[0].data() as any),
-  };
+  // Tenant-scoped queries omit legacy attendance records without tenantId.
+  // Read the deterministic record only after the scoped query finds nothing;
+  // Firestore rules verify that the staff profile belongs to the caller's tenant.
+  const attendanceId = `${encodeURIComponent("staff")}_${encodeURIComponent(staffId)}_${date}`;
+  const legacySnap = await getDoc(doc(collection(db, "attendance"), attendanceId));
+  if (!legacySnap.exists()) return null;
+
+  const legacyRecord = legacySnap.data();
+  const hasTenantId = typeof legacyRecord.tenantId === "string" && legacyRecord.tenantId.trim().length > 0;
+  if (
+    hasTenantId ||
+    legacyRecord.subjectType !== "staff" ||
+    legacyRecord.subjectId !== staffId ||
+    legacyRecord.date !== date
+  ) {
+    return null;
+  }
+
+  return { id: legacySnap.id, ...legacyRecord } as AttendanceRecord;
 }
 
 /**
@@ -169,4 +189,3 @@ export async function registerStaffAttendance({
     },
   });
 }
-

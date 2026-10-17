@@ -31,18 +31,16 @@ import { useMovementReasonPrompt } from "@/components/MovementReasonPrompt";
 import { getTenantScope, tenantConstraints } from "../../src/services/tenantScope";
 import { userFacingError } from "../../src/services/userFacingError";
 import { useCurrentStaff } from "../../src/hooks/useCurrentStaff";
+import { getNonInstructionalDates } from "../../src/services/calendar";
 
 /* ------------------------- Attendance Restrictions ------------------------- */
-function isAttendanceAllowed(actor: "student" | "staff", allowStaffWeekendAttendance: boolean): { allowed: boolean; reason?: string } {
+function isAttendanceAllowed(actor: "student" | "staff", allowStaffWeekendAttendance: boolean, nonInstructionalToday: boolean): { allowed: boolean; reason?: string } {
   const today = new Date();
   const day = today.getDay();
   if (day === 0 && !(actor === "staff" && allowStaffWeekendAttendance)) return { allowed: false, reason: "Attendance is unavailable today because it is Sunday." };
   if (day === 6 && !(actor === "staff" && allowStaffWeekendAttendance)) return { allowed: false, reason: "Attendance is unavailable today because it is Saturday." };
-  const holidays = ["2026-01-01", "2026-04-15", "2026-12-25"];
   const todayISO = today.toISOString().slice(0, 10);
-  if (holidays.includes(todayISO)) {
-    return { allowed: false, reason: "Attendance is unavailable today because it is a public holiday." };
-  }
+  if (nonInstructionalToday) return { allowed: false, reason: "Attendance is unavailable today because it is a holiday or scheduled break." };
   return { allowed: true };
 }
 
@@ -135,6 +133,7 @@ export default function CheckinScreen() {
   const [staffIdInput, setStaffIdInput] = useState("");
   const [staffIdSubmitting, setStaffIdSubmitting] = useState(false);
   const [allowStaffWeekendAttendance, setAllowStaffWeekendAttendance] = useState(false);
+  const [nonInstructionalToday, setNonInstructionalToday] = useState(false);
   const { promptMovementReason, movementReasonPrompt } = useMovementReasonPrompt();
   const { staff: currentStaff } = useCurrentStaff();
 
@@ -155,6 +154,11 @@ export default function CheckinScreen() {
     return () => {
       mounted = false;
     };
+  }, []);
+
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    getNonInstructionalDates(today, today).then((dates) => setNonInstructionalToday(dates.has(today))).catch(() => setNonInstructionalToday(false));
   }, []);
 
   function getSelectedClass() {
@@ -247,7 +251,7 @@ export default function CheckinScreen() {
     }
   }
 
-  const attendanceCheck = isAttendanceAllowed(actor, allowStaffWeekendAttendance);
+  const attendanceCheck = isAttendanceAllowed(actor, allowStaffWeekendAttendance, nonInstructionalToday);
   if (!attendanceCheck.allowed) {
     Alert.alert("Attendance not allowed", attendanceCheck.reason);
     return;
@@ -355,7 +359,7 @@ export default function CheckinScreen() {
 }
 
   function goToQR(mode?: "in" | "out") {
-    const attendanceCheck = isAttendanceAllowed(actor, allowStaffWeekendAttendance);
+    const attendanceCheck = isAttendanceAllowed(actor, allowStaffWeekendAttendance, nonInstructionalToday);
     if (!attendanceCheck.allowed) return Alert.alert("Attendance not allowed", attendanceCheck.reason);
     if (actor === "student" && !selectedClassId) return Alert.alert("Select class first");
 
@@ -377,7 +381,7 @@ export default function CheckinScreen() {
   async function submitStaffIdAttendance(mode: "in" | "out") {
     if (actor !== "staff") return;
 
-    const attendanceCheck = isAttendanceAllowed(actor, allowStaffWeekendAttendance);
+    const attendanceCheck = isAttendanceAllowed(actor, allowStaffWeekendAttendance, nonInstructionalToday);
     if (!attendanceCheck.allowed) {
       Alert.alert("Attendance not allowed", attendanceCheck.reason);
       return;
@@ -446,7 +450,7 @@ export default function CheckinScreen() {
   }
 
   function renderListHeader() {
-    const check = isAttendanceAllowed(actor, allowStaffWeekendAttendance);
+    const check = isAttendanceAllowed(actor, allowStaffWeekendAttendance, nonInstructionalToday);
     return (
       <View>
         {!check.allowed ? (

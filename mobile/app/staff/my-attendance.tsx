@@ -68,11 +68,20 @@ export default function MyStaffAttendance() {
 
       if (!result.success) return;
 
+      const settings = await getAttendanceSettings();
+      const requirement = getMovementReasonRequirement({ settings, mode });
+      let movementReason: string | undefined;
+      if (requirement) {
+        movementReason = (await promptMovementReason(requirement)) ?? undefined;
+        if (!movementReason) return;
+      }
+
       await handleStaffBiometricCheck({
         staffId: staff.id,
         mode,
         biometricVerified: true,
         method: "fingerprint",
+        movementReason,
       });
 
       setConfirmation(`${staff.name} ${mode === "in" ? "checked in" : "checked out"} successfully.`);

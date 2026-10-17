@@ -8,6 +8,9 @@ export default function TermCreate() {
   const [name, setName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [midtermStartDate, setMidtermStartDate] = useState("");
+  const [midtermEndDate, setMidtermEndDate] = useState("");
+  const [holidayText, setHolidayText] = useState("");
   const [saving, setSaving] = useState(false);
 
   function isWeekend(dateStr: string) {
@@ -27,7 +30,8 @@ export default function TermCreate() {
 
     setSaving(true);
     try {
-      const term = await createTerm({ name: name.trim(), startDate, endDate });
+      const holidays = holidayText.split("\n").map((line) => { const [date, ...nameParts] = line.split("|"); return { date: date.trim(), name: nameParts.join("|").trim() || "Holiday" }; }).filter((holiday) => /^\d{4}-\d{2}-\d{2}$/.test(holiday.date));
+      const term = await createTerm({ name: name.trim(), startDate, endDate, midtermStartDate: midtermStartDate || undefined, midtermEndDate: midtermEndDate || undefined, holidays });
       if (term.id) await autoGenerateWeeksForTerm(term.id, startDate, endDate);
       navigate("/terms");
     } catch (err: any) {
@@ -61,6 +65,19 @@ export default function TermCreate() {
           <label className="block">
             <span className="auth-label">Start date</span>
             <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} required className="enterprise-input mt-1.5" />
+          </label>
+          <label className="block">
+            <span className="auth-label">Midterm/break start (optional)</span>
+            <input type="date" value={midtermStartDate} onChange={(event) => setMidtermStartDate(event.target.value)} className="enterprise-input mt-1.5" />
+          </label>
+          <label className="block">
+            <span className="auth-label">Midterm/break end (optional)</span>
+            <input type="date" value={midtermEndDate} onChange={(event) => setMidtermEndDate(event.target.value)} className="enterprise-input mt-1.5" />
+          </label>
+          <label className="block md:col-span-2">
+            <span className="auth-label">Additional holidays (one per line)</span>
+            <textarea value={holidayText} onChange={(event) => setHolidayText(event.target.value)} className="enterprise-input mt-1.5 min-h-24" placeholder="2026-05-01 | Workers' Day" />
+            <span className="mt-1 block text-xs text-slate-500">Use YYYY-MM-DD | Holiday name. These dates are excluded from scheduled attendance.</span>
           </label>
 
           <label className="block">

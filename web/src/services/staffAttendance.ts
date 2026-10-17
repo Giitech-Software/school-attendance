@@ -1,5 +1,5 @@
 import { query, where, getDocs, getDoc, doc, collection } from "firebase/firestore";
-import { db } from "../firebase";
+import { auth, db } from "../firebase";
 import type { AttendanceRecord } from "../types";
 import type { AppUser } from "./users";
 import { listUsersByRole } from "./users";
@@ -123,9 +123,16 @@ function isLate(checkInIso: string, lateAfter: string): boolean {
 
 export async function findStaffAttendanceForDate(staffId: string, date: string, selfOnly = false): Promise<AttendanceRecord | null> {
   const attendanceDocId = `${encodeURIComponent("staff")}_${encodeURIComponent(staffId)}_${date}`;
+  // Check the stable document first. Check-in writes to this exact document,
+  // and a direct read is also the permission path used for self checkout.
+  // This avoids making checkout depend on a tenant-scoped compound query.
+  const directSnap = await getDoc(doc(attendanceCollection, attendanceDocId));
+  if (directSnap.exists()) {
+    const directRecord = { id: directSnap.id, ...(directSnap.data() as any) } as AttendanceRecord;
+    if (directRecord.subjectType === "staff" && directRecord.subjectId === staffId && directRecord.date === date) return directRecord;
+  }
   if (selfOnly) {
-    const snap = await getDoc(doc(attendanceCollection, attendanceDocId));
-    return snap.exists() ? ({ id: snap.id, ...(snap.data() as any) } as AttendanceRecord) : null;
+    return null;
   }
   const q = query(
     attendanceCollection,
@@ -246,12 +253,27 @@ export async function registerStaffAttendance({
   if (movementRequirement && !cleanedReason) throw new Error("A movement book entry is required for this early departure.");
 
   try {
+    const existingSubjectId = existing.subjectId ?? existing.staffId ?? staffId;
+    const existingDate = existing.date ?? date;
+    const existingTenant = {
+      tenantId: typeof existing.tenantId === "string" && existing.tenantId.trim()
+        ? existing.tenantId
+        : attendanceTenant.tenantId,
+      tenantName: existing.tenantName ?? attendanceTenant.tenantName,
+      tenantType: existing.tenantType ?? attendanceTenant.tenantType,
+    };
+
+    if (existingSubjectId !== staffId || existingDate !== date) {
+      throw new Error("The existing staff attendance record does not match this checkout request. Refresh and try again.");
+    }
+
     return await recordAttendance({
       id: existing.id,
       subjectType: "staff",
-      subjectId: existing.subjectId ?? staffId,
-      ...attendanceTenant,
-      date,
+      subjectId: existingSubjectId,
+      staffId: existing.staffId ?? staffId,
+      ...existingTenant,
+      date: existingDate,
       type: "out",
       method: existing.method ?? method,
       biometric,
@@ -268,6 +290,49 @@ export async function registerStaffAttendance({
       selfOnly,
       error,
     });
+    // TEMP DIAGNOSTIC: read-only rule investigation for privileged checkout.
+    try {
+      const uid = auth.currentUser?.uid;
+      const [userSnap, staffSnap, attendanceSnap] = await Promise.all([
+        uid ? getDoc(doc(db, "users", uid)) : Promise.resolve(null),
+        getDoc(doc(db, "staff", staffId)),
+        getDoc(doc(db, "attendance", String(existing.id))),
+      ]);
+      const userData: any = userSnap?.data();
+      const staffData: any = staffSnap.data();
+      const attendanceData: any = attendanceSnap.data();
+      const showTenant = (value: any) => ({
+        json: JSON.stringify(value),
+        len: typeof value === "string" ? value.length : null,
+        codes: typeof value === "string" ? [...value].map((character) => character.charCodeAt(0)).join(",") : null,
+      });
+      console.table({
+        caller: {
+          uid,
+          role: userData?.role,
+          approved: userData?.approved,
+          canTakeStaffAttendance: userData?.canTakeStaffAttendance,
+          tenantId: userData?.tenantId,
+        },
+        staffDoc: {
+          tenantId: staffData?.tenantId,
+          exists: staffSnap.exists(),
+        },
+        attendanceDoc: {
+          tenantId: attendanceData?.tenantId,
+          subjectType: attendanceData?.subjectType,
+          subjectId: attendanceData?.subjectId,
+          date: attendanceData?.date,
+          hasLocation: Boolean(attendanceData?.location),
+          type: attendanceData?.type,
+        },
+      });
+      console.log("caller tenant", showTenant(userData?.tenantId));
+      console.log("staff tenant", showTenant(staffData?.tenantId));
+      console.log("attendance tenant", showTenant(attendanceData?.tenantId));
+    } catch (diagnosticError) {
+      console.warn("[attendance:checkout-diagnostic] failed", diagnosticError);
+    }
     throw error;
   }
 }

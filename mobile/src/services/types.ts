@@ -85,6 +85,9 @@ export type Term = {
   endDate: string;
 
   isCurrent?: boolean;
+  midtermStartDate?: string;
+  midtermEndDate?: string;
+  holidays?: Array<{ date: string; name: string }>;
 
   createdAt?: any;
   updatedAt?: any;

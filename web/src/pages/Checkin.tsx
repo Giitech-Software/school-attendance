@@ -11,14 +11,14 @@ import useCurrentUser from "../hooks/useCurrentUser";
 import { useCurrentStaff } from "../hooks/useCurrentStaff";
 import ImageCarousel from "../components/ImageCarousel";
 import { userFacingError } from "../services/userFacingError";
+import { getNonInstructionalDates } from "../services/calendar";
 
-function isAttendanceAllowed(actor: "student" | "staff", allowStaffWeekendAttendance: boolean): { allowed: boolean; reason?: string } {
+function isAttendanceAllowed(actor: "student" | "staff", allowStaffWeekendAttendance: boolean, nonInstructionalToday: boolean): { allowed: boolean; reason?: string } {
   const today = new Date();
   const day = today.getDay();
   if (day === 0 && !(actor === "staff" && allowStaffWeekendAttendance)) return { allowed: false, reason: "Attendance is unavailable today because it is Sunday." };
   if (day === 6 && !(actor === "staff" && allowStaffWeekendAttendance)) return { allowed: false, reason: "Attendance is unavailable today because it is Saturday." };
-  const holidays = ["2026-01-01", "2026-04-15", "2026-12-25"];
-  if (holidays.includes(today.toISOString().slice(0, 10))) return { allowed: false, reason: "Attendance is unavailable today because it is a public holiday." };
+  if (nonInstructionalToday) return { allowed: false, reason: "Attendance is unavailable today because it is a holiday or scheduled break." };
   return { allowed: true };
 }
 
@@ -103,12 +103,13 @@ export default function Checkin() {
   const [success, setSuccess] = useState<string | null>(null);
   const [successStaffPhoto, setSuccessStaffPhoto] = useState<string | null>(null);
   const [allowStaffWeekendAttendance, setAllowStaffWeekendAttendance] = useState(false);
+  const [nonInstructionalToday, setNonInstructionalToday] = useState(false);
   const isAdmin = userDoc?.role === "admin" || userDoc?.role === "super_admin";
   const selfServiceStaff = actor === "staff" && userDoc?.canTakeSelfAttendance === true && userDoc?.canTakeStaffAttendance !== true && !isAdmin;
   const selfQuery = selfServiceStaff ? "&self=1" : "";
   const canRecord = isAdmin || (userDoc?.approved === true && (actor === "staff" ? (userDoc.canTakeStaffAttendance === true || userDoc.canTakeSelfAttendance === true) : userDoc.canTakeStudentAttendance === true));
 
-  const attendanceCheck = isAttendanceAllowed(actor, allowStaffWeekendAttendance);
+  const attendanceCheck = isAttendanceAllowed(actor, allowStaffWeekendAttendance, nonInstructionalToday);
   const selectedClass = useMemo(
     () => classes.find((cls) => cls.id === selectedClassId || cls.classId === selectedClassId),
     [classes, selectedClassId]
@@ -117,6 +118,10 @@ export default function Checkin() {
   useEffect(() => {
     setMode(initialMode);
   }, [initialMode]);
+
+  useEffect(() => {
+    getNonInstructionalDates(todayISO(), todayISO()).then((dates) => setNonInstructionalToday(dates.has(todayISO()))).catch(() => setNonInstructionalToday(false));
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -136,6 +141,22 @@ export default function Checkin() {
           // If settings cannot be read, do not block self-service initialization.
           // The attendance service still validates the configured rules before writing.
           setAllowStaffWeekendAttendance(attendanceSettings?.allowStaffWeekendAttendance ?? true);
+          setLoading(false);
+          return;
+        }
+        // Do not query the shared attendance collection for users who are not
+        // allowed to manage this attendance type. The query can be rejected by
+        // Firestore and surface a misleading action error before any button is
+        // used.
+        const canLoadAttendance = isAdmin || (
+          userDoc?.approved === true &&
+          (actor === "staff" ? userDoc.canTakeStaffAttendance === true : userDoc.canTakeStudentAttendance === true)
+        );
+        if (!canLoadAttendance) {
+          setClasses([]);
+          setAllStudents([]);
+          setStaffMembers([]);
+          setTodayAttendance([]);
           setLoading(false);
           return;
         }
@@ -164,7 +185,7 @@ export default function Checkin() {
     return () => {
       active = false;
     };
-  }, [actor, userDoc?.canTakeSelfAttendance, userDoc?.canTakeStaffAttendance, isAdmin]);
+  }, [actor, userDoc?.approved, userDoc?.canTakeStudentAttendance, userDoc?.canTakeSelfAttendance, userDoc?.canTakeStaffAttendance, isAdmin]);
 
   useEffect(() => {
     let active = true;
@@ -271,11 +292,11 @@ export default function Checkin() {
   }
 
   async function submitStaffAttendance(nextMode = mode) {
-    if (!canRecord) { setError("Your account is not authorised to record staff attendance. Please contact an administrator."); return; }
     if (!staffIdInput.trim()) {
       setError("Enter a staff ID before recording attendance.");
       return;
     }
+    if (!canRecord) { setError("Your account is not authorised to record staff attendance. Please contact an administrator."); return; }
     if (!attendanceCheck.allowed) {
       setError(attendanceCheck.reason ?? "Attendance is unavailable today.");
       return;
@@ -467,10 +488,10 @@ export default function Checkin() {
                 className="enterprise-input"
               />
               <div className="mt-3 grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => submitStaffAttendance("in")} disabled={submitting || !attendanceCheck.allowed} className="enterprise-button-primary justify-center">
+                <button type="button" onClick={() => submitStaffAttendance("in")} disabled={submitting || !attendanceCheck.allowed || !staffIdInput.trim()} className="enterprise-button-primary justify-center">
                   Check in
                 </button>
-                <button type="button" onClick={() => submitStaffAttendance("out")} disabled={submitting || !attendanceCheck.allowed} className="rounded-lg bg-amber-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-700 disabled:opacity-60">
+                <button type="button" onClick={() => submitStaffAttendance("out")} disabled={submitting || !attendanceCheck.allowed || !staffIdInput.trim()} className="rounded-lg bg-amber-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-700 disabled:opacity-60">
                   Check out
                 </button>
               </div>

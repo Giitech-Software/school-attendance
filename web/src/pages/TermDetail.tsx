@@ -17,6 +17,7 @@ export default function TermDetail() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [holidayText, setHolidayText] = useState("");
   const originalDates = useRef({ startDate: "", endDate: "" });
 
   async function load() {
@@ -28,6 +29,7 @@ export default function TermDetail() {
       if (termRow) {
         originalDates.current = { startDate: termRow.startDate, endDate: termRow.endDate };
         setWeeks(await listWeeksForTerm(id));
+        setHolidayText((termRow.holidays ?? []).map((holiday) => `${holiday.date} | ${holiday.name}`).join("\n"));
       }
     } catch (err) {
       console.error(err);
@@ -57,7 +59,8 @@ export default function TermDetail() {
 
     setSaving(true);
     try {
-      await updateTerm(term.id, { name: term.name.trim(), startDate: term.startDate, endDate: term.endDate });
+      const holidays = holidayText.split("\n").map((line) => { const [date, ...nameParts] = line.split("|"); return { date: date.trim(), name: nameParts.join("|").trim() || "Holiday" }; }).filter((holiday) => /^\d{4}-\d{2}-\d{2}$/.test(holiday.date));
+      await updateTerm(term.id, { name: term.name.trim(), startDate: term.startDate, endDate: term.endDate, midtermStartDate: term.midtermStartDate || undefined, midtermEndDate: term.midtermEndDate || undefined, holidays });
       if (datesChanged) await autoGenerateWeeksForTerm(term.id, term.startDate, term.endDate);
       await load();
       alert(datesChanged ? "Term updated and weeks regenerated." : "Term updated successfully.");
@@ -131,6 +134,18 @@ export default function TermDetail() {
             <label className="block">
               <span className="auth-label">Start date</span>
               <input type="date" value={term.startDate} onChange={(event) => setTerm({ ...term, startDate: event.target.value })} className="enterprise-input mt-1.5" />
+            </label>
+            <label className="block">
+              <span className="auth-label">Midterm/break start</span>
+              <input type="date" value={term.midtermStartDate ?? ""} onChange={(event) => setTerm({ ...term, midtermStartDate: event.target.value })} className="enterprise-input mt-1.5" />
+            </label>
+            <label className="block">
+              <span className="auth-label">Midterm/break end</span>
+              <input type="date" value={term.midtermEndDate ?? ""} onChange={(event) => setTerm({ ...term, midtermEndDate: event.target.value })} className="enterprise-input mt-1.5" />
+            </label>
+            <label className="block md:col-span-2">
+              <span className="auth-label">Additional holidays</span>
+              <textarea value={holidayText} onChange={(event) => setHolidayText(event.target.value)} className="enterprise-input mt-1.5 min-h-24" placeholder="2026-05-01 | Workers' Day" />
             </label>
 
             <label className="block">

@@ -2,7 +2,7 @@ import { collection, doc, getDoc, getDocs, query, where } from "firebase/firesto
 import { db } from "../firebase";
 import { belongsToTenant, getTenantScope, tenantConstraints } from "./tenantScope";
 import type { AttendanceRecord } from "../types";
-import { getHolidaysInRange } from "./holidays";
+import { getNonInstructionalDates } from "./calendar";
 
 const attendanceCollection = collection(db, "attendance");
 const studentsCollection = collection(db, "students");
@@ -196,8 +196,7 @@ export async function computeClassSummary(
     });
   }
 
-  const holidays = await getHolidaysInRange(fromIso, toIso).catch(() => []);
-  const holidayDates = new Set(holidays.map((holiday) => holiday.date));
+  const holidayDates = await getNonInstructionalDates(fromIso, toIso);
   const expectedDates = getSchoolDaysInRange(fromIso, toIso).filter((date) => !holidayDates.has(date));
   const out = Array.from(byStudent.entries()).map(([studentId, records]) => ({
     ...summarizeRecords(studentId, records, expectedDates),
@@ -215,8 +214,7 @@ export async function getAttendanceSummary(opts: GetAttendanceSummaryOptions = {
   const fromIso = opts.fromIso && opts.toIso ? range[0] : range[0];
   const toIso = opts.fromIso && opts.toIso ? range[1] : range[range.length - 1];
 
-  const holidays = await getHolidaysInRange(fromIso, toIso).catch(() => []);
-  const holidayDates = new Set(holidays.map((holiday) => holiday.date));
+  const holidayDates = await getNonInstructionalDates(fromIso, toIso);
   const expectedDates = getSchoolDaysInRange(fromIso, toIso).filter((date) => !holidayDates.has(date));
   let students: any[] = [];
 

@@ -19,6 +19,7 @@ export default function TermEdit() {
   const [term, setTerm] = useState<Term | null>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [holidayText, setHolidayText] = useState("");
 const originalDatesRef = React.useRef({
   startDate: "",
   endDate: "",
@@ -45,6 +46,7 @@ function isWeekend(dateStr: string) {
           return;
         }
        setTerm(found);
+       setHolidayText((found.holidays ?? []).map((holiday) => `${holiday.date} | ${holiday.name}`).join("\n"));
 originalDatesRef.current = {
   startDate: found.startDate,
   endDate: found.endDate,
@@ -85,6 +87,9 @@ if (isWeekend(term.startDate) || isWeekend(term.endDate)) {
       name: term.name.trim(),
       startDate: term.startDate,
       endDate: term.endDate,
+      midtermStartDate: term.midtermStartDate || undefined,
+      midtermEndDate: term.midtermEndDate || undefined,
+      holidays: holidayText.split("\n").map((line) => { const [date, ...parts] = line.split("|"); return { date: date.trim(), name: parts.join("|").trim() || "Holiday" }; }).filter((holiday) => /^\d{4}-\d{2}-\d{2}$/.test(holiday.date)),
     });
 
     if (datesChanged) {
@@ -222,6 +227,15 @@ async function handleGenerateWeeks() {
         onChangeText={(v) => setTerm({ ...term, endDate: v })}
         className="border p-3 rounded mb-4 bg-white"
       />
+
+      <Text className="text-sm text-neutral">Midterm/break start (optional)</Text>
+      <TextInput value={term.midtermStartDate ?? ""} onChangeText={(v) => setTerm({ ...term, midtermStartDate: v })} className="border p-3 rounded mb-3 bg-white" placeholder="2025-02-10" />
+
+      <Text className="text-sm text-neutral">Midterm/break end (optional)</Text>
+      <TextInput value={term.midtermEndDate ?? ""} onChangeText={(v) => setTerm({ ...term, midtermEndDate: v })} className="border p-3 rounded mb-3 bg-white" placeholder="2025-02-14" />
+
+      <Text className="text-sm text-neutral">Additional holidays (YYYY-MM-DD | name)</Text>
+      <TextInput value={holidayText} onChangeText={setHolidayText} multiline className="border p-3 rounded mb-4 bg-white min-h-24" placeholder="2025-05-01 | Workers' Day" />
 
       <Pressable
         onPress={handleUpdate}

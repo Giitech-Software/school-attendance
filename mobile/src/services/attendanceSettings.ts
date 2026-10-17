@@ -21,6 +21,8 @@ const DEFAULT_ATTENDANCE_SETTINGS: AttendanceSettings = {
   timezone: "Africa/Accra",
   allowStaffWeekendAttendance: false,
 };
+let cachedSettings: AttendanceSettings | null = null;
+let settingsRequest: Promise<AttendanceSettings> | null = null;
 
 function parseTimeToMinutes(time?: string): number | null {
   if (!time || !/^\d{2}:\d{2}$/.test(time)) return null;
@@ -101,21 +103,32 @@ export async function assertStaffAttendanceDayAllowed() {
 }
 
 export async function getAttendanceSettings(): Promise<AttendanceSettings> {
+  if (cachedSettings) return cachedSettings;
+  if (settingsRequest) return settingsRequest;
+  settingsRequest = (async () => {
   const snap = await getDoc(await attendanceSettingsDoc());
 
   if (!snap.exists()) {
-    return DEFAULT_ATTENDANCE_SETTINGS;
+    cachedSettings = DEFAULT_ATTENDANCE_SETTINGS;
+    return cachedSettings;
   }
 
   const data = snap.data();
 
-  return {
+  cachedSettings = {
     lateAfter: data.lateAfter ?? DEFAULT_ATTENDANCE_SETTINGS.lateAfter,
     closeAfter: data.closeAfter ?? DEFAULT_ATTENDANCE_SETTINGS.closeAfter,
     timezone: data.timezone ?? DEFAULT_ATTENDANCE_SETTINGS.timezone,
     allowStaffWeekendAttendance:
       data.allowStaffWeekendAttendance ?? DEFAULT_ATTENDANCE_SETTINGS.allowStaffWeekendAttendance,
   };
+  return cachedSettings;
+  })();
+  try { return await settingsRequest; } finally { settingsRequest = null; }
+}
+
+export function clearAttendanceSettingsCache() {
+  cachedSettings = null;
 }
 
 export async function saveAttendanceSettings(settings: AttendanceSettings) {
@@ -127,6 +140,7 @@ export async function saveAttendanceSettings(settings: AttendanceSettings) {
     },
     { merge: true }
   );
+  clearAttendanceSettingsCache();
   await logAdminAction({
     action: "UPDATE_ATTENDANCE_SETTINGS",
     targetType: "settings",

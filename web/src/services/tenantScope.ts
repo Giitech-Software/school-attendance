@@ -10,9 +10,15 @@ export type TenantScope = {
   isSuperAdmin: boolean;
   isScoped: boolean;
   role: string | null;
+  countryCode?: string | null;
 };
 
-const emptyScope: TenantScope = { tenantId: null, tenantName: null, tenantType: null, isSuperAdmin: false, isScoped: false, role: null };
+const emptyScope: TenantScope = { tenantId: null, tenantName: null, tenantType: null, isSuperAdmin: false, isScoped: false, role: null, countryCode: null };
+let cachedScopeUid: string | null = null;
+let cachedScope: TenantScope | null = null;
+let cachedUserData: Record<string, any> | null = null;
+let scopeRequest: Promise<TenantScope> | null = null;
+let userDataRequest: Promise<Record<string, any> | null> | null = null;
 
 function normalizeTenantType(value: any): TenantTypeValue | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
@@ -26,19 +32,63 @@ async function resolveTenantType(tenantId: string | null, profileTenantType: any
   return tenantSnap.exists() ? normalizeTenantType(tenantSnap.data()?.type) : null;
 }
 
-export async function getTenantScope(): Promise<TenantScope> {
-  const uid = auth.currentUser?.uid;
-  if (!uid) return emptyScope;
+async function loadUserData(uid: string): Promise<Record<string, any> | null> {
+  if (cachedScopeUid === uid && cachedUserData) return cachedUserData;
+  if (userDataRequest && cachedScopeUid === uid) return userDataRequest;
 
-  const snap = await getDoc(doc(db, "users", uid));
-  const data = snap.exists() ? snap.data() : null;
+  userDataRequest = (async () => {
+    const snap = await getDoc(doc(db, "users", uid));
+    const data = snap.exists() ? snap.data() : null;
+    cachedUserData = data ?? null;
+    cachedScopeUid = uid;
+    return data ?? null;
+  })();
+
+  try {
+    return await userDataRequest;
+  } finally {
+    userDataRequest = null;
+  }
+}
+
+async function loadTenantScopeForUid(uid: string): Promise<TenantScope> {
+  const data = await loadUserData(uid);
   const isSuperAdmin = data?.role === "super_admin" || data?.role === "superadmin";
   const role = typeof data?.role === "string" ? data.role : null;
   const tenantId = typeof data?.tenantId === "string" && data.tenantId.trim() ? data.tenantId : null;
   const tenantName = typeof data?.tenantName === "string" && data.tenantName.trim() ? data.tenantName : null;
   const tenantType = await resolveTenantType(tenantId, data?.tenantType);
+  let countryCode = typeof data?.countryCode === "string" ? data.countryCode.toUpperCase() : null;
+  if (!countryCode && tenantId) {
+    const tenantSnap = await getDoc(doc(db, "tenants", tenantId));
+    countryCode = typeof tenantSnap.data()?.countryCode === "string" ? tenantSnap.data()?.countryCode.toUpperCase() : null;
+  }
 
-  return { tenantId, tenantName, tenantType, isSuperAdmin, isScoped: Boolean(tenantId && !isSuperAdmin), role };
+  const resolved = { tenantId, tenantName, tenantType, isSuperAdmin, isScoped: Boolean(tenantId && !isSuperAdmin), role, countryCode };
+  cachedScope = resolved;
+  return resolved;
+}
+
+export async function getTenantScope(): Promise<TenantScope> {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return emptyScope;
+  if (cachedScopeUid === uid && cachedScope) return cachedScope;
+  if (scopeRequest && cachedScopeUid === uid) return scopeRequest;
+
+  scopeRequest = loadTenantScopeForUid(uid);
+  try {
+    return await scopeRequest;
+  } finally {
+    scopeRequest = null;
+  }
+}
+
+export function clearTenantScopeCache() {
+  cachedScopeUid = null;
+  cachedScope = null;
+  cachedUserData = null;
+  scopeRequest = null;
+  userDataRequest = null;
 }
 
 export async function requireAdminTenantScope(): Promise<TenantScope> {
@@ -57,8 +107,8 @@ export async function requireStaffRegistrationScope(): Promise<TenantScope> {
   if (!auth.currentUser?.uid) throw new Error("Your session has expired. Please sign in again.");
   const scope = await getTenantScope();
   if (scope.role === "admin" || scope.role === "super_admin" || scope.role === "superadmin") return scope;
-  const snap = await getDoc(doc(db, "users", auth.currentUser.uid));
-  const data = snap.exists() ? snap.data() : null;
+
+  const data = await loadUserData(auth.currentUser.uid);
   if (data?.approved !== true || data?.canRegisterStaff !== true) throw new Error("Staff registration permission is required.");
   if (!scope.tenantId) throw new Error("Your account is not assigned to an organisation.");
   return scope;

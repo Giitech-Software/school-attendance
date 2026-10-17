@@ -258,6 +258,8 @@ export async function upsertUser(user: AppUser): Promise<string> {
   }, scope),
   { merge: true }
 );
+    const linkedStaff = await getDocs(query(collection(db, "staff"), where("userUid", "==", user.id), ...tenantConstraints(scope)));
+    await Promise.all(linkedStaff.docs.map((staffDoc) => updateDoc(staffDoc.ref, { isActive: true, updatedAt: serverTimestamp() })));
     if (scope.role === "admin" || scope.role === "super_admin") {
       await logAdminAction({
       action: "UPSERT_USER",
@@ -288,6 +290,9 @@ export async function upsertUser(user: AppUser): Promise<string> {
 
 export async function deleteUser(id: string): Promise<void> {
   try {
+    const scope = await getTenantScope();
+    const linkedStaff = await getDocs(query(collection(db, "staff"), where("userUid", "==", id), ...tenantConstraints(scope)));
+    await Promise.all(linkedStaff.docs.map((staffDoc) => updateDoc(staffDoc.ref, { isActive: false, updatedAt: serverTimestamp() })));
     await deleteDoc(doc(db, USERS_COLLECTION, id));
     await logAdminAction({
       action: "DELETE_USER",

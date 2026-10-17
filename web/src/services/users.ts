@@ -112,6 +112,9 @@ export async function upsertUser(profile: Partial<AppUser> & { uid: string }) {
       },
       { merge: true }
     );
+    const scope = await getTenantScope();
+    const linkedStaff = await getDocs(query(collection(db, "staff"), where("userUid", "==", profile.uid), ...tenantConstraints(scope)));
+    await Promise.all(linkedStaff.docs.map((staffDoc) => updateDoc(staffDoc.ref, { isActive: true, updatedAt: serverTimestamp() })));
     return { id, ...profile } as AppUser;
   } catch (err: any) {
     console.error("upsertUser error:", err.code ?? err);
@@ -207,6 +210,9 @@ export async function updateUserApproval(uid: string, approved: boolean) {
 }
 
 export async function deleteUser(id: string): Promise<void> {
+  const scope = await getTenantScope();
+  const linkedStaff = await getDocs(query(collection(db, "staff"), where("userUid", "==", id), ...tenantConstraints(scope)));
+  await Promise.all(linkedStaff.docs.map((staffDoc) => updateDoc(staffDoc.ref, { isActive: false, updatedAt: serverTimestamp() })));
   await deleteDoc(doc(db, "users", id));
 }
 
